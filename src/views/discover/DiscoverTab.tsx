@@ -41,8 +41,7 @@ import { api } from '../../lib/trpc'
 import { getAccessToken } from '../../lib/session'
 import type { EventItem } from '../../types'
 
-const SAMPLE_PLACEHOLDER =
-  'Techno in Marina Bay tonight under $50, credible lineups only'
+const SAMPLE_PLACEHOLDER = 'Chat With Buzo...'
 
 /** Matches the hardcoded jazz typing window in the `useEffect` below (~2500ms). */
 const DISCOVER_CHIP_AGENT_MIN_LOADING_MS = 2500
@@ -905,7 +904,7 @@ export function DiscoverTab({
           </div>
         ) : (
           <div className="discover-layla-empty">
-            <h4 className="discover-layla-empty-title">Ask Buzo anything</h4>
+            <h4 className="discover-layla-empty-title">Chat With Buzo...</h4>
             <p className="discover-layla-empty-sub">
               Venues, lineups, areas, or budget — replies show up here.
             </p>

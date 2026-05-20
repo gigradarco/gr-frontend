@@ -1,79 +1,167 @@
 import type { EventItem } from '../types'
+import { isSplashImageUrl, splashImageForEventRow } from './splash-images'
 
-function formatTimeLabel(timeRaw: string): string {
-  const d = new Date(timeRaw)
-  return Number.isFinite(d.getTime())
-    ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
-    : ''
-}
+function dateFromUnknown(value: unknown): Date | null {
+  if (value == null || value === '') return null
 
-/** Row from `events.list` (PostgREST snake_case). */
-export function mapDbEventToEventItem(row: Record<string, unknown>): EventItem {
-  const time = formatTimeLabel(String(row.event_time ?? ''))
-
-  return {
-    id: row.id as string,
-    title: row.title as string,
-    venue: row.venue as string,
-    district: row.district as string,
-    time,
-    genre: row.genre as string,
-    exploreCategoryId: row.explore_category_id as string,
-    locationCityId: row.location_city_id as string,
-    verified: Number(row.verified ?? 0),
-    image: row.image as string,
-    host: row.host as string,
-    hostPrompt: (row.host_prompt as string) ?? '',
-    friendsGoing: Number(row.friends_going ?? 0),
-    vibeTags: Array.isArray(row.vibe_tags) ? (row.vibe_tags as string[]) : [],
-    ticketPrice: String(row.ticket_price ?? ''),
-    bpReward: row.bp_reward != null ? Number(row.bp_reward) : undefined,
-    buzzPct: row.buzz_pct != null ? Number(row.buzz_pct) : undefined,
-    lat: row.lat != null ? Number(row.lat) : undefined,
-    lng: row.lng != null ? Number(row.lng) : undefined,
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    // Turso NUMERIC may be Unix seconds or JavaScript milliseconds.
+    const ms = value > 1_000_000_000_000 ? value : value * 1000
+    const d = new Date(ms)
+    return Number.isFinite(d.getTime()) ? d : null
   }
+
+  const text = String(value).trim()
+  if (!text) return null
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    const numeric = Number(text)
+    if (Number.isFinite(numeric)) return dateFromUnknown(numeric)
+  }
+
+  const d = new Date(text)
+  return Number.isFinite(d.getTime()) ? d : null
 }
 
-const REMOTE_PLACEHOLDER_IMAGE =
-  'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80'
+function formatDateTimeLabel(value: unknown, fallbackRaw?: unknown): string {
+  const d = dateFromUnknown(value)
+  if (d) {
+    return d.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+  }
+
+  return firstText(fallbackRaw)
+}
+
+/** Legacy export kept for callers that used the old Supabase mapper name. */
+export function mapDbEventToEventItem(row: Record<string, unknown>): EventItem {
+  return mapRemoteEventRowToEventItem(row)
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    if (value == null) continue
+    const text = String(value).trim()
+    if (text.length > 0) return text
+  }
+  return ''
+}
+
+/** Parse Turso `category` into display tags (JSON array, delimited text, or single value). */
+export function parseCategoryTags(value: unknown): string[] {
+  if (value == null || value === '') return []
+
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((entry) => String(entry).trim()).filter(Boolean))]
+  }
+
+  const text = String(value).trim()
+  if (!text) return []
+
+  if (text.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(text)
+      if (Array.isArray(parsed)) {
+        return [...new Set(parsed.map((entry) => String(entry).trim()).filter(Boolean))]
+      }
+    } catch {
+      // Fall through to delimiter / single-value parsing.
+    }
+  }
+
+  if (text.includes(',') || text.includes('|')) {
+    return [
+      ...new Set(
+        text
+          .split(/[,|]/)
+          .map((entry) => entry.trim().replace(/^["']|["']$/g, ''))
+          .filter(Boolean),
+      ),
+    ]
+  }
+
+  return [text]
+}
+
+function numberFromUnknown(value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+function booleanFromUnknown(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return normalized === '1' || normalized === 'true' || normalized === 'yes'
+  }
+  return false
+}
+
+function formatPriceAmount(value: unknown): string | null {
+  const n = numberFromUnknown(value)
+  return n == null ? null : n.toFixed(2)
+}
+
+function formatTicketPrice(row: Record<string, unknown>): string {
+  const minPrice = formatPriceAmount(row.min_price)
+  if (minPrice) {
+    const currency = firstText(row.currencyId)
+    const suffix = currency ? ` ${currency}` : ''
+    if (booleanFromUnknown(row.is_price_range)) {
+      const maxPrice = formatPriceAmount(row.max_price)
+      return maxPrice ? `FROM ${minPrice} - ${maxPrice}${suffix}` : `FROM ${minPrice}${suffix}`
+    }
+    return `${minPrice}${suffix}`
+  }
+
+  const legacy = firstText(row.ticket_price)
+  if (legacy) return legacy
+
+  if (row.price == null || row.price === '') return 'Not available'
+  const price = String(row.price).trim()
+  const currency = firstText(row.currencyId)
+  return currency ? `${price} ${currency}` : price
+}
 
 /**
- * `/api/events` and Turso-backed rows: tolerates `row_num` instead of `id`, integer category ids,
- * and missing optional Buzo columns (image, vibe_tags, city, etc.).
+ * `/api/events` Turso-backed rows using the current Turso schema.
  */
 export function mapRemoteEventRowToEventItem(row: Record<string, unknown>): EventItem {
-  const id =
-    row.id != null && String(row.id).length > 0
-      ? String(row.id)
-      : String(row.row_num ?? '')
-
-  const time = formatTimeLabel(String(row.event_time ?? ''))
-  const cat = row.explore_category_id
-  const exploreCategoryId =
-    cat == null || cat === '' ? '' : String(cat)
+  const id = row.event_id != null ? String(row.event_id) : row.id != null ? String(row.id) : ''
+  const time = formatDateTimeLabel(row.event_datetime ?? row.event_time, row.event_time_raw)
+  const categoryTags = parseCategoryTags(row.category)
+  const category = categoryTags[0] ?? ''
+  const eventImg = firstText(row.event_img)
+  const cityId = firstText(row.location_city_id) || 'unknown'
+  const image = eventImg && !isSplashImageUrl(eventImg) ? eventImg : splashImageForEventRow(row)
 
   return {
     id,
     title: String(row.title ?? ''),
-    venue: String(row.venue ?? ''),
-    district: String(row.district ?? ''),
+    venue: firstText(row.location),
+    district: firstText(row.address),
     time,
-    genre: String(row.genre ?? ''),
-    exploreCategoryId,
-    locationCityId:
-      row.location_city_id != null && String(row.location_city_id).length > 0
-        ? String(row.location_city_id)
-        : 'unknown',
+    genre: category,
+    exploreCategoryId: category,
+    locationCityId: cityId,
     verified: Number(row.verified ?? 0),
-    image: (row.image as string)?.trim() ? String(row.image) : REMOTE_PLACEHOLDER_IMAGE,
+    image,
     host: String(row.host ?? ''),
-    hostPrompt: String(row.host_prompt ?? ''),
-    friendsGoing: Number(row.friends_going ?? 0),
-    vibeTags: Array.isArray(row.vibe_tags) ? (row.vibe_tags as string[]) : [],
-    ticketPrice: row.ticket_price == null || row.ticket_price === '' ? '' : String(row.ticket_price),
-    bpReward: row.bp_reward != null ? Number(row.bp_reward) : undefined,
-    buzzPct: row.buzz_pct != null ? Number(row.buzz_pct) : undefined,
+    hostPrompt: firstText(row.the_experience),
+    friendsGoing: 0,
+    vibeTags: firstText(row.taste_and_recommendations)
+      ? [String(row.taste_and_recommendations)]
+      : [],
+    ticketPrice: formatTicketPrice(row),
+    bpReward: undefined,
+    buzzPct: undefined,
     lat: row.lat != null ? Number(row.lat) : undefined,
-    lng: row.lng != null ? Number(row.lng) : undefined,
+    lng: row.lon != null ? Number(row.lon) : undefined,
   }
 }
