@@ -118,6 +118,38 @@ const DEFAULT_DEBUG_FILTERS: DebugFilters = {
   minPrice: '',
   maxPrice: '',
 }
+const EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY = 'buzo-event-list-admin-token'
+const ADMIN_TOKEN_REQUIRED_MESSAGE = 'Admin bearer token required.'
+
+function readStoredEventListAdminToken(): string {
+  try {
+    return window.sessionStorage.getItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function persistEventListAdminToken(token: string): void {
+  try {
+    if (token) window.sessionStorage.setItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY, token)
+    else window.sessionStorage.removeItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY)
+  } catch {
+    // Ignore storage failures; the current React state still works for this tab.
+  }
+}
+
+function eventListAdminHeaders(token: string): HeadersInit {
+  const trimmed = token.trim()
+  return trimmed ? { Authorization: `Bearer ${trimmed}` } : {}
+}
+
+function eventListLoadError(status: number, fallback?: string): string {
+  if (status === 401) return 'Unauthorized: admin bearer token is missing or invalid.'
+  if (status === 500 && fallback === 'Event list admin auth is not configured') {
+    return 'Backend admin token is not configured.'
+  }
+  return fallback ?? `HTTP ${status}`
+}
 const IMAGE_SOURCE_FILTERS: Array<{ id: ImageSourceFilter; label: string }> = [
   { id: 'all', label: 'All images' },
   { id: 'event-img', label: 'event-img' },
@@ -1030,6 +1062,10 @@ export function EventListPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [imageInfoModal, setImageInfoModal] = useState<ImageInfoModalState | null>(null)
   const [loading, setLoading] = useState(true)
+  const [adminToken, setAdminToken] = useState(readStoredEventListAdminToken)
+  const [draftAdminToken, setDraftAdminToken] = useState(readStoredEventListAdminToken)
+  const [authRefreshKey, setAuthRefreshKey] = useState(0)
+  const hasAdminToken = adminToken.trim().length > 0
 
   const toggleAllCardFacts = useCallback(() => {
     setGlobalFactsExpanded((current) => {
@@ -1107,17 +1143,54 @@ export function EventListPage() {
     return () => window.clearTimeout(timer)
   }, [copyStatus])
 
+  const saveAdminToken = useCallback(() => {
+    const token = draftAdminToken.trim()
+    setAdminToken(token)
+    persistEventListAdminToken(token)
+    setAuthRefreshKey((value) => value + 1)
+    if (token) {
+      setError(null)
+      return
+    }
+    setRows(null)
+    setTotalCount(null)
+    setCountWarning(null)
+    setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
+  }, [draftAdminToken])
+
+  const clearAdminToken = useCallback(() => {
+    setAdminToken('')
+    setDraftAdminToken('')
+    persistEventListAdminToken('')
+    setRows(null)
+    setTotalCount(null)
+    setCountWarning(null)
+    setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
+    setLoading(false)
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     setCountWarning(null)
+    const token = adminToken.trim()
+    if (!token) {
+      setRows(null)
+      setTotalCount(null)
+      setLoading(false)
+      setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
+      return
+    }
     try {
+      const headers = eventListAdminHeaders(token)
       const [res, countRes] = await Promise.all([
         fetch(eventsApiPath('/api/events', appliedFilterMode, appliedFilters, appliedAdvanced), {
           credentials: 'include',
+          headers,
         }),
         fetch(eventsApiPath('/api/events/count', appliedFilterMode, appliedFilters, appliedAdvanced), {
           credentials: 'include',
+          headers,
         }),
       ])
       if (!res.ok) {
@@ -1125,7 +1198,7 @@ export function EventListPage() {
         setRows(null)
         setTotalCount(null)
         setCountWarning(null)
-        setError(j.error ?? `HTTP ${res.status}`)
+        setError(eventListLoadError(res.status, j.error))
         return
       }
       const data = (await res.json()) as Record<string, unknown>[]
@@ -1144,7 +1217,7 @@ export function EventListPage() {
       } else {
         const j = (await countRes.json().catch(() => ({}))) as { error?: string }
         setTotalCount(null)
-        setCountWarning(j.error ? `Count unavailable: ${j.error}` : `Count unavailable: HTTP ${countRes.status}`)
+        setCountWarning(`Count unavailable: ${eventListLoadError(countRes.status, j.error)}`)
       }
       setRows(
         data.map((r) => ({
@@ -1160,7 +1233,7 @@ export function EventListPage() {
     } finally {
       setLoading(false)
     }
-  }, [appliedAdvanced, appliedFilterMode, appliedFilters])
+  }, [adminToken, appliedAdvanced, appliedFilterMode, appliedFilters, authRefreshKey])
 
   useEffect(() => {
     void load()
@@ -1439,7 +1512,7 @@ export function EventListPage() {
             <button
               type="button"
               onClick={() => void load()}
-              disabled={loading}
+              disabled={loading || !hasAdminToken}
               className="event-list-refresh"
             >
               <RefreshCw size={16} className={loading ? 'spin' : undefined} />
@@ -1447,6 +1520,45 @@ export function EventListPage() {
             </button>
           </div>
         </header>
+
+        <section className="event-list-auth" aria-label="Event list admin access">
+          <div>
+            <p className="event-list-auth-title">Admin access</p>
+            <p className="event-list-muted">
+              {hasAdminToken ? 'Bearer token active for this tab.' : 'Enter bearer token to load Turso events.'}
+            </p>
+          </div>
+          <form
+            className="event-list-auth-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              saveAdminToken()
+            }}
+          >
+            <label className="event-list-filter-label event-list-auth-label">
+              <span>bearer token</span>
+              <input
+                className="event-list-filter-input"
+                type="password"
+                value={draftAdminToken}
+                autoComplete="off"
+                placeholder="token"
+                onChange={(event) => setDraftAdminToken(event.target.value)}
+              />
+            </label>
+            <div className="event-list-auth-actions">
+              <button type="submit" className="event-list-filter-btn">
+                Unlock
+              </button>
+              {hasAdminToken ? (
+                <button type="button" className="event-list-filter-btn ghost" onClick={clearAdminToken}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          </form>
+        </section>
+
         <section
           className="event-list-filters"
           aria-label="Debug filters"
