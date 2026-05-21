@@ -1,5 +1,5 @@
 import type { EventItem } from '../types'
-import { isSplashImageUrl, splashImageForEventRow } from './splash-images'
+import { resolveEventImagePlaceholder } from './resolve-event-image'
 
 function dateFromUnknown(value: unknown): Date | null {
   if (value == null || value === '') return null
@@ -138,13 +138,13 @@ export function mapRemoteEventRowToEventItem(row: Record<string, unknown>): Even
   const categoryTags = parseCategoryTags(row.category)
   const category = categoryTags[0] ?? ''
   const tasteTags = parseCategoryTags(row.taste_and_recommendations)
-  const eventImg = firstText(row.event_img)
   const cityId = firstText(row.location_city_id) || 'unknown'
-  const image = eventImg && !isSplashImageUrl(eventImg) ? eventImg : splashImageForEventRow(row)
+  const title = String(row.title ?? '')
+  const image = resolveEventImagePlaceholder(row, { id, title, genre: category })
 
   return {
     id,
-    title: String(row.title ?? ''),
+    title,
     venue: firstText(row.location),
     district: firstText(row.address),
     time,

@@ -7,8 +7,10 @@ import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/map-event'
 import {
   describeImageState,
+  isHttpImageUrl,
   resolveTableThumbUrl,
   rowMatchesImageSourceFilter,
+  type EventImageState,
   type ImageSourceFilter,
 } from '../../lib/resolve-event-image'
 import type { EventItem } from '../../types'
@@ -25,6 +27,11 @@ type FilterMode = 'basic' | 'advanced'
 type TableColumnPreset = 'overview' | 'timing' | 'taste' | 'price' | 'images' | 'all'
 type TableSortDirection = 'asc' | 'desc'
 type TableSortState = { column: string; direction: TableSortDirection } | null
+type ImageInfoModalState = {
+  eventId: string
+  imageState: EventImageState
+  title: string
+}
 
 type DebugFilters = {
   cityId: string
@@ -376,6 +383,121 @@ function imageSourcePillTitle(
   if (!available) return `${label}: not available for this event`
   if (active) return `${label}: currently shown on this card`
   return `${label}: available as backup (not shown right now)`
+}
+
+function imageDiagnosticSourceLabel(source: EventImageState['diagnostics'][number]['source']): string {
+  if (source === 'event-img') return 'event-img'
+  if (source === 'fallback-img') return 'fallback-img'
+  if (source === 'splash-img') return 'splash-img'
+  return 'item.image'
+}
+
+function EventImageInfoModal({
+  eventId,
+  imageState,
+  onClose,
+  title,
+}: ImageInfoModalState & { onClose: () => void }) {
+  const errorCount = imageState.diagnostics.filter((entry) => entry.severity === 'error').length
+  const warningCount = imageState.diagnostics.length - errorCount
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="event-list-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose()
+      }}
+    >
+      <section
+        className="event-list-image-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-image-modal-title"
+      >
+        <div className="event-list-image-modal-header">
+          <div>
+            <p className="event-list-image-modal-kicker">Image diagnostics</p>
+            <h2 id="event-image-modal-title">{title || 'Untitled event'}</h2>
+            {eventId ? <code>{eventId}</code> : null}
+          </div>
+          <button
+            type="button"
+            className="event-list-image-modal-close"
+            onClick={onClose}
+            aria-label="Close image diagnostics"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="event-list-image-modal-summary">
+          <span>{errorCount} errors</span>
+          <span>{warningCount} warnings</span>
+          <span>{imageState.triedUrls.length} tried URLs</span>
+        </div>
+
+        <div className="event-list-image-modal-section">
+          <h3>Errors and warnings</h3>
+          {imageState.diagnostics.length > 0 ? (
+            <ul className="event-list-image-diagnostic-list">
+              {imageState.diagnostics.map((entry, idx) => (
+                <li
+                  key={`${entry.source}-${entry.severity}-${entry.url ?? entry.message}-${idx}`}
+                  className={`event-list-image-diagnostic event-list-image-diagnostic--${entry.severity}`}
+                >
+                  <div className="event-list-image-diagnostic-head">
+                    <span>{entry.severity}</span>
+                    <strong>{imageDiagnosticSourceLabel(entry.source)}</strong>
+                  </div>
+                  <p>{entry.message}</p>
+                  {entry.url ? (
+                    <a href={entry.url} target="_blank" rel="noreferrer" title={entry.url}>
+                      {entry.url}
+                    </a>
+                  ) : entry.detail ? (
+                    <code title={entry.detail}>{entry.detail}</code>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="event-list-image-modal-muted">No image diagnostics recorded.</p>
+          )}
+        </div>
+
+        <div className="event-list-image-modal-section">
+          <h3>Usable candidates</h3>
+          {imageState.triedUrls.length > 0 ? (
+            <ul className="event-list-image-url-list">
+              {imageState.triedUrls.map((url) => (
+                <li key={url}>
+                  <span className={imageState.failedCandidateUrls.includes(url) ? 'is-failed' : ''}>
+                    {imageState.failedCandidateUrls.includes(url) ? 'failed' : 'pending'}
+                  </span>
+                  <a href={url} target="_blank" rel="noreferrer" title={url}>
+                    {url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="event-list-image-modal-muted">
+              No usable http(s) image URL was available for the resolver to try.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function EventListCardImage({
@@ -746,12 +868,7 @@ function renderTableCell(key: string, value: unknown): ReactNode {
   }
 
   if (key === 'fallback_event_img') {
-    const label =
-      typeof value === 'string'
-        ? value.length > 48
-          ? `${value.slice(0, 48)}…`
-          : value
-        : '(blob)'
+    const label = fallbackEventImageTableLabel(value)
     return (
       <span className="event-list-table-cell-text event-list-table-cell-text--muted" title={formatRawValue(value)}>
         {label}
@@ -801,6 +918,27 @@ function formatRawValue(value: unknown): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   return JSON.stringify(value)
+}
+
+function byteLengthFromUnknown(value: unknown): number | null {
+  if (typeof value === 'string') return new TextEncoder().encode(value).length
+  if (value instanceof ArrayBuffer) return value.byteLength
+  if (ArrayBuffer.isView(value)) return value.byteLength
+  if (value && typeof value === 'object' && 'byteLength' in value) {
+    const byteLength = (value as { byteLength?: unknown }).byteLength
+    return typeof byteLength === 'number' && Number.isFinite(byteLength) ? byteLength : null
+  }
+  return null
+}
+
+function fallbackEventImageTableLabel(value: unknown): string {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (isHttpImageUrl(text)) return text.length > 48 ? `${text.slice(0, 48)}…` : text
+  }
+
+  const byteLength = byteLengthFromUnknown(value)
+  return byteLength == null ? 'blob' : `blob (${byteLength} bytes)`
 }
 
 function advancedValueCandidates(column: string, value: unknown): string[] {
@@ -890,6 +1028,7 @@ export function EventListPage() {
   const [error, setError] = useState<string | null>(null)
   const [countWarning, setCountWarning] = useState<string | null>(null)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [imageInfoModal, setImageInfoModal] = useState<ImageInfoModalState | null>(null)
   const [loading, setLoading] = useState(true)
 
   const toggleAllCardFacts = useCallback(() => {
@@ -1832,7 +1971,22 @@ export function EventListPage() {
                         onError={markImageUrlFailed}
                       />
                     ) : (
-                      <div className="event-list-thumb-empty">No image</div>
+                      <div className="event-list-thumb-empty">
+                        <span>No image</span>
+                        <button
+                          type="button"
+                          className="event-list-thumb-info-btn"
+                          onClick={() =>
+                            setImageInfoModal({
+                              eventId,
+                              imageState,
+                              title: item.title || 'Untitled event',
+                            })
+                          }
+                        >
+                          View more info
+                        </button>
+                      </div>
                     )}
                     <div className="event-list-image-source-row" aria-label="Image source">
                       <span
@@ -2054,6 +2208,14 @@ export function EventListPage() {
           </>
         )}
       </div>
+      {imageInfoModal ? (
+        <EventImageInfoModal
+          eventId={imageInfoModal.eventId}
+          imageState={imageInfoModal.imageState}
+          title={imageInfoModal.title}
+          onClose={() => setImageInfoModal(null)}
+        />
+      ) : null}
     </div>
   )
 }

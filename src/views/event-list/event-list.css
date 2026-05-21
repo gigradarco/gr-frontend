@@ -1143,8 +1143,11 @@
 }
 
 .event-list-thumb-empty {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   width: 100%;
   height: 100%;
   color: var(--muted);
@@ -1155,6 +1158,221 @@
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.045) 25%, transparent 25%) 0 0 / 1rem 1rem,
     var(--bg-elev);
+}
+
+.event-list-thumb-info-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.52);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  padding: 0.42rem 0.7rem;
+  text-transform: none;
+}
+
+.event-list-thumb-info-btn:hover {
+  border-color: rgba(249, 115, 22, 0.72);
+  background: rgba(249, 115, 22, 0.2);
+}
+
+.event-list-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.event-list-image-modal {
+  width: min(46rem, 100%);
+  max-height: min(42rem, calc(100vh - 2rem));
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  border-radius: 1rem;
+  background: var(--card);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+}
+
+.event-list-image-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.event-list-image-modal-kicker {
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.event-list-image-modal h2,
+.event-list-image-modal h3 {
+  margin: 0;
+  color: var(--text);
+}
+
+.event-list-image-modal h2 {
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.event-list-image-modal h3 {
+  margin-bottom: 0.65rem;
+  font-size: 0.82rem;
+}
+
+.event-list-image-modal code {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-list-image-modal-close {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.event-list-image-modal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.85rem 1rem;
+}
+
+.event-list-image-modal-summary span {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 0.32rem 0.58rem;
+}
+
+.event-list-image-modal-section {
+  padding: 0 1rem 1rem;
+}
+
+.event-list-image-diagnostic-list,
+.event-list-image-url-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-list-image-diagnostic {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.72rem;
+}
+
+.event-list-image-diagnostic--error {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.event-list-image-diagnostic--warning {
+  border-color: rgba(249, 115, 22, 0.38);
+  background: rgba(124, 45, 18, 0.18);
+}
+
+.event-list-image-diagnostic-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.event-list-image-diagnostic-head span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.event-list-image-diagnostic p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.event-list-image-diagnostic a,
+.event-list-image-diagnostic code,
+.event-list-image-url-list a {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.42rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-list-image-url-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.52rem 0.65rem;
+}
+
+.event-list-image-url-list span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.event-list-image-url-list span.is-failed {
+  background: rgba(220, 38, 38, 0.28);
+  color: #fecaca;
+}
+
+.event-list-image-modal-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .event-list-body {
