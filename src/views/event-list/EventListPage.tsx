@@ -5,7 +5,12 @@ import { apiBase } from '../../lib/api-base'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/map-event'
-import { isSplashImageUrl, splashImageForEventRow } from '../../lib/splash-images'
+import {
+  describeImageState,
+  resolveTableThumbUrl,
+  rowMatchesImageSourceFilter,
+  type ImageSourceFilter,
+} from '../../lib/resolve-event-image'
 import type { EventItem } from '../../types'
 import './event-list.css'
 
@@ -17,7 +22,6 @@ type EventRow = {
 
 type ViewMode = 'list' | 'table'
 type FilterMode = 'basic' | 'advanced'
-type ImageSourceFilter = 'all' | 'event-img' | 'fallback-img' | 'splash-img' | 'failed-load'
 type TableColumnPreset = 'overview' | 'timing' | 'taste' | 'price' | 'images' | 'all'
 type TableSortDirection = 'asc' | 'desc'
 type TableSortState = { column: string; direction: TableSortDirection } | null
@@ -348,52 +352,6 @@ function tableColumnHeaderLabel(col: string): string {
   return col === TABLE_THUMB_COLUMN ? 'Thumb' : col
 }
 
-function firstImageUrl(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
-}
-
-function resolveTableThumbUrl(
-  raw: Record<string, unknown>,
-  item: EventItem,
-  failedImageUrls: Set<string> = new Set(),
-): string {
-  return resolveListImage(raw, item, failedImageUrls).url
-}
-
-function imageUrlsForRow(row: EventRow): string[] {
-  const { raw, item } = row
-  const urls: string[] = []
-  const eventImg = firstImageUrl(raw.event_img)
-  const fallbackImg = firstImageUrl(raw.fallback_event_img)
-  const placeholder = item.image?.trim() ?? ''
-
-  if (eventImg) {
-    urls.push(eventImg)
-    if (isSplashImageUrl(eventImg)) urls.push(splashImageForEventRow(raw, item))
-  }
-  if (fallbackImg) urls.push(fallbackImg)
-  if (placeholder) urls.push(placeholder)
-
-  return [...new Set(urls.filter(Boolean))]
-}
-
-function rowHasFailedImageLoad(row: EventRow, failedImageUrls: Set<string>): boolean {
-  if (failedImageUrls.size === 0) return false
-
-  const displayUrl = resolveListImage(row.raw, row.item, failedImageUrls).url
-  if (displayUrl) return failedImageUrls.has(displayUrl)
-
-  const candidates = imageUrlsForRow(row)
-  if (candidates.length === 0) return false
-  return candidates.every((url) => failedImageUrls.has(url))
-}
-
-type RenderedImageSource = 'event-img' | 'fallback-img' | 'splash-img' | null
-
-function sourceForEventImg(url: string): Extract<RenderedImageSource, 'event-img' | 'splash-img'> {
-  return isSplashImageUrl(url) ? 'splash-img' : 'event-img'
-}
-
 function imageSourcePillClassName(
   active: boolean,
   available: boolean,
@@ -418,51 +376,6 @@ function imageSourcePillTitle(
   if (!available) return `${label}: not available for this event`
   if (active) return `${label}: currently shown on this card`
   return `${label}: available as backup (not shown right now)`
-}
-
-function rowMatchesImageSourceFilter(
-  row: EventRow,
-  filter: ImageSourceFilter,
-  failedImageUrls: Set<string>,
-): boolean {
-  if (filter === 'all') return true
-  if (filter === 'failed-load') return rowHasFailedImageLoad(row, failedImageUrls)
-
-  return resolveListImage(row.raw, row.item, failedImageUrls).source === filter
-}
-
-function resolveListImage(
-  raw: Record<string, unknown>,
-  item: EventItem,
-  failedImageUrls: Set<string>,
-): { url: string; source: RenderedImageSource } {
-  const eventImg = firstImageUrl(raw.event_img)
-  const fallbackImg = firstImageUrl(raw.fallback_event_img)
-
-  if (eventImg && !failedImageUrls.has(eventImg)) {
-    if (isSplashImageUrl(eventImg)) {
-      const splashImg = splashImageForEventRow(raw, item)
-      if (!failedImageUrls.has(splashImg)) {
-        return { url: splashImg, source: 'splash-img' }
-      }
-    } else {
-      return { url: eventImg, source: sourceForEventImg(eventImg) }
-    }
-  }
-
-  if (fallbackImg && !failedImageUrls.has(fallbackImg)) {
-    return { url: fallbackImg, source: 'fallback-img' }
-  }
-
-  const placeholder = item.image?.trim() ?? ''
-  if (placeholder && !failedImageUrls.has(placeholder)) {
-    return {
-      url: placeholder,
-      source: isSplashImageUrl(placeholder) ? 'splash-img' : null,
-    }
-  }
-
-  return { url: '', source: null }
 }
 
 function EventListCardImage({
@@ -1898,25 +1811,9 @@ export function EventListPage() {
                   : item.id || ''
               const venueText = [item.venue, item.district].filter(Boolean).join(' · ') || 'Venue TBC'
               const schemaRows = tursoSchemaRows(raw)
-              const resolvedImage = resolveListImage(
-                raw,
-                item,
-                failedImageUrls,
-              )
-              const displayedImageSource = resolvedImage.source
-              const eventImgAvailable =
-                firstImageUrl(raw.event_img).length > 0 &&
-                !isSplashImageUrl(firstImageUrl(raw.event_img))
-              const fallbackImgAvailable =
-                firstImageUrl(raw.fallback_event_img).length > 0
-              const splashImgAvailable =
-                (firstImageUrl(raw.event_img).length > 0 &&
-                  isSplashImageUrl(firstImageUrl(raw.event_img))) ||
-                isSplashImageUrl(item.image?.trim() ?? '')
               const eventRow: EventRow = { item, raw }
-              const failedLoadActive = rowHasFailedImageLoad(eventRow, failedImageUrls)
-              const failedLoadAvailable = imageUrlsForRow(eventRow).length > 0
-              const image = resolvedImage.url
+              const imageState = describeImageState(eventRow, failedImageUrls)
+              const image = imageState.displayUrl
               const factsCardKey = eventId || `row-${idx}`
               const factsExpanded =
                 globalFactsExpanded && !collapsedFactsCards.has(factsCardKey)
@@ -1940,53 +1837,53 @@ export function EventListPage() {
                     <div className="event-list-image-source-row" aria-label="Image source">
                       <span
                         className={imageSourcePillClassName(
-                          displayedImageSource === 'event-img',
-                          eventImgAvailable,
+                          imageState.pills.eventImg.active,
+                          imageState.pills.eventImg.available,
                         )}
                         title={imageSourcePillTitle(
                           'event-img',
-                          displayedImageSource === 'event-img',
-                          eventImgAvailable,
+                          imageState.pills.eventImg.active,
+                          imageState.pills.eventImg.available,
                         )}
                       >
                         event-img
                       </span>
                       <span
                         className={imageSourcePillClassName(
-                          displayedImageSource === 'fallback-img',
-                          fallbackImgAvailable,
+                          imageState.pills.fallbackImg.active,
+                          imageState.pills.fallbackImg.available,
                         )}
                         title={imageSourcePillTitle(
                           'fallback-img',
-                          displayedImageSource === 'fallback-img',
-                          fallbackImgAvailable,
+                          imageState.pills.fallbackImg.active,
+                          imageState.pills.fallbackImg.available,
                         )}
                       >
                         fallback-img
                       </span>
                       <span
                         className={imageSourcePillClassName(
-                          displayedImageSource === 'splash-img',
-                          splashImgAvailable,
+                          imageState.pills.splashImg.active,
+                          imageState.pills.splashImg.available,
                         )}
                         title={imageSourcePillTitle(
                           'splash-img',
-                          displayedImageSource === 'splash-img',
-                          splashImgAvailable,
+                          imageState.pills.splashImg.active,
+                          imageState.pills.splashImg.available,
                         )}
                       >
                         splash-img
                       </span>
                       <span
                         className={imageSourcePillClassName(
-                          failedLoadActive,
-                          failedLoadAvailable,
+                          imageState.pills.failedLoad.active,
+                          imageState.pills.failedLoad.available,
                           'failed',
                         )}
                         title={
-                          failedLoadActive
+                          imageState.pills.failedLoad.active
                             ? 'failed load: the visible image could not load'
-                            : failedLoadAvailable
+                            : imageState.pills.failedLoad.available
                               ? 'failed load: image loaded successfully'
                               : 'failed load: no image URL on this event'
                         }
