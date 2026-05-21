@@ -102,7 +102,7 @@ const BOOLEAN_TURSO_FIELDS = new Set(['is_price_range', 'is_deleted'])
 const TABLE_THUMB_COLUMN = '__thumb'
 const DEFAULT_LIMIT = 100
 const MIN_LIMIT = 1
-const MAX_LIMIT = 500
+const MAX_LIMIT = 1000
 const DEFAULT_DEBUG_FILTERS: DebugFilters = {
   cityId: '',
   categoryId: '',
