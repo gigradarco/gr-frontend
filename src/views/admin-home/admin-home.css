@@ -9,6 +9,144 @@
   padding: 28px 20px 44px;
 }
 
+.admin-home--loading {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #090a0d;
+}
+
+.admin-access-loader {
+  width: min(620px, 100%);
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  text-align: center;
+}
+
+.admin-access-loader-panel {
+  position: relative;
+  width: min(480px, 100%);
+  display: grid;
+  justify-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  padding: 28px;
+  overflow: hidden;
+}
+
+.admin-access-loader-panel::before {
+  content: none;
+}
+
+.admin-access-loader-shield {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.055);
+  color: #f4f5f7;
+}
+
+.admin-access-loader-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.admin-access-loader-kicker {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-access-loader h1 {
+  max-width: 460px;
+  margin: 0;
+  color: #f4f5f7;
+  font-size: clamp(1.55rem, 4vw, 2.35rem);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.admin-access-loader-progress {
+  width: min(340px, 80vw);
+  height: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  overflow: hidden;
+}
+
+.admin-access-loader-progress-fill {
+  display: block;
+  width: 33.333%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e24325, #f4f5f7);
+  transition: width 0.28s ease;
+}
+
+.admin-access-loader-progress-fill.is-session {
+  width: 33.333%;
+}
+
+.admin-access-loader-progress-fill.is-token {
+  width: 66.666%;
+}
+
+.admin-access-loader-progress-fill.is-allowlist {
+  width: 100%;
+}
+
+.admin-access-loader-steps {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.admin-access-loader-steps span {
+  width: auto;
+  height: auto;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.055);
+  color: #aeb4bf;
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.admin-access-loader-steps span.is-active {
+  background: rgba(244, 245, 247, 0.12);
+  color: #f4f5f7;
+}
+
+.admin-access-loader-steps span.is-complete {
+  background: rgba(34, 197, 94, 0.16);
+  color: #bbf7d0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-access-loader-progress-fill,
+  .admin-access-loader-steps span {
+    transition: none;
+  }
+}
+
 .admin-home-hero,
 .admin-home-section {
   width: min(920px, 100%);
@@ -231,13 +369,49 @@
 
 .admin-home-api-list {
   display: grid;
-  gap: 8px;
+  gap: 14px;
+}
+
+.admin-home-api-group {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+}
+
+.admin-home-api-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 14px 16px;
+}
+
+.admin-home-api-group-head h2 {
+  margin: 0;
+  color: #f4f5f7;
+  font-size: 1rem;
+}
+
+.admin-home-api-group-head p {
+  margin: 0;
+  color: #aeb4bf;
+  font-size: 0.88rem;
+  text-align: right;
+}
+
+.admin-home-api-group-routes {
+  display: grid;
 }
 
 .admin-home-api-row {
   gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 10px 0;
+  padding: 12px 16px;
+}
+
+.admin-home-api-row + .admin-home-api-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .admin-home-method {
@@ -255,7 +429,8 @@
   }
 
   .admin-home-heading-row,
-  .admin-home-api-row {
+  .admin-home-api-row,
+  .admin-home-api-group-head {
     align-items: stretch;
     flex-direction: column;
   }
@@ -294,6 +469,10 @@
 
   .admin-home-api-row p {
     margin-left: 0;
+    text-align: left;
+  }
+
+  .admin-home-api-group-head p {
     text-align: left;
   }
 }

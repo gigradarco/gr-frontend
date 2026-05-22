@@ -36,12 +36,9 @@ export function DesignThemeOrangePage() {
   return (
     <div className="design-theme-orange-page">
       <header className="dtor-header">
-        <h1>/design-theme/orange</h1>
+        <h1>/admin/design-theme/orange</h1>
         <div className="dtor-header-actions">
-          <Link to="/design-theme" className="dtor-link">
-            All tokens
-          </Link>
-          <Link to="/design-theme/purple" className="dtor-link">
+          <Link to="/admin/design-theme/purple" className="dtor-link">
             Purple
           </Link>
           <Link to="/admin" className="dtor-link dtor-link--primary">

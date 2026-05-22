@@ -23,7 +23,25 @@ export function normalizeShellPath(pathname: string): string {
 
 export function pathToTab(pathname: string): Tab | null {
   const p = normalizeShellPath(pathname)
+  if (p.startsWith('/discover/')) return 'discover'
   return PATH_TO_TAB[p] ?? null
+}
+
+export function discoverEventIdFromPath(pathname: string): string | null {
+  const p = normalizeShellPath(pathname)
+  const prefix = '/discover/'
+  if (!p.startsWith(prefix)) return null
+  const raw = p.slice(prefix.length)
+  if (!raw) return null
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
+export function getDiscoverEventPath(eventId: string): string {
+  return `/discover/${encodeURIComponent(eventId)}`
 }
 
 export function getPathForTab(tab: Tab): string {

@@ -30,7 +30,7 @@ type FilterMode = 'basic' | 'advanced'
 type TableColumnPreset = 'overview' | 'timing' | 'taste' | 'price' | 'images' | 'all'
 type TableSortDirection = 'asc' | 'desc'
 type TableSortState = { column: string; direction: TableSortDirection } | null
-type AdminAccessStatus = 'checking' | 'authorized' | 'denied' | 'signed-out' | 'error'
+type AdminAccessStatus = 'authorized' | 'denied' | 'signed-out' | 'error'
 type ImageInfoModalState = {
   eventId: string
   imageState: EventImageState
@@ -1043,8 +1043,7 @@ export function EventListPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [imageInfoModal, setImageInfoModal] = useState<ImageInfoModalState | null>(null)
   const [loading, setLoading] = useState(true)
-  const [adminAccessStatus, setAdminAccessStatus] = useState<AdminAccessStatus>('checking')
-  const canUseEventList = adminAccessStatus === 'authorized'
+  const [adminAccessStatus, setAdminAccessStatus] = useState<AdminAccessStatus>('authorized')
 
   const toggleAllCardFacts = useCallback(() => {
     setGlobalFactsExpanded((current) => {
@@ -1131,7 +1130,6 @@ export function EventListPage() {
     setError(null)
     setCountWarning(null)
     if (!authSessionHydrated) {
-      setAdminAccessStatus('checking')
       setLoading(false)
       return
     }
@@ -1144,7 +1142,6 @@ export function EventListPage() {
       return
     }
 
-    setAdminAccessStatus((current) => (current === 'authorized' ? current : 'checking'))
     const fresh = await ensureAccessTokenFresh()
     const token = fresh ? getAccessToken() : null
     if (!token) {
@@ -1466,7 +1463,7 @@ export function EventListPage() {
     }
   }, [])
 
-  if (!canUseEventList) {
+  if (adminAccessStatus === 'error') {
     return (
       <div
         className="event-list-root"
@@ -1477,9 +1474,7 @@ export function EventListPage() {
         }}
       >
         <div className="event-list-inner">
-          <p className="event-list-muted">
-            {adminAccessStatus === 'error' && error ? error : 'Checking access…'}
-          </p>
+          <p className="event-list-muted">{error ?? 'Unable to load admin events.'}</p>
         </div>
       </div>
     )
@@ -1497,7 +1492,7 @@ export function EventListPage() {
       <div className="event-list-inner">
         <header className="event-list-header">
           <div className="event-list-title-row">
-            <Link to="/" className="event-list-back" aria-label="Back to app">
+            <Link to="/admin" className="event-list-back" aria-label="Back to admin">
               <ArrowLeft size={20} strokeWidth={2} />
             </Link>
             <div>

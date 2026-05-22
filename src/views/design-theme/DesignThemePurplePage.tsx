@@ -36,12 +36,9 @@ export function DesignThemePurplePage() {
   return (
     <div className="design-theme-purple-page">
       <header className="dtp-header">
-        <h1>/design-theme/purple</h1>
+        <h1>/admin/design-theme/purple</h1>
         <div className="dtp-header-actions">
-          <Link to="/design-theme" className="dtp-link">
-            All tokens
-          </Link>
-          <Link to="/design-theme/orange" className="dtp-link">
+          <Link to="/admin/design-theme/orange" className="dtp-link">
             Orange
           </Link>
           <Link to="/admin" className="dtp-link dtp-link--primary">
