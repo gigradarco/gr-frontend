@@ -34,6 +34,7 @@ import { DesignThemePage } from './views/design-theme/DesignThemePage'
 import { DesignThemeOrangePage } from './views/design-theme/DesignThemeOrangePage'
 import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePage'
 import { EventListPage } from './views/event-list/EventListPage'
+import { NotFound404Page } from './views/not-found/NotFound404Page'
 
 const DiscoverTab = lazy(() =>
   import('./views/discover/DiscoverTab').then((m) => ({ default: m.DiscoverTab })),
@@ -531,6 +532,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/event-list" element={<EventListPage />} />
+      <Route path="/not-found-404" element={<NotFound404Page />} />
       {/* Nested so /design-theme/purple never competes with the /design-theme index */}
       <Route path="/design-theme" element={<Outlet />}>
         <Route index element={<DesignThemePage />} />

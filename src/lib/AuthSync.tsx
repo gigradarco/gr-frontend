@@ -90,9 +90,11 @@ export function AuthSync({ children }: { children: ReactNode }) {
         })
         if (isFreshSignIn) {
           clearOAuthReturnPendingWelcome()
-          queueMicrotask(() =>
-            navigateShellToTab(openAskAfterOAuth ? 'ask' : 'discover', { replace: true }),
-          )
+          if (window.location.pathname !== '/event-list') {
+            queueMicrotask(() =>
+              navigateShellToTab(openAskAfterOAuth ? 'ask' : 'discover', { replace: true }),
+            )
+          }
         }
         // After session is hydrated with the fresh tier, open the subscription
         // screen in success mode so the user sees the "Welcome to Buzo Pro" overlay.

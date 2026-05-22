@@ -1,0 +1,60 @@
+.not-found-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.not-found-panel {
+  width: min(100%, 26rem);
+  display: grid;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.not-found-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.not-found-panel h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.not-found-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.not-found-action {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--stroke);
+  border-radius: 0.75rem;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.72rem 1rem;
+}
+
+.not-found-action:hover {
+  border-color: rgba(168, 85, 247, 0.48);
+}

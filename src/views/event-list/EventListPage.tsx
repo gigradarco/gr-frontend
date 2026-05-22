@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
+import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { apiBase } from '../../lib/api-base'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/map-event'
+import { getAccessToken } from '../../lib/session'
 import {
   describeImageState,
   isHttpImageUrl,
@@ -13,6 +15,7 @@ import {
   type EventImageState,
   type ImageSourceFilter,
 } from '../../lib/resolve-event-image'
+import { useAppState } from '../../store/appStore'
 import type { EventItem } from '../../types'
 import './event-list.css'
 
@@ -27,6 +30,7 @@ type FilterMode = 'basic' | 'advanced'
 type TableColumnPreset = 'overview' | 'timing' | 'taste' | 'price' | 'images' | 'all'
 type TableSortDirection = 'asc' | 'desc'
 type TableSortState = { column: string; direction: TableSortDirection } | null
+type AdminAccessStatus = 'checking' | 'authorized' | 'denied' | 'signed-out' | 'error'
 type ImageInfoModalState = {
   eventId: string
   imageState: EventImageState
@@ -118,36 +122,10 @@ const DEFAULT_DEBUG_FILTERS: DebugFilters = {
   minPrice: '',
   maxPrice: '',
 }
-const EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY = 'buzo-event-list-admin-token'
-const ADMIN_TOKEN_REQUIRED_MESSAGE = 'Admin bearer token required.'
-
-function readStoredEventListAdminToken(): string {
-  try {
-    return window.sessionStorage.getItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function persistEventListAdminToken(token: string): void {
-  try {
-    if (token) window.sessionStorage.setItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY, token)
-    else window.sessionStorage.removeItem(EVENT_LIST_ADMIN_TOKEN_STORAGE_KEY)
-  } catch {
-    // Ignore storage failures; the current React state still works for this tab.
-  }
-}
-
-function eventListAdminHeaders(token: string): HeadersInit {
-  const trimmed = token.trim()
-  return trimmed ? { Authorization: `Bearer ${trimmed}` } : {}
-}
 
 function eventListLoadError(status: number, fallback?: string): string {
-  if (status === 401) return 'Unauthorized: admin bearer token is missing or invalid.'
-  if (status === 500 && fallback === 'Event list admin auth is not configured') {
-    return 'Backend admin token is not configured.'
-  }
+  if (status === 401) return 'Sign in again to continue.'
+  if (status === 403) return 'Admin access required.'
   return fallback ?? `HTTP ${status}`
 }
 const IMAGE_SOURCE_FILTERS: Array<{ id: ImageSourceFilter; label: string }> = [
@@ -1037,6 +1015,9 @@ function rowMatchesTableFilters(row: EventRow, filters: Record<string, string>):
 }
 
 export function EventListPage() {
+  const navigate = useNavigate()
+  const authSessionHydrated = useAppState((state) => state.authSessionHydrated)
+  const isAuthenticated = useAppState((state) => state.isAuthenticated)
   const [rows, setRows] = useState<EventRow[] | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [totalCount, setTotalCount] = useState<number | null>(null)
@@ -1062,10 +1043,8 @@ export function EventListPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [imageInfoModal, setImageInfoModal] = useState<ImageInfoModalState | null>(null)
   const [loading, setLoading] = useState(true)
-  const [adminToken, setAdminToken] = useState(readStoredEventListAdminToken)
-  const [draftAdminToken, setDraftAdminToken] = useState(readStoredEventListAdminToken)
-  const [authRefreshKey, setAuthRefreshKey] = useState(0)
-  const hasAdminToken = adminToken.trim().length > 0
+  const [adminAccessStatus, setAdminAccessStatus] = useState<AdminAccessStatus>('checking')
+  const canUseEventList = adminAccessStatus === 'authorized'
 
   const toggleAllCardFacts = useCallback(() => {
     setGlobalFactsExpanded((current) => {
@@ -1143,46 +1122,41 @@ export function EventListPage() {
     return () => window.clearTimeout(timer)
   }, [copyStatus])
 
-  const saveAdminToken = useCallback(() => {
-    const token = draftAdminToken.trim()
-    setAdminToken(token)
-    persistEventListAdminToken(token)
-    setAuthRefreshKey((value) => value + 1)
-    if (token) {
-      setError(null)
-      return
-    }
-    setRows(null)
-    setTotalCount(null)
-    setCountWarning(null)
-    setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
-  }, [draftAdminToken])
-
-  const clearAdminToken = useCallback(() => {
-    setAdminToken('')
-    setDraftAdminToken('')
-    persistEventListAdminToken('')
-    setRows(null)
-    setTotalCount(null)
-    setCountWarning(null)
-    setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
-    setLoading(false)
-  }, [])
+  const redirectToNotFound = useCallback(() => {
+    navigate('/not-found-404', { replace: true })
+  }, [navigate])
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     setCountWarning(null)
-    const token = adminToken.trim()
+    if (!authSessionHydrated) {
+      setAdminAccessStatus('checking')
+      setLoading(false)
+      return
+    }
+    if (!isAuthenticated) {
+      setRows(null)
+      setTotalCount(null)
+      setAdminAccessStatus('signed-out')
+      setLoading(false)
+      redirectToNotFound()
+      return
+    }
+
+    setAdminAccessStatus((current) => (current === 'authorized' ? current : 'checking'))
+    const fresh = await ensureAccessTokenFresh()
+    const token = fresh ? getAccessToken() : null
     if (!token) {
       setRows(null)
       setTotalCount(null)
+      setAdminAccessStatus('signed-out')
       setLoading(false)
-      setError(ADMIN_TOKEN_REQUIRED_MESSAGE)
+      redirectToNotFound()
       return
     }
     try {
-      const headers = eventListAdminHeaders(token)
+      const headers = { Authorization: `Bearer ${token}` }
       const [res, countRes] = await Promise.all([
         fetch(eventsApiPath('/api/events', appliedFilterMode, appliedFilters, appliedAdvanced), {
           credentials: 'include',
@@ -1198,6 +1172,12 @@ export function EventListPage() {
         setRows(null)
         setTotalCount(null)
         setCountWarning(null)
+        if (res.status === 403 || res.status === 401) {
+          setAdminAccessStatus(res.status === 403 ? 'denied' : 'signed-out')
+          redirectToNotFound()
+          return
+        }
+        setAdminAccessStatus('error')
         setError(eventListLoadError(res.status, j.error))
         return
       }
@@ -1219,6 +1199,7 @@ export function EventListPage() {
         setTotalCount(null)
         setCountWarning(`Count unavailable: ${eventListLoadError(countRes.status, j.error)}`)
       }
+      setAdminAccessStatus('authorized')
       setRows(
         data.map((r) => ({
           item: mapRemoteEventRowToEventItem(r),
@@ -1233,7 +1214,14 @@ export function EventListPage() {
     } finally {
       setLoading(false)
     }
-  }, [adminToken, appliedAdvanced, appliedFilterMode, appliedFilters, authRefreshKey])
+  }, [
+    appliedAdvanced,
+    appliedFilterMode,
+    appliedFilters,
+    authSessionHydrated,
+    isAuthenticated,
+    redirectToNotFound,
+  ])
 
   useEffect(() => {
     void load()
@@ -1478,6 +1466,25 @@ export function EventListPage() {
     }
   }, [])
 
+  if (!canUseEventList) {
+    return (
+      <div
+        className="event-list-root"
+        style={{
+          background: 'var(--bg)',
+          color: 'var(--text)',
+          padding: 'max(1rem, env(safe-area-inset-top)) 1rem 2rem',
+        }}
+      >
+        <div className="event-list-inner">
+          <p className="event-list-muted">
+            {adminAccessStatus === 'error' && error ? error : 'Checking access…'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="event-list-root"
@@ -1512,7 +1519,7 @@ export function EventListPage() {
             <button
               type="button"
               onClick={() => void load()}
-              disabled={loading || !hasAdminToken}
+              disabled={loading}
               className="event-list-refresh"
             >
               <RefreshCw size={16} className={loading ? 'spin' : undefined} />
@@ -1520,44 +1527,6 @@ export function EventListPage() {
             </button>
           </div>
         </header>
-
-        <section className="event-list-auth" aria-label="Event list admin access">
-          <div>
-            <p className="event-list-auth-title">Admin access</p>
-            <p className="event-list-muted">
-              {hasAdminToken ? 'Bearer token active for this tab.' : 'Enter bearer token to load Turso events.'}
-            </p>
-          </div>
-          <form
-            className="event-list-auth-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              saveAdminToken()
-            }}
-          >
-            <label className="event-list-filter-label event-list-auth-label">
-              <span>bearer token</span>
-              <input
-                className="event-list-filter-input"
-                type="password"
-                value={draftAdminToken}
-                autoComplete="off"
-                placeholder="token"
-                onChange={(event) => setDraftAdminToken(event.target.value)}
-              />
-            </label>
-            <div className="event-list-auth-actions">
-              <button type="submit" className="event-list-filter-btn">
-                Unlock
-              </button>
-              {hasAdminToken ? (
-                <button type="button" className="event-list-filter-btn ghost" onClick={clearAdminToken}>
-                  Clear
-                </button>
-              ) : null}
-            </div>
-          </form>
-        </section>
 
         <section
           className="event-list-filters"
