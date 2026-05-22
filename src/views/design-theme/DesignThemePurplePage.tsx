@@ -44,8 +44,8 @@ export function DesignThemePurplePage() {
           <Link to="/design-theme/orange" className="dtp-link">
             Orange
           </Link>
-          <Link to="/" className="dtp-link dtp-link--primary">
-            Back to app
+          <Link to="/admin" className="dtp-link dtp-link--primary">
+            Back to admin
           </Link>
         </div>
       </header>

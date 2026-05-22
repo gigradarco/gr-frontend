@@ -32,6 +32,7 @@ import { WelcomeScreen, SignInSheet, WelcomeBackScreen } from './views/welcome'
 import { DesignThemePage } from './views/design-theme/DesignThemePage'
 import { DesignThemeOrangePage } from './views/design-theme/DesignThemeOrangePage'
 import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePage'
+import { AdminHomePage } from './views/admin-home/AdminHomePage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
 import { useDiscoverEvents } from './lib/useDiscoverEvents'
@@ -634,6 +635,7 @@ function MainApp() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/admin" element={<AdminHomePage />} />
       <Route path="/event-list" element={<EventListPage />} />
       <Route path="/not-found-404" element={<NotFound404Page />} />
       {/* Nested so /design-theme/purple never competes with the /design-theme index */}

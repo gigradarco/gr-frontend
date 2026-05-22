@@ -44,8 +44,8 @@ export function DesignThemeOrangePage() {
           <Link to="/design-theme/purple" className="dtor-link">
             Purple
           </Link>
-          <Link to="/" className="dtor-link dtor-link--primary">
-            Back to app
+          <Link to="/admin" className="dtor-link dtor-link--primary">
+            Back to admin
           </Link>
         </div>
       </header>

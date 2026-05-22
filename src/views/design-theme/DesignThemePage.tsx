@@ -148,8 +148,8 @@ export function DesignThemePage() {
               Purple
             </button>
           </div>
-          <Link to="/" className="design-theme-back">
-            Back to app
+          <Link to="/admin" className="design-theme-back">
+            Back to admin
           </Link>
         </div>
       </header>
