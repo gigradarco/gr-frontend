@@ -14762,18 +14762,6 @@ vite-error-overlay::part(window) {
   }
 }
 
-.mv-pin-title {
-  min-width: 0;
-  max-width: min(240px, 52vw);
-  overflow: hidden;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .mv-pin-time {
   flex: 0 0 auto;
   font-size: 10px;

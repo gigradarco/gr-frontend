@@ -71,7 +71,7 @@ export type PlanPageEvent = {
   venueLine: string
   timeRange: string
   ticketPrice?: string
-  aiVibeScore: number
+  aiVibeScore?: number | null
   eliteVerifiedCount: number
   eliteStackExtra: number
   experienceParts: {
@@ -79,9 +79,9 @@ export type PlanPageEvent = {
     emphasis: string
     after: string
   }
-  audioPreviewLabel: string
-  audioCurrent: string
-  audioTotal: string
+  audioPreviewLabel?: string | null
+  audioCurrent?: string
+  audioTotal?: string
   friendsAttendingCount: number
   friends: PlanPageFriend[]
 }

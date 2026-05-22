@@ -9,7 +9,7 @@ import {
   getPlanDetailUpcoming,
 } from './data/demoData'
 import { useAppState, type FavoriteEvent } from './store/appStore'
-import type { Tab } from './types'
+import type { EventItem, PlanPageEvent, Tab } from './types'
 import { PlanEventDetail } from './views/plan/PlanEventDetail'
 import { tabNavItems } from './config/tabNavigation'
 import { EventCardFeed } from './views/discover/EventCardFeed'
@@ -50,6 +50,59 @@ const ProfileTab = lazy(() =>
 type SheetPlanOverlay =
   | { kind: 'upcoming'; id: string }
   | { kind: 'past'; id: string }
+
+function cleanLabel(value: string | undefined | null, fallback: string): string {
+  const text = value?.trim()
+  return text && text.length > 0 ? text : fallback
+}
+
+function liveEventGenreTags(event: EventItem): [string, string] {
+  const primary = cleanLabel(event.genre, 'EVENT').toUpperCase()
+  const secondary = cleanLabel(event.host || event.venue, event.venue || event.district || 'DETAILS')
+  return [primary, secondary]
+}
+
+function planDetailFromDiscoverEvent(event: EventItem): PlanPageEvent {
+  const dateTimeLabel = event.displayDateTimeLabel ?? event.time
+  const venueLine = [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', ')
+  const tags = event.vibeTags.map((tag) => tag.trim()).filter(Boolean)
+  const summary = event.hostPrompt.trim()
+
+  return {
+    eventId: event.id,
+    heroImage: event.image,
+    displayTitle: event.title,
+    artistLine: event.host ? `HOST · ${event.host}` : cleanLabel(event.genre, 'LIVE EVENT').toUpperCase(),
+    genreTags: liveEventGenreTags(event),
+    venueLine: venueLine || event.venue || event.district || 'Venue TBA',
+    timeRange: dateTimeLabel,
+    ticketPrice: event.ticketPrice || undefined,
+    aiVibeScore: null,
+    eliteVerifiedCount: 0,
+    eliteStackExtra: 0,
+    experienceParts: {
+      before: summary || tags.join(' · ') || 'Details are still being enriched for this event.',
+      emphasis: '',
+      after: '',
+    },
+    audioPreviewLabel: null,
+    audioCurrent: '0:00',
+    audioTotal: '0:00',
+    friendsAttendingCount: 0,
+    friends: [],
+  }
+}
+
+function favoriteFromDiscoverEvent(event: EventItem): FavoriteEvent {
+  return {
+    id: event.id,
+    title: event.title,
+    venueLine: [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', '),
+    timeLabel: event.displayDateTimeLabel ?? event.time,
+    image: event.image,
+    variant: 'upcoming',
+  }
+}
 
 function tabReturnAriaLabel(t: Tab): string {
   switch (t) {
@@ -155,6 +208,7 @@ function MainApp() {
   const [sheetPlanOverlay, setSheetPlanOverlay] = useState<SheetPlanOverlay | null>(null)
   const [sheetPlanReturnTab, setSheetPlanReturnTab] = useState<Tab | null>(null)
   const [discoverMapMode, setDiscoverMapMode] = useState(false)
+  const [discoverDetailEventId, setDiscoverDetailEventId] = useState<string | null>(null)
 
   const {
     events: discoverEvents,
@@ -211,6 +265,42 @@ function MainApp() {
     () => discoverEvents.find((event) => event.id === activeEventId) ?? null,
     [activeEventId, discoverEvents],
   )
+  const discoverDetailEvent = useMemo(
+    () => discoverEvents.find((event) => event.id === discoverDetailEventId) ?? null,
+    [discoverDetailEventId, discoverEvents],
+  )
+  const discoverDetailData = useMemo(
+    () => (discoverDetailEvent ? planDetailFromDiscoverEvent(discoverDetailEvent) : null),
+    [discoverDetailEvent],
+  )
+
+  const openDiscoverDetail = useCallback(
+    (eventId: string) => {
+      if (!discoverEvents.some((event) => event.id === eventId)) {
+        openEvent(eventId)
+        return
+      }
+      closeEvent()
+      setDiscoverDetailEventId(eventId)
+    },
+    [closeEvent, discoverEvents, openEvent],
+  )
+
+  const closeDiscoverDetail = useCallback(() => {
+    setDiscoverDetailEventId(null)
+  }, [])
+
+  useEffect(() => {
+    if (tab !== 'discover') {
+      setDiscoverDetailEventId(null)
+    }
+  }, [tab])
+
+  useEffect(() => {
+    if (discoverDetailEventId && !discoverEventsLoading && !discoverDetailEvent) {
+      setDiscoverDetailEventId(null)
+    }
+  }, [discoverDetailEvent, discoverDetailEventId, discoverEventsLoading])
 
   const sheetPlanOverlayBody = useMemo(() => {
     if (!sheetPlanOverlay) return null
@@ -342,11 +432,21 @@ function MainApp() {
           <section className="screen">
             <Suspense fallback={<div className="tab-suspense-fallback" aria-hidden />}>
               {tab === 'discover' && (
-                discoverMapMode ? (
+                discoverDetailEvent && discoverDetailData ? (
+                  <PlanEventDetail
+                    data={discoverDetailData}
+                    variant="upcoming"
+                    backAriaLabel={discoverMapMode ? 'Back to map' : 'Back to discover feed'}
+                    onBack={closeDiscoverDetail}
+                    onOpenEvent={() => undefined}
+                    isFavorited={isEventFavorited(discoverDetailEvent.id)}
+                    onToggleFavorite={() => toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent))}
+                  />
+                ) : discoverMapMode ? (
                   <MapView
                     events={discoverEvents}
                     onBackToFeed={() => setDiscoverMapMode(false)}
-                    onMoreDetails={openEvent}
+                    onMoreDetails={openDiscoverDetail}
                   />
                 ) : (
                   <EventCardFeed
@@ -356,7 +456,7 @@ function MainApp() {
                     error={discoverEventsError}
                     hasMore={discoverEventsHasMore}
                     onLoadMore={loadMoreDiscoverEvents}
-                    onMoreDetails={openEvent}
+                    onMoreDetails={openDiscoverDetail}
                     onMapView={() => setDiscoverMapMode(true)}
                   />
                 )
