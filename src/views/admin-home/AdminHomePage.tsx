@@ -8,35 +8,95 @@ const adminTools = [
   {
     title: 'Event List',
     description: 'Review raw event rows, filters, image sources, and diagnostics.',
-    path: '/event-list',
+    path: '/admin/event-list',
     status: 'Live',
+  },
+  {
+    title: 'Admin Users',
+    description: 'Promote users to admin, disable access, and remove admin entries.',
+    path: '/admin/admin-users',
+    status: 'Access',
+  },
+  {
+    title: 'User Analytics',
+    description: 'Track free vs paid users, conversion, activity, and account quality.',
+    path: '/admin/user-analytics',
+    status: 'Users',
   },
 ]
 
 const themePages = [
-  { label: 'Orange', path: '/design-theme/orange' },
-  { label: 'Purple', path: '/design-theme/purple' },
+  { label: 'Orange', path: '/admin/design-theme/orange' },
+  { label: 'Purple', path: '/admin/design-theme/purple' },
 ]
 
 const chatPages = [
   { label: 'Telegram', path: telegramBotLink, external: true as const },
 ]
 
-const adminApiRoutes = [
+const adminApiGroups = [
   {
-    method: 'GET',
-    path: '/api/admin/events',
-    description: 'Paginated admin event feed used by Event List.',
+    title: 'Events',
+    description: 'Raw event inspection and Event List data.',
+    routes: [
+      {
+        method: 'GET',
+        path: '/api/admin/events',
+        description: 'Paginated admin event feed used by Event List.',
+      },
+      {
+        method: 'GET',
+        path: '/api/admin/events/count',
+        description: 'Count endpoint for the same admin filters.',
+      },
+      {
+        method: 'GET',
+        path: '/api/admin/events/:id',
+        description: 'Raw admin event detail by event id.',
+      },
+    ],
   },
   {
-    method: 'GET',
-    path: '/api/admin/events/count',
-    description: 'Count endpoint for the same admin filters.',
+    title: 'Admin Users',
+    description: 'Admin allowlist search and access management.',
+    routes: [
+      {
+        method: 'GET',
+        path: '/api/admin/admin-users',
+        description: 'List current admin users and access status.',
+      },
+      {
+        method: 'GET',
+        path: '/api/admin/admin-users/search',
+        description: 'Find an existing app user by email.',
+      },
+      {
+        method: 'POST',
+        path: '/api/admin/admin-users',
+        description: 'Promote an existing user to admin.',
+      },
+      {
+        method: 'PATCH',
+        path: '/api/admin/admin-users/:userId',
+        description: 'Enable or disable admin access.',
+      },
+      {
+        method: 'DELETE',
+        path: '/api/admin/admin-users/:userId',
+        description: 'Remove admin access.',
+      },
+    ],
   },
   {
-    method: 'GET',
-    path: '/api/admin/events/:id',
-    description: 'Raw admin event detail by event id.',
+    title: 'User Analytics',
+    description: 'User tier, activity, and conversion reporting.',
+    routes: [
+      {
+        method: 'GET',
+        path: '/api/admin/user-analytics',
+        description: 'Return user analytics metrics and filtered user rows.',
+      },
+    ],
   },
 ]
 
@@ -160,12 +220,22 @@ export function AdminHomePage() {
             aria-labelledby="admin-tab-api"
           >
             <div className="admin-home-api-list">
-              {adminApiRoutes.map((route) => (
-                <div key={route.path} className="admin-home-api-row">
-                  <span className="admin-home-method">{route.method}</span>
-                  <code>{route.path}</code>
-                  <p>{route.description}</p>
-                </div>
+              {adminApiGroups.map((group) => (
+                <section key={group.title} className="admin-home-api-group" aria-labelledby={`admin-api-${group.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <div className="admin-home-api-group-head">
+                    <h2 id={`admin-api-${group.title.toLowerCase().replace(/\s+/g, '-')}`}>{group.title}</h2>
+                    <p>{group.description}</p>
+                  </div>
+                  <div className="admin-home-api-group-routes">
+                    {group.routes.map((route) => (
+                      <div key={`${route.method}:${route.path}`} className="admin-home-api-row">
+                        <span className="admin-home-method">{route.method}</span>
+                        <code>{route.path}</code>
+                        <p>{route.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>

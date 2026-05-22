@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CheckCircle, ChevronLeft, Funnel, Heart, Info, Pause, Play, Share2 } from 'lucide-react'
+import { CheckCircle, ChevronLeft, Funnel, Heart, Info, Maximize2, Minimize2, Pause, Play, RefreshCw, Share2 } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import {
   FilterSheet,
@@ -14,7 +14,7 @@ import {
 } from './EventCardFeed'
 import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
-import { LOCATION_REGIONS } from '../../data/locationRegions'
+import { LOCATION_REGIONS, getLocationCityCentroid } from '../../data/locationRegions'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import type { EventItem } from '../../types'
 
@@ -47,24 +47,61 @@ function getAccent(event: EventItem): string {
   return CATEGORY_ACCENT[catId] ?? DEFAULT_ACCENT
 }
 
-// ─── City → centroid (for default map center) ────────────────────────────────
-const CITY_CENTERS: Record<string, [number, number]> = {
-  singapore:   [1.2870, 103.8470],
-  bangkok:     [13.7367, 100.5232],
-  tokyo:       [35.6762, 139.6503],
-  'hong-kong': [22.3193, 114.1694],
-  seoul:       [37.5665, 126.9780],
-  london:      [51.5074, -0.1278],
-  berlin:      [52.5200, 13.4050],
-  paris:       [48.8566, 2.3522],
-  amsterdam:   [52.3676, 4.9041],
-  barcelona:   [41.3851, 2.1734],
-  'new-york':  [40.7128, -74.0060],
-}
-
 function eventLatLng(event: EventItem): [number, number] | null {
   if (event.lat != null && event.lng != null) return [event.lat, event.lng]
   return null
+}
+
+function distanceKm(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const R = 6371
+  const dLat = toRad(b[0] - a[0])
+  const dLng = toRad(b[1] - a[1])
+  const lat1 = toRad(a[0])
+  const lat2 = toRad(b[0])
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2)
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+type Cluster = {
+  items: { event: EventItem; pos: [number, number] }[]
+  center: [number, number]
+}
+
+function clusterByDistance(
+  items: { event: EventItem; pos: [number, number] }[],
+  thresholdKm: number,
+): Cluster[] {
+  const clusters: Cluster[] = []
+  for (const item of items) {
+    let target: Cluster | null = null
+    for (const c of clusters) {
+      if (distanceKm(item.pos, c.center) <= thresholdKm) {
+        target = c
+        break
+      }
+    }
+    if (!target) {
+      clusters.push({ items: [item], center: item.pos })
+      continue
+    }
+    target.items.push(item)
+    const n = target.items.length
+    target.center = [
+      (target.center[0] * (n - 1) + item.pos[0]) / n,
+      (target.center[1] * (n - 1) + item.pos[1]) / n,
+    ]
+  }
+  return clusters
+}
+
+function clusterThresholdKmForZoom(zoom: number): number {
+  if (zoom >= 13.2) return 0
+  if (zoom >= 12.6) return 0.7
+  if (zoom >= 12) return 1.2
+  return 1.8
 }
 
 /**
@@ -107,7 +144,13 @@ function spreadOverlappingPositions(
 }
 
 function getCityCenter(cityId: string): [number, number] {
-  return CITY_CENTERS[cityId] ?? [1.2870, 103.8470]
+  if (cityId === 'singapore') return [1.316, 103.8198]
+  return getLocationCityCentroid(cityId) ?? [1.3521, 103.8198]
+}
+
+function getCityDefaultZoom(cityId: string): number {
+  if (cityId === 'singapore') return 11.5
+  return 14
 }
 
 function getCityName(cityId: string): string {
@@ -141,6 +184,40 @@ function buildPinIcon(event: EventItem, isSelected: boolean): L.DivIcon {
         <span class="mv-pin-time">${escapeHtml(markerLabel)}</span>
       </div>
       <div class="mv-pin-tail" style="--pin-accent:${accent};"></div>
+    </div>
+  `
+  return L.divIcon({
+    html,
+    className: 'mv-pin',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  })
+}
+
+function pickClusterAccent(items: { event: EventItem; pos: [number, number] }[]): string {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const accent = getAccent(item.event)
+    counts.set(accent, (counts.get(accent) ?? 0) + 1)
+  }
+  let best = DEFAULT_ACCENT
+  let bestCount = -1
+  for (const [accent, count] of counts) {
+    if (count > bestCount) {
+      best = accent
+      bestCount = count
+    }
+  }
+  return best
+}
+
+function buildClusterPinIcon(count: number, accent: string): L.DivIcon {
+  const html = `
+    <div class="mv-pin-stack">
+      <div class="mv-pin-bubble mv-pin-bubble--cluster" style="--pin-accent:${accent};">
+        <span class="mv-pin-time">${count} events</span>
+      </div>
+      <div class="mv-pin-tail mv-pin-tail--cluster" style="--pin-accent:${accent};"></div>
     </div>
   `
   return L.divIcon({
@@ -197,28 +274,63 @@ function FlyToSelected({ target }: { target: [number, number] | null }) {
 
 // ─── Zoom + reset controls ────────────────────────────────────────────────────
 function MapControls({
-  positions,
   cityCenter,
+  cityDefaultZoom,
 }: {
-  positions: [number, number][]
   cityCenter: [number, number]
+  cityDefaultZoom: number
 }) {
   const map = useMap()
+  const prevCityCenterRef = useRef<[number, number] | null>(null)
+  const prevCityZoomRef = useRef<number | null>(null)
+
+  // Recenter only when city defaults actually change (avoid fighting manual zoom/pan).
+  useEffect(() => {
+    const prevCenter = prevCityCenterRef.current
+    const prevZoom = prevCityZoomRef.current
+    const changed =
+      !prevCenter ||
+      prevCenter[0] !== cityCenter[0] ||
+      prevCenter[1] !== cityCenter[1] ||
+      prevZoom !== cityDefaultZoom
+    if (!changed) return
+    prevCityCenterRef.current = cityCenter
+    prevCityZoomRef.current = cityDefaultZoom
+    map.flyTo(cityCenter, cityDefaultZoom, { duration: 0.5 })
+  }, [cityCenter, cityDefaultZoom, map])
 
   function resetView() {
-    if (positions.length > 1) {
-      map.flyToBounds(L.latLngBounds(positions), { padding: [60, 60], maxZoom: 15, duration: 0.5 })
-    } else {
-      map.flyTo(cityCenter, 14, { duration: 0.5 })
-    }
+    map.flyTo(cityCenter, cityDefaultZoom, { duration: 0.5 })
   }
 
   return (
     <div className="mv-zoom-controls">
-      <button type="button" className="mv-zoom-btn" aria-label="Zoom in"  onClick={() => map.zoomIn()}>+</button>
-      <button type="button" className="mv-zoom-btn" aria-label="Zoom out" onClick={() => map.zoomOut()}>−</button>
+      <button
+        type="button"
+        className="mv-zoom-btn"
+        aria-label="Zoom in"
+        title="Zoom in"
+        onClick={() => map.zoomIn()}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        className="mv-zoom-btn"
+        aria-label="Zoom out"
+        title="Zoom out"
+        onClick={() => map.zoomOut()}
+      >
+        −
+      </button>
       <div className="mv-zoom-divider" />
-      <button type="button" className="mv-zoom-btn mv-zoom-btn--reset" aria-label="Reset view" onClick={resetView}>
+      <button
+        type="button"
+        className="mv-zoom-btn mv-zoom-btn--reset"
+        aria-label="Reset coordinates"
+        title="Reset coordinates"
+        onClick={resetView}
+      >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
@@ -228,16 +340,48 @@ function MapControls({
   )
 }
 
+function ZoomWatcher({
+  onZoomChange,
+}: {
+  onZoomChange: (zoom: number) => void
+}) {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom())
+    },
+  })
+
+  useEffect(() => {
+    onZoomChange(map.getZoom())
+  }, [map, onZoomChange])
+
+  return null
+}
+
 // ─── Main MapView ────────────────────────────────────────────────────────────
 type MapViewProps = {
   events: EventItem[]
+  loading?: boolean
   onBackToFeed: () => void
   onMoreDetails: (eventId: string) => void
+  onRefresh?: () => void
 }
 
-export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
+type MapSheetState = 'hidden' | 'peek' | 'expanded'
+
+const MAP_SHEET_ORDER: MapSheetState[] = ['hidden', 'peek', 'expanded']
+const MAP_SHEET_HOLD_HIDE_MS = 800
+const MAP_SHEET_Y: Record<MapSheetState, number> = {
+  hidden: 280,
+  peek: 120,
+  expanded: 0,
+}
+
+export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, onRefresh }: MapViewProps) {
   const locationCityId = useAppState((s) => s.feedLocationCityId)
   const theme = useAppState((s) => s.theme)
+  const isDiscoverExpanded = useAppState((s) => s.isDiscoverExpanded)
+  const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
   const tileUrl =
     theme === 'light'
       ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
@@ -249,8 +393,15 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
   const [isCycling, setIsCycling] = useState(false)
+  const [mapSheetState, setMapSheetState] = useState<MapSheetState>('peek')
+  const [holdProgress, setHoldProgress] = useState(0)
+  const [mapZoom, setMapZoom] = useState<number>(11.5)
   const cycleIdxRef = useRef(0)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const holdRafRef = useRef<number | null>(null)
+  const holdStartedAtRef = useRef<number | null>(null)
+  const holdTriggeredRef = useRef(false)
+  const suppressTapRef = useRef(false)
 
   const activeFilterCount = countActiveFilters(filters)
 
@@ -264,8 +415,14 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
   }, [events, locationCityId, filters])
 
   const cityCenter = getCityCenter(locationCityId)
+  const cityDefaultZoom = getCityDefaultZoom(locationCityId)
   const cityName = getCityName(locationCityId)
   const selected = cityEvents.find((r) => r.event.id === selectedId) ?? null
+  const clusterThresholdKm = useMemo(() => clusterThresholdKmForZoom(mapZoom), [mapZoom])
+  const cityClusters = useMemo(
+    () => (clusterThresholdKm > 0 ? clusterByDistance(cityEvents, clusterThresholdKm) : []),
+    [cityEvents, clusterThresholdKm],
+  )
 
   const allPositions = useMemo(() => cityEvents.map((r) => r.pos), [cityEvents])
 
@@ -314,6 +471,94 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
     setIsCycling(false)
   }, [locationCityId])
 
+  useEffect(() => {
+    if (cityEvents.length === 0) {
+      setMapSheetState('hidden')
+      return
+    }
+    setMapSheetState((prev) => (prev === 'hidden' ? 'peek' : prev))
+  }, [cityEvents.length])
+
+  function moveSheet(direction: 'up' | 'down') {
+    setMapSheetState((prev) => {
+      const idx = MAP_SHEET_ORDER.indexOf(prev)
+      if (idx < 0) return 'peek'
+      if (direction === 'up') {
+        return MAP_SHEET_ORDER[Math.min(MAP_SHEET_ORDER.length - 1, idx + 1)] ?? prev
+      }
+      return MAP_SHEET_ORDER[Math.max(0, idx - 1)] ?? prev
+    })
+  }
+
+  function onSheetDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
+    if (info.offset.y > 65) {
+      moveSheet('down')
+      return
+    }
+    if (info.offset.y < -65) {
+      moveSheet('up')
+    }
+  }
+
+  function clearHoldAnimation() {
+    if (holdRafRef.current != null) {
+      window.cancelAnimationFrame(holdRafRef.current)
+      holdRafRef.current = null
+    }
+  }
+
+  function endHold() {
+    clearHoldAnimation()
+    holdStartedAtRef.current = null
+    setHoldProgress(0)
+  }
+
+  function tickHoldProgress() {
+    const start = holdStartedAtRef.current
+    if (start == null) return
+    const elapsed = performance.now() - start
+    const next = Math.min(1, elapsed / MAP_SHEET_HOLD_HIDE_MS)
+    setHoldProgress(next)
+    if (next >= 1) {
+      holdTriggeredRef.current = true
+      suppressTapRef.current = true
+      setMapSheetState('hidden')
+      endHold()
+      return
+    }
+    holdRafRef.current = window.requestAnimationFrame(tickHoldProgress)
+  }
+
+  function startHold() {
+    if (mapSheetState === 'hidden') return
+    holdTriggeredRef.current = false
+    holdStartedAtRef.current = performance.now()
+    setHoldProgress(0)
+    clearHoldAnimation()
+    holdRafRef.current = window.requestAnimationFrame(tickHoldProgress)
+  }
+
+  function onHandleTap() {
+    if (suppressTapRef.current) {
+      suppressTapRef.current = false
+      return
+    }
+    if (mapSheetState === 'expanded') {
+      setMapSheetState('peek')
+      return
+    }
+    setMapSheetState('expanded')
+  }
+
+  useEffect(() => () => clearHoldAnimation(), [])
+
+  useEffect(() => {
+    if (mapSheetState === 'hidden') {
+      setHoldProgress(0)
+      holdTriggeredRef.current = false
+    }
+  }, [mapSheetState])
+
   return (
     <div className="mv-root">
       {/* Header */}
@@ -333,8 +578,10 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
           <div className="mv-chip-row">
             <button
               type="button"
-              className={`ecf-chip-btn ecf-chip-btn--filter${activeFilterCount > 0 ? ' ecf-chip-btn--active' : ''}`}
+              className={`ecf-chip-btn ecf-chip-btn--filter ecf-chip-btn--icon-only${activeFilterCount > 0 ? ' ecf-chip-btn--active' : ''}`}
               onClick={() => setShowFilter(true)}
+              aria-label={activeFilterCount > 0 ? `Filters active (${activeFilterCount})` : 'Open filters'}
+              title={activeFilterCount > 0 ? `Filters active (${activeFilterCount})` : 'Open filters'}
             >
               <span className="ecf-chip-filter-icon-wrap">
                 <Funnel className="ecf-chip-filter-icon" size={14} strokeWidth={2.25} aria-hidden />
@@ -342,13 +589,41 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
                   <CheckCircle className="ecf-chip-filter-badge" size={9} strokeWidth={2.5} aria-hidden />
                 )}
               </span>
-              <span>Filter{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</span>
             </button>
             <LocationCityPickerControl
-              triggerClassName="ecf-chip-btn ecf-chip-btn--location"
+              triggerClassName="ecf-chip-btn ecf-chip-btn--location ecf-chip-btn--icon-only"
               wrapClassName="ecf-chip-wrap"
               onOpen={() => setShowCityPicker(true)}
+              iconOnly
             />
+            <button
+              type="button"
+              className="ecf-chip-btn ecf-chip-btn--icon-only"
+              onClick={toggleDiscoverExpanded}
+              aria-label={isDiscoverExpanded ? 'Collapse discover view' : 'Expand discover view'}
+              title={isDiscoverExpanded ? 'Collapse discover view' : 'Expand discover view'}
+            >
+              {isDiscoverExpanded ? (
+                <Minimize2 size={14} strokeWidth={2.25} aria-hidden />
+              ) : (
+                <Maximize2 size={14} strokeWidth={2.25} aria-hidden />
+              )}
+            </button>
+            <button
+              type="button"
+              className="ecf-chip-btn ecf-chip-btn--icon-only"
+              onClick={() => onRefresh?.()}
+              aria-label="Refresh events"
+              title="Refresh events"
+              disabled={loading}
+            >
+              <RefreshCw
+                size={14}
+                strokeWidth={2.25}
+                aria-hidden
+                className={loading ? 'ecf-refresh-spin' : undefined}
+              />
+            </button>
           </div>
 
           <div className="mv-header-meta">
@@ -358,6 +633,7 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
               aria-label={isCycling ? 'Stop cycling' : 'Cycle through events'}
               onClick={() => setIsCycling((v) => !v)}
             >
+              {isCycling ? <span className="mv-cycle-loader" aria-hidden /> : null}
               {isCycling
                 ? <Pause size={12} strokeWidth={2.5} aria-hidden />
                 : <Play size={12} strokeWidth={2.5} aria-hidden />}
@@ -371,7 +647,7 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
       <div className="mv-map-wrap">
         <MapContainer
           center={cityCenter}
-          zoom={14}
+          zoom={cityDefaultZoom}
           zoomControl={false}
           attributionControl={false}
           className="mv-leaflet"
@@ -382,18 +658,46 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
             subdomains={['a', 'b', 'c', 'd']}
             maxZoom={20}
           />
+          <ZoomWatcher onZoomChange={setMapZoom} />
           <FitBounds positions={allPositions} onMapClick={() => setSelectedId(null)} />
           <FlyToSelected target={selected ? selected.pos : null} />
-          <MapControls positions={allPositions} cityCenter={cityCenter} />
-          {cityEvents.map(({ event, pos }) => (
-            <Marker
-              key={event.id}
-              position={pos}
-              icon={buildPinIcon(event, selectedId === event.id)}
-              eventHandlers={{ click: () => selectAndScroll(event.id) }}
-              zIndexOffset={selectedId === event.id ? 1000 : 0}
-            />
-          ))}
+          <MapControls cityCenter={cityCenter} cityDefaultZoom={cityDefaultZoom} />
+          {selectedId || clusterThresholdKm <= 0
+            ? cityEvents.map(({ event, pos }) => (
+                <Marker
+                  key={event.id}
+                  position={pos}
+                  icon={buildPinIcon(event, selectedId === event.id)}
+                  eventHandlers={{ click: () => selectAndScroll(event.id) }}
+                  zIndexOffset={selectedId === event.id ? 1000 : 0}
+                />
+              ))
+            : cityClusters.map((cluster) => {
+                if (cluster.items.length === 1) {
+                  const only = cluster.items[0]
+                  return (
+                    <Marker
+                      key={only.event.id}
+                      position={only.pos}
+                      icon={buildPinIcon(only.event, false)}
+                      eventHandlers={{ click: () => selectAndScroll(only.event.id) }}
+                    />
+                  )
+                }
+                return (
+                  <Marker
+                    key={`cluster:${cluster.items.map((i) => i.event.id).join(',')}`}
+                    position={cluster.center}
+                    icon={buildClusterPinIcon(cluster.items.length, pickClusterAccent(cluster.items))}
+                    eventHandlers={{
+                      click: () => {
+                        const first = cluster.items[0]
+                        if (first) selectAndScroll(first.event.id)
+                      },
+                    }}
+                  />
+                )
+              })}
         </MapContainer>
 
         {/* Empty state overlay */}
@@ -410,93 +714,144 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
 
         {/* Bottom card carousel */}
         {cityEvents.length > 0 && (
-          <div className="mv-carousel-wrap">
-            <div className="mv-carousel" ref={carouselRef}>
-              {cityEvents.map(({ event }) => {
-                const isSel = selectedId === event.id
-                const isGoing = going.includes(event.id)
-                const isSaved = saved.includes(event.id)
-                const accent = getAccent(event)
-                const dateTime = eventDateTimeLabel(event)
-                return (
-                  <div
-                    key={event.id}
-                    className={`mv-card${isSel ? ' mv-card--active' : ''}`}
-                    style={{ '--card-accent': accent } as React.CSSProperties}
-                    onClick={() => selectAndScroll(event.id)}
-                  >
-                    <img
-                      src={event.image}
-                      alt={event.title}
-                      className="mv-card-img"
-                      loading="lazy"
-                      onError={(e) => handleEventImageError(event, e)}
+          <>
+            <motion.div
+              className={`mv-carousel-wrap mv-carousel-wrap--${mapSheetState}`}
+              animate={{ y: MAP_SHEET_Y[mapSheetState] }}
+              transition={{ type: 'spring', stiffness: 360, damping: 34, mass: 0.8 }}
+              drag="y"
+              dragElastic={0.04}
+              dragMomentum={false}
+              onDragEnd={onSheetDragEnd}
+            >
+              <button
+                type="button"
+                className="mv-sheet-handle"
+                aria-label={mapSheetState === 'expanded' ? 'Tap to shrink event cards' : 'Tap to expand event cards'}
+                onClick={onHandleTap}
+                onPointerDown={startHold}
+                onPointerUp={endHold}
+                onPointerCancel={endHold}
+                onPointerLeave={endHold}
+              >
+                <span className={`mv-sheet-hold-ring${holdProgress > 0 ? ' is-active' : ''}`} aria-hidden>
+                  <svg viewBox="0 0 24 24">
+                    <circle className="mv-sheet-hold-ring-track" cx="12" cy="12" r="10" />
+                    <circle
+                      className="mv-sheet-hold-ring-progress"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      style={{
+                        strokeDasharray: `${2 * Math.PI * 10}`,
+                        strokeDashoffset: `${(1 - holdProgress) * 2 * Math.PI * 10}`,
+                      }}
                     />
-                    <div className="mv-card-body">
-                      <div className="mv-card-meta-row">
-                        <span className="mv-card-genre">{event.genre.toUpperCase()}</span>
-                        <span className="mv-card-time">{compactDateTimeLabel(event)}</span>
-                      </div>
-                      <p className="mv-card-title">{event.title}</p>
-                      <p className="mv-card-sub">
-                        {event.district} · {dateTime}
-                      </p>
-                      <p className="mv-card-price">{event.ticketPrice}</p>
-                      <div className="mv-card-actions">
-                        <button
-                          type="button"
-                          className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggle(event.id, setGoing)
-                          }}
-                        >
-                          {isGoing ? "✓ I'm Going" : "I'm Going"}
-                        </button>
-                        <button
-                          type="button"
-                          className="mv-card-details-btn"
-                          aria-label="More details"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onMoreDetails(event.id)
-                          }}
-                        >
-                          <Info size={13} strokeWidth={2} aria-hidden />
-                          <span>More Details</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="mv-card-icon-btn"
-                          aria-label="Save event"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggle(event.id, setSaved)
-                          }}
-                        >
-                          <Heart
-                            size={13}
-                            strokeWidth={isSaved ? 2.5 : 2}
-                            fill={isSaved ? accent : 'none'}
-                            color={isSaved ? accent : undefined}
-                            aria-hidden
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          className="mv-card-icon-btn"
-                          aria-label="Share event"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Share2 size={13} strokeWidth={2} aria-hidden />
-                        </button>
+                  </svg>
+                </span>
+                <span className="mv-sheet-handle-bar" aria-hidden />
+                <small>
+                  {mapSheetState === 'expanded'
+                    ? 'Hold down to hide · Tap to shrink'
+                    : 'Hold down to hide · Tap to expand'}
+                </small>
+              </button>
+              <div className="mv-carousel" ref={carouselRef}>
+                {cityEvents.map(({ event }) => {
+                  const isSel = selectedId === event.id
+                  const isGoing = going.includes(event.id)
+                  const isSaved = saved.includes(event.id)
+                  const accent = getAccent(event)
+                  const dateTime = eventDateTimeLabel(event)
+                  return (
+                    <div
+                      key={event.id}
+                      className={`mv-card${isSel ? ' mv-card--active' : ''}`}
+                      style={{ '--card-accent': accent } as React.CSSProperties}
+                      onClick={() => selectAndScroll(event.id)}
+                    >
+                      <img
+                        src={event.image}
+                        alt={event.title}
+                        className="mv-card-img"
+                        loading="lazy"
+                        onError={(e) => handleEventImageError(event, e)}
+                      />
+                      <div className="mv-card-body">
+                        <div className="mv-card-meta-row">
+                          <span className="mv-card-genre">{event.genre.toUpperCase()}</span>
+                          <span className="mv-card-time">{compactDateTimeLabel(event)}</span>
+                        </div>
+                        <p className="mv-card-title">{event.title}</p>
+                        <p className="mv-card-sub">
+                          {event.district} · {dateTime}
+                        </p>
+                        <p className="mv-card-price">{event.ticketPrice}</p>
+                        <div className="mv-card-actions">
+                          <button
+                            type="button"
+                            className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggle(event.id, setGoing)
+                            }}
+                          >
+                            {isGoing ? "✓ I'm Going" : "I'm Going"}
+                          </button>
+                          <button
+                            type="button"
+                            className="mv-card-details-btn"
+                            aria-label="More details"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onMoreDetails(event.id)
+                            }}
+                          >
+                            <Info size={13} strokeWidth={2} aria-hidden />
+                            <span>More Details</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="mv-card-icon-btn"
+                            aria-label="Save event"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggle(event.id, setSaved)
+                            }}
+                          >
+                            <Heart
+                              size={13}
+                              strokeWidth={isSaved ? 2.5 : 2}
+                              fill={isSaved ? accent : 'none'}
+                              color={isSaved ? accent : undefined}
+                              aria-hidden
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            className="mv-card-icon-btn"
+                            aria-label="Share event"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Share2 size={13} strokeWidth={2} aria-hidden />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+            {mapSheetState === 'hidden' ? (
+              <button
+                type="button"
+                className="mv-sheet-restore"
+                onClick={() => setMapSheetState('peek')}
+              >
+                Show All Events
+              </button>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -537,7 +892,11 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
                 exit={{ y: '100%' }}
                 transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
               >
-                <CityPickerSheet onClose={() => setShowCityPicker(false)} />
+                <CityPickerSheet
+                  onClose={() => setShowCityPicker(false)}
+                  autoCloseOnSelect
+                  autoCloseDelayMs={1000}
+                />
               </motion.div>
             </motion.div>
           )}

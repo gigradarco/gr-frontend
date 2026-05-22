@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:location-centroids": "node scripts/validate-location-centroids.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.79.0",

@@ -142,18 +142,18 @@ export function PlanEventDetail({
           {/* Quick-info strip + vibe arc */}
           <div className="plan-info-strip" ref={vibeRef}>
             <div className="plan-info-pills">
-              <div className="plan-info-pill">
+              <div className="plan-info-pill plan-info-pill--location">
                 <MapPin size={13} strokeWidth={2.2} aria-hidden />
-                <span>{data.venueLine}</span>
+                <span className="plan-info-pill-text">{data.venueLine}</span>
               </div>
-              <div className="plan-info-pill">
+              <div className="plan-info-pill plan-info-pill--time">
                 <Clock size={13} strokeWidth={2.2} aria-hidden />
-                <span>{data.timeRange}</span>
+                <span className="plan-info-pill-text">{data.timeRange}</span>
               </div>
               {data.ticketPrice ? (
                 <div className="plan-info-pill plan-info-pill--price">
                   <Ticket size={13} strokeWidth={2.2} aria-hidden />
-                  <span>{data.ticketPrice}</span>
+                  <span className="plan-info-pill-text">{data.ticketPrice}</span>
                 </div>
               ) : null}
             </div>
@@ -184,6 +184,21 @@ export function PlanEventDetail({
               </div>
             ) : null}
           </div>
+
+          {/* Experience quote */}
+          <section className="plan-experience-block">
+            <h2 className="plan-section-kicker">The Experience</h2>
+            <blockquote className="plan-experience-quote">
+              <span className="plan-experience-bar" aria-hidden />
+              <p className="plan-copy">
+                {data.experienceParts.before}
+                {data.experienceParts.emphasis ? (
+                  <em className="plan-copy-accent">{data.experienceParts.emphasis}</em>
+                ) : null}
+                {data.experienceParts.after}
+              </p>
+            </blockquote>
+          </section>
 
           {mapQuery ? (
             <section className="plan-location-block">
@@ -224,21 +239,6 @@ export function PlanEventDetail({
               </div>
             </section>
           ) : null}
-
-          {/* Experience quote */}
-          <section className="plan-experience-block">
-            <h2 className="plan-section-kicker">The Experience</h2>
-            <blockquote className="plan-experience-quote">
-              <span className="plan-experience-bar" aria-hidden />
-              <p className="plan-copy">
-                {data.experienceParts.before}
-                {data.experienceParts.emphasis ? (
-                  <em className="plan-copy-accent">{data.experienceParts.emphasis}</em>
-                ) : null}
-                {data.experienceParts.after}
-              </p>
-            </blockquote>
-          </section>
 
           {hasAudioPreview ? (
             <div className="plan-audio">

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle, Funnel, Heart, Info, Map, Share2, X } from 'lucide-react'
+import { CheckCircle, Funnel, Heart, Info, Map, Maximize2, Minimize2, RefreshCw, Share2, X } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { useAppState } from '../../store/appStore'
@@ -586,6 +586,7 @@ type EventCardFeedProps = {
   onLoadMore?: () => void
   onMoreDetails: (eventId: string) => void
   onMapView?: () => void
+  onRefresh?: () => void
 }
 
 export function EventCardFeed({
@@ -597,8 +598,11 @@ export function EventCardFeed({
   onLoadMore,
   onMoreDetails,
   onMapView,
+  onRefresh,
 }: EventCardFeedProps) {
   const locationCityId = useAppState((s) => s.feedLocationCityId)
+  const isDiscoverExpanded = useAppState((s) => s.isDiscoverExpanded)
+  const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
 
   const initialCategories = useMemo(() => {
     // Prefer localStorage override (set when user changes filter — survives refresh for anon users)
@@ -722,7 +726,7 @@ export function EventCardFeed({
           <div className="ecf-chip-row">
             <button
               type="button"
-              className={`ecf-chip-btn ecf-chip-btn--filter${activeCount > 0 ? ' ecf-chip-btn--active' : ''}`}
+              className={`ecf-chip-btn ecf-chip-btn--filter ecf-chip-btn--icon-only${activeCount > 0 ? ' ecf-chip-btn--active' : ''}`}
               onClick={() => setShowFilter(true)}
               title={activeCount > 0 ? `Filters active (${activeCount}) — click to edit` : 'Filter events'}
               aria-label={activeCount > 0 ? `Filter · ${activeCount} active` : 'Filter events'}
@@ -733,13 +737,41 @@ export function EventCardFeed({
                   <CheckCircle className="ecf-chip-filter-badge" size={9} strokeWidth={2.5} aria-hidden />
                 )}
               </span>
-              <span>Filter{activeCount > 0 ? ` · ${activeCount}` : ''}</span>
             </button>
             <LocationCityPickerControl
-              triggerClassName="ecf-chip-btn ecf-chip-btn--location"
+              triggerClassName="ecf-chip-btn ecf-chip-btn--location ecf-chip-btn--icon-only"
               wrapClassName="ecf-chip-wrap"
               onOpen={() => setShowCityPicker(true)}
+              iconOnly
             />
+            <button
+              type="button"
+              className="ecf-chip-btn ecf-chip-btn--icon-only"
+              onClick={toggleDiscoverExpanded}
+              aria-label={isDiscoverExpanded ? 'Collapse discover view' : 'Expand discover view'}
+              title={isDiscoverExpanded ? 'Collapse discover view' : 'Expand discover view'}
+            >
+              {isDiscoverExpanded ? (
+                <Minimize2 size={14} strokeWidth={2.25} aria-hidden />
+              ) : (
+                <Maximize2 size={14} strokeWidth={2.25} aria-hidden />
+              )}
+            </button>
+            <button
+              type="button"
+              className="ecf-chip-btn ecf-chip-btn--icon-only"
+              onClick={() => onRefresh?.()}
+              aria-label="Refresh events"
+              title="Refresh events"
+              disabled={loading}
+            >
+              <RefreshCw
+                size={14}
+                strokeWidth={2.25}
+                aria-hidden
+                className={loading ? 'ecf-refresh-spin' : undefined}
+              />
+            </button>
             {activeCount > 0 && (
               <button
                 type="button"

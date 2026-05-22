@@ -8,7 +8,7 @@ const DISCOVER_PAGE_SIZE = 30
 const SOFT_RENDER_CAP = 90
 const HARD_RENDER_CAP = 120
 
-type DiscoverEventsSource = 'live' | 'demo' | 'auto'
+export type DiscoverEventsSource = 'live' | 'demo' | 'auto'
 
 type DiscoverEventListItem = {
   id: string
@@ -34,6 +34,10 @@ type DiscoverEventsPage = {
   nextCursor: string | null
 }
 
+type DiscoverEventDetail = DiscoverEventListItem & {
+  sourceUrl?: string | null
+}
+
 type DiscoverEventsState = {
   events: EventItem[]
   source: DiscoverEventsSource
@@ -42,6 +46,7 @@ type DiscoverEventsState = {
   error: string | null
   hasMore: boolean
   loadMore: () => void
+  refresh: () => void
 }
 
 function configuredSource(): DiscoverEventsSource {
@@ -50,7 +55,7 @@ function configuredSource(): DiscoverEventsSource {
   return 'live'
 }
 
-function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem): EventItem {
+export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem): EventItem {
   const image =
     item.imageUrl ||
     resolveEventImagePlaceholder(
@@ -97,9 +102,28 @@ function discoverEventsUrl(cityId: string, cursor: string | null): string {
   return base ? `${base}${path}` : path
 }
 
+function discoverEventDetailUrl(eventId: string): string {
+  const base = apiBase()
+  const path = `/api/discover/events/${encodeURIComponent(eventId)}`
+  return base ? `${base}${path}` : path
+}
+
 function trimEventWindow(events: EventItem[]): EventItem[] {
   if (events.length <= HARD_RENDER_CAP) return events
   return events.slice(-SOFT_RENDER_CAP)
+}
+
+export async function fetchDiscoverEventById(eventId: string, signal?: AbortSignal): Promise<EventItem> {
+  const res = await fetch(discoverEventDetailUrl(eventId), {
+    credentials: 'include',
+    signal,
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(body.error ?? `Discover event failed with ${res.status}`)
+  }
+  const item = (await res.json()) as DiscoverEventDetail
+  return mapDiscoverEventListItemToEventItem(item)
 }
 
 export function useDiscoverEvents(cityId: string): DiscoverEventsState {
@@ -191,6 +215,13 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
     void fetchPage(cursor, 'append')
   }, [cursor, fetchPage, hasMore, loading, loadingMore, source])
 
+  const refresh = useCallback(() => {
+    if (source === 'demo') return
+    setCursor(null)
+    setHasMore(true)
+    void fetchPage(null, 'reset')
+  }, [fetchPage, source])
+
   return {
     events,
     source,
@@ -199,5 +230,6 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
     error,
     hasMore,
     loadMore,
+    refresh,
   }
 }

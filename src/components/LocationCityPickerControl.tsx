@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, MapPin, Search, X } from 'lucide-react'
 import {
   filterLocationRegionsByQuery,
@@ -12,12 +12,14 @@ export type LocationCityPickerControlProps = {
   triggerClassName: string
   wrapClassName?: string
   onOpen: () => void
+  iconOnly?: boolean
 }
 
 export function LocationCityPickerControl({
   triggerClassName,
   wrapClassName,
   onOpen,
+  iconOnly = false,
 }: LocationCityPickerControlProps) {
   const locationCityId = useAppState((s) => s.feedLocationCityId)
   const locationLabel  = getLocationCityById(locationCityId)?.name ?? 'Singapore'
@@ -34,9 +36,9 @@ export function LocationCityPickerControl({
         onClick={onOpen}
       >
         <MapPin className="feed-filter-pill-icon feed-filter-pill-icon--pin" size={16} strokeWidth={2.25} aria-hidden />
-        <span>{locationLabel}</span>
-        <Search className="feed-filter-pill-search-hint" size={14} strokeWidth={2.25} aria-hidden />
-        <ChevronDown className="feed-filter-pill-chevron" size={14} strokeWidth={2.25} aria-hidden />
+        {iconOnly ? null : <span>{locationLabel}</span>}
+        {iconOnly ? null : <Search className="feed-filter-pill-search-hint" size={14} strokeWidth={2.25} aria-hidden />}
+        {iconOnly ? null : <ChevronDown className="feed-filter-pill-chevron" size={14} strokeWidth={2.25} aria-hidden />}
       </button>
     </div>
   )
@@ -58,14 +60,24 @@ function shortRegionLabel(label: string): string {
 
 type CityPickerSheetProps = {
   onClose: () => void
+  statusMessage?: string | null
+  autoCloseOnSelect?: boolean
+  autoCloseDelayMs?: number
 }
 
-export function CityPickerSheet({ onClose }: CityPickerSheetProps) {
+export function CityPickerSheet({
+  onClose,
+  statusMessage,
+  autoCloseOnSelect = true,
+  autoCloseDelayMs = 1000,
+}: CityPickerSheetProps) {
   const locationCityId    = useAppState((s) => s.feedLocationCityId)
   const setLocationCityId = useAppState((s) => s.setFeedLocationCityId)
   const [query, setQuery] = useState('')
+  const [localStatusMessage, setLocalStatusMessage] = useState<string | null>(null)
   const listboxId         = `${PICKER_DOM_ID}-location-listbox`
   const titleId           = `${PICKER_DOM_ID}-location-curtain-title`
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const filteredRegions = useMemo(
     () => filterLocationRegionsByQuery(query),
@@ -127,6 +139,14 @@ export function CityPickerSheet({ onClose }: CityPickerSheetProps) {
     }
   }, [])
 
+  useEffect(() => () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
+  const effectiveStatusMessage = statusMessage ?? localStatusMessage
+
   return (
     <>
       <div className="lcp-handle" aria-hidden />
@@ -156,6 +176,17 @@ export function CityPickerSheet({ onClose }: CityPickerSheetProps) {
           <X size={18} strokeWidth={2.5} aria-hidden />
         </button>
       </header>
+
+      {effectiveStatusMessage ? (
+        <p className="lcp-status-message" role="status" aria-live="polite">
+          <span>{effectiveStatusMessage}</span>
+          <span className="lcp-status-dots" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+        </p>
+      ) : null}
 
       <div className="lcp-search-wrap" role="presentation">
         <input
@@ -202,7 +233,19 @@ export function CityPickerSheet({ onClose }: CityPickerSheetProps) {
                       role="option"
                       aria-selected={city.id === locationCityId}
                       onClick={() => {
+                        if (closeTimerRef.current) {
+                          clearTimeout(closeTimerRef.current)
+                          closeTimerRef.current = null
+                        }
+                        const isChanged = city.id !== locationCityId
                         setLocationCityId(city.id)
+                        if (autoCloseOnSelect && isChanged) {
+                          setLocalStatusMessage('Updating region, auto closing in 1 second')
+                          closeTimerRef.current = setTimeout(() => {
+                            closeTimerRef.current = null
+                            onClose()
+                          }, autoCloseDelayMs)
+                        }
                       }}
                     >
                       {city.name}

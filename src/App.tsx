@@ -1,6 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { navigateShellToTab, pathToTab, setShellNavigate } from './lib/tabRoutes'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import {
+  discoverEventIdFromPath,
+  getDiscoverEventPath,
+  navigateShellToTab,
+  pathToTab,
+  setShellNavigate,
+} from './lib/tabRoutes'
 import { SESSION_PENDING_HOME_COMPOSER_PREFILL_KEY } from './lib/session'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Heart, Info, Moon, Sun, User, X } from 'lucide-react'
@@ -29,13 +35,15 @@ import {
 } from './views/profile/settings'
 import { OnboardingScreen } from './views/onboarding'
 import { WelcomeScreen, SignInSheet, WelcomeBackScreen } from './views/welcome'
-import { DesignThemePage } from './views/design-theme/DesignThemePage'
 import { DesignThemeOrangePage } from './views/design-theme/DesignThemeOrangePage'
 import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePage'
 import { AdminHomePage } from './views/admin-home/AdminHomePage'
+import { AdminRouteGuard } from './views/admin-home/AdminRouteGuard'
+import { AdminUsersPage } from './views/admin-users/AdminUsersPage'
+import { UserAnalyticsPage } from './views/user-analytics/UserAnalyticsPage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
-import { useDiscoverEvents } from './lib/useDiscoverEvents'
+import { fetchDiscoverEventById, useDiscoverEvents } from './lib/useDiscoverEvents'
 import { handleEventImageError } from './lib/event-image-fallback'
 
 const DiscoverTab = lazy(() =>
@@ -158,6 +166,10 @@ function MainApp() {
   } = useAppState()
   const navigate = useNavigate()
   const location = useLocation()
+  const discoverRouteEventId = useMemo(
+    () => discoverEventIdFromPath(location.pathname),
+    [location.pathname],
+  )
 
   useLayoutEffect(() => {
     setShellNavigate(navigate)
@@ -213,14 +225,19 @@ function MainApp() {
   const [sheetPlanReturnTab, setSheetPlanReturnTab] = useState<Tab | null>(null)
   const [discoverMapMode, setDiscoverMapMode] = useState(false)
   const [discoverDetailEventId, setDiscoverDetailEventId] = useState<string | null>(null)
+  const [discoverDetailRemoteEvent, setDiscoverDetailRemoteEvent] = useState<EventItem | null>(null)
+  const [discoverDetailLoading, setDiscoverDetailLoading] = useState(false)
+  const [discoverDetailError, setDiscoverDetailError] = useState<string | null>(null)
 
   const {
     events: discoverEvents,
+    source: discoverEventsSource,
     loading: discoverEventsLoading,
     loadingMore: discoverEventsLoadingMore,
     error: discoverEventsError,
     hasMore: discoverEventsHasMore,
     loadMore: loadMoreDiscoverEvents,
+    refresh: refreshDiscoverEvents,
   } = useDiscoverEvents(feedLocationCityId)
 
   useEffect(() => {
@@ -269,10 +286,14 @@ function MainApp() {
     () => discoverEvents.find((event) => event.id === activeEventId) ?? null,
     [activeEventId, discoverEvents],
   )
-  const discoverDetailEvent = useMemo(
+  const discoverDetailListEvent = useMemo(
     () => discoverEvents.find((event) => event.id === discoverDetailEventId) ?? null,
     [discoverDetailEventId, discoverEvents],
   )
+  const discoverDetailEvent = useMemo(() => {
+    if (discoverDetailListEvent) return discoverDetailListEvent
+    return discoverDetailRemoteEvent?.id === discoverDetailEventId ? discoverDetailRemoteEvent : null
+  }, [discoverDetailEventId, discoverDetailListEvent, discoverDetailRemoteEvent])
   const discoverDetailData = useMemo(
     () => (discoverDetailEvent ? planDetailFromDiscoverEvent(discoverDetailEvent) : null),
     [discoverDetailEvent],
@@ -280,31 +301,65 @@ function MainApp() {
 
   const openDiscoverDetail = useCallback(
     (eventId: string) => {
-      if (!discoverEvents.some((event) => event.id === eventId)) {
-        openEvent(eventId)
-        return
-      }
       closeEvent()
       setDiscoverDetailEventId(eventId)
+      navigate(getDiscoverEventPath(eventId))
     },
-    [closeEvent, discoverEvents, openEvent],
+    [closeEvent, navigate],
   )
 
   const closeDiscoverDetail = useCallback(() => {
     setDiscoverDetailEventId(null)
-  }, [])
+    setDiscoverDetailRemoteEvent(null)
+    setDiscoverDetailError(null)
+    navigate('/discover')
+  }, [navigate])
 
   useEffect(() => {
-    if (tab !== 'discover') {
+    if (tab !== 'discover' || !discoverRouteEventId) {
       setDiscoverDetailEventId(null)
+      setDiscoverDetailRemoteEvent(null)
+      setDiscoverDetailError(null)
+      setDiscoverDetailLoading(false)
+      return
     }
-  }, [tab])
+    setDiscoverDetailEventId(discoverRouteEventId)
+  }, [discoverRouteEventId, tab])
 
   useEffect(() => {
-    if (discoverDetailEventId && !discoverEventsLoading && !discoverDetailEvent) {
-      setDiscoverDetailEventId(null)
+    if (!discoverDetailEventId || tab !== 'discover') return
+    if (discoverDetailListEvent) {
+      setDiscoverDetailRemoteEvent(null)
+      setDiscoverDetailError(null)
+      setDiscoverDetailLoading(false)
+      return
     }
-  }, [discoverDetailEvent, discoverDetailEventId, discoverEventsLoading])
+    if (discoverEventsSource === 'demo') {
+      setDiscoverDetailError('Event not found in demo data')
+      setDiscoverDetailLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    setDiscoverDetailRemoteEvent(null)
+    setDiscoverDetailError(null)
+    setDiscoverDetailLoading(true)
+
+    fetchDiscoverEventById(discoverDetailEventId, controller.signal)
+      .then((event) => {
+        setDiscoverDetailRemoteEvent(event)
+        setDiscoverDetailError(null)
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        setDiscoverDetailError(e instanceof Error ? e.message : 'Failed to load event details')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDiscoverDetailLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [discoverDetailEventId, discoverDetailListEvent, discoverEventsSource, tab])
 
   const sheetPlanOverlayBody = useMemo(() => {
     if (!sheetPlanOverlay) return null
@@ -372,7 +427,7 @@ function MainApp() {
               ? 'phone-shell phone-shell--behind-event-sheet'
               : sheetPlanOverlay
                 ? 'phone-shell phone-shell--behind-plan-overlay'
-                : tab === 'ask'
+                : tab === 'ask' || tab === 'discover'
                   ? `phone-shell phone-shell--discover ${isDiscoverExpanded ? 'phone-shell--expanded' : ''}`
                   : 'phone-shell',
             showOnboarding ? 'phone-shell--onboarding' : '',
@@ -381,7 +436,7 @@ function MainApp() {
             .join(' ')}
         >
           <AnimatePresence initial={false}>
-            {!(isDiscoverExpanded && tab === 'ask') && (
+            {!(isDiscoverExpanded && (tab === 'ask' || tab === 'discover')) && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -436,21 +491,40 @@ function MainApp() {
           <section className="screen">
             <Suspense fallback={<div className="tab-suspense-fallback" aria-hidden />}>
               {tab === 'discover' && (
-                discoverDetailEvent && discoverDetailData ? (
-                  <PlanEventDetail
-                    data={discoverDetailData}
-                    variant="upcoming"
-                    backAriaLabel={discoverMapMode ? 'Back to map' : 'Back to discover feed'}
-                    onBack={closeDiscoverDetail}
-                    onOpenEvent={() => undefined}
-                    isFavorited={isEventFavorited(discoverDetailEvent.id)}
-                    onToggleFavorite={() => toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent))}
-                  />
+                discoverDetailEventId ? (
+                  discoverDetailEvent && discoverDetailData ? (
+                    <PlanEventDetail
+                      data={discoverDetailData}
+                      variant="upcoming"
+                      backAriaLabel={discoverMapMode ? 'Back to map' : 'Back to discover feed'}
+                      onBack={closeDiscoverDetail}
+                      onOpenEvent={() => undefined}
+                      isFavorited={isEventFavorited(discoverDetailEvent.id)}
+                      onToggleFavorite={() => toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent))}
+                    />
+                  ) : (
+                    <div className="plan-detail-overlay-fallback screen-content plan-home">
+                      <p className="plan-home-sub">
+                        {discoverDetailLoading || discoverEventsLoading
+                          ? 'Loading event details...'
+                          : discoverDetailError || 'Event not found'}
+                      </p>
+                      <button
+                        type="button"
+                        className="plan-segment plan-segment--on"
+                        onClick={closeDiscoverDetail}
+                      >
+                        {discoverMapMode ? 'Back to map' : 'Back to discover'}
+                      </button>
+                    </div>
+                  )
                 ) : discoverMapMode ? (
                   <MapView
                     events={discoverEvents}
+                    loading={discoverEventsLoading}
                     onBackToFeed={() => setDiscoverMapMode(false)}
                     onMoreDetails={openDiscoverDetail}
+                    onRefresh={refreshDiscoverEvents}
                   />
                 ) : (
                   <EventCardFeed
@@ -462,6 +536,7 @@ function MainApp() {
                     onLoadMore={loadMoreDiscoverEvents}
                     onMoreDetails={openDiscoverDetail}
                     onMapView={() => setDiscoverMapMode(true)}
+                    onRefresh={refreshDiscoverEvents}
                   />
                 )
               )}
@@ -513,7 +588,7 @@ function MainApp() {
           </AnimatePresence>
 
           <AnimatePresence initial={false}>
-            {!(isDiscoverExpanded && tab === 'ask') && (
+            {!(isDiscoverExpanded && (tab === 'ask' || tab === 'discover')) && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -635,15 +710,20 @@ function MainApp() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/admin" element={<AdminHomePage />} />
-      <Route path="/event-list" element={<EventListPage />} />
-      <Route path="/not-found-404" element={<NotFound404Page />} />
-      {/* Nested so /design-theme/purple never competes with the /design-theme index */}
-      <Route path="/design-theme" element={<Outlet />}>
-        <Route index element={<DesignThemePage />} />
-        <Route path="orange" element={<DesignThemeOrangePage />} />
-        <Route path="purple" element={<DesignThemePurplePage />} />
+      <Route path="/admin" element={<AdminRouteGuard />}>
+        <Route index element={<AdminHomePage />} />
+        <Route path="admin-users" element={<AdminUsersPage />} />
+        <Route path="user-analytics" element={<UserAnalyticsPage />} />
+        <Route path="event-list" element={<EventListPage />} />
+        <Route path="design-theme" element={<Navigate to="/admin/design-theme/orange" replace />} />
+        <Route path="design-theme/orange" element={<DesignThemeOrangePage />} />
+        <Route path="design-theme/purple" element={<DesignThemePurplePage />} />
       </Route>
+      <Route path="/event-list" element={<Navigate to="/admin/event-list" replace />} />
+      <Route path="/not-found-404" element={<NotFound404Page />} />
+      <Route path="/design-theme" element={<Navigate to="/admin/design-theme/orange" replace />} />
+      <Route path="/design-theme/orange" element={<Navigate to="/admin/design-theme/orange" replace />} />
+      <Route path="/design-theme/purple" element={<Navigate to="/admin/design-theme/purple" replace />} />
       {/* One route so MainApp does not remount when switching tabs (preserves local UI state). */}
       <Route path="*" element={<MainApp />} />
     </Routes>
