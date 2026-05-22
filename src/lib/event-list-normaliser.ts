@@ -22,7 +22,7 @@ function dateFromUnknown(value: unknown): Date | null {
   return Number.isFinite(d.getTime()) ? d : null
 }
 
-function formatDateTimeLabel(value: unknown, fallbackRaw?: unknown): string {
+function formatDateTimeLabel(value: unknown): string {
   const d = dateFromUnknown(value)
   if (d) {
     return d.toLocaleString('en-GB', {
@@ -34,7 +34,7 @@ function formatDateTimeLabel(value: unknown, fallbackRaw?: unknown): string {
     })
   }
 
-  return firstText(fallbackRaw)
+  return ''
 }
 
 /** Legacy export kept for callers that used the old Supabase mapper name. */
@@ -133,8 +133,8 @@ function formatTicketPrice(row: Record<string, unknown>): string {
  * `/api/events` Turso-backed rows using the current Turso schema.
  */
 export function mapRemoteEventRowToEventItem(row: Record<string, unknown>): EventItem {
-  const id = row.event_id != null ? String(row.event_id) : row.id != null ? String(row.id) : ''
-  const time = formatDateTimeLabel(row.event_datetime ?? row.event_time, row.event_time_raw)
+  const id = firstText(row.event_id)
+  const time = formatDateTimeLabel(row.event_datetime)
   const categoryTags = parseCategoryTags(row.category)
   const category = categoryTags[0] ?? ''
   const tasteTags = parseCategoryTags(row.taste_and_recommendations)

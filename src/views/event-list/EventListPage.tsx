@@ -5,7 +5,7 @@ import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { apiBase } from '../../lib/api-base'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
-import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/map-event'
+import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/event-list-normaliser'
 import { getAccessToken } from '../../lib/session'
 import {
   describeImageState,

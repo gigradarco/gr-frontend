@@ -1,4 +1,4 @@
-import { parseCategoryTags } from './map-event'
+import { parseCategoryTags } from './event-list-normaliser'
 import type { EventItem } from '../types'
 
 const SPLASH_IMAGE_BUCKETS = {
