@@ -38,6 +38,7 @@ import {
 import { LaylaAttachDropdown } from '../../components/LaylaAttachDropdown'
 import { api } from '../../lib/trpc'
 import { getAccessToken } from '../../lib/session'
+import { handleEventImageError } from '../../lib/event-image-fallback'
 import type { EventItem } from '../../types'
 
 const SAMPLE_PLACEHOLDER = 'Chat With Buzo...'
@@ -314,7 +315,7 @@ export function DiscoverTab({
             venue: e.venue,
             district: e.district,
             genre: e.genre,
-            time: e.time,
+            time: e.displayDateTimeLabel ?? e.time,
             verified: e.verified,
             vibeTags: e.vibeTags,
           })),
@@ -826,16 +827,16 @@ export function DiscoverTab({
                     alt={hardcodedJazzEvent.title}
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => handleEventImageError(hardcodedJazzEvent, e)}
                   />
                   <div className="event-meta">
                     <span className="chip">Jazz</span>
-                    <span className="chip verified">94 Verified</span>
                   </div>
                   <div className="event-body">
                     <h3>{hardcodedJazzEvent.title}</h3>
                     <p>
                       {hardcodedJazzEvent.venue}, {hardcodedJazzEvent.district} ·{' '}
-                      {hardcodedJazzEvent.time}
+                      {hardcodedJazzEvent.displayDateTimeLabel ?? hardcodedJazzEvent.time}
                     </p>
                     <div className="tags">
                       {hardcodedJazzEvent.vibeTags.map((tag) => (
@@ -865,15 +866,15 @@ export function DiscoverTab({
                   alt={agentEvent.title}
                   loading="lazy"
                   decoding="async"
+                  onError={(e) => handleEventImageError(agentEvent, e)}
                 />
                 <div className="event-meta">
                   <span className="chip">{agentEvent.genre}</span>
-                  <span className="chip verified">{agentEvent.verified} Verified</span>
                 </div>
                 <div className="event-body">
                   <h3>{agentEvent.title}</h3>
                   <p>
-                    {agentEvent.venue}, {agentEvent.district} · {agentEvent.time}
+                    {agentEvent.venue}, {agentEvent.district} · {agentEvent.displayDateTimeLabel ?? agentEvent.time}
                   </p>
                   <div className="tags">
                     {agentEvent.vibeTags.map((tag) => (

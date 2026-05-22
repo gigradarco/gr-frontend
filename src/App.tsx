@@ -3,9 +3,8 @@ import { Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-do
 import { navigateShellToTab, pathToTab, setShellNavigate } from './lib/tabRoutes'
 import { SESSION_PENDING_HOME_COMPOSER_PREFILL_KEY } from './lib/session'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Heart, Info, Moon, Sun, User, X, Zap } from 'lucide-react'
+import { Heart, Info, Moon, Sun, User, X } from 'lucide-react'
 import {
-  events as demoEvents,
   getPlanDetailPast,
   getPlanDetailUpcoming,
 } from './data/demoData'
@@ -35,6 +34,8 @@ import { DesignThemeOrangePage } from './views/design-theme/DesignThemeOrangePag
 import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
+import { useDiscoverEvents } from './lib/useDiscoverEvents'
+import { handleEventImageError } from './lib/event-image-fallback'
 
 const DiscoverTab = lazy(() =>
   import('./views/discover/DiscoverTab').then((m) => ({ default: m.DiscoverTab })),
@@ -96,6 +97,7 @@ function MainApp() {
     pendingPlanDetail,
     clearPendingPlanDetail,
     isDiscoverExpanded,
+    feedLocationCityId,
   } = useAppState()
   const navigate = useNavigate()
   const location = useLocation()
@@ -154,8 +156,14 @@ function MainApp() {
   const [sheetPlanReturnTab, setSheetPlanReturnTab] = useState<Tab | null>(null)
   const [discoverMapMode, setDiscoverMapMode] = useState(false)
 
-  /** Discover / map / sheet: local demo data only. Live `/api/events` (e.g. `/event-list`) is separate. */
-  const discoverEvents = demoEvents
+  const {
+    events: discoverEvents,
+    loading: discoverEventsLoading,
+    loadingMore: discoverEventsLoadingMore,
+    error: discoverEventsError,
+    hasMore: discoverEventsHasMore,
+    loadMore: loadMoreDiscoverEvents,
+  } = useDiscoverEvents(feedLocationCityId)
 
   useEffect(() => {
     if (!pendingPlanDetail) return
@@ -338,12 +346,17 @@ function MainApp() {
                   <MapView
                     events={discoverEvents}
                     onBackToFeed={() => setDiscoverMapMode(false)}
-                    onMoreDetails={(id) => requestPlanDetail(id, 'upcoming', 'discover')}
+                    onMoreDetails={openEvent}
                   />
                 ) : (
                   <EventCardFeed
                     events={discoverEvents}
-                    onMoreDetails={(id) => requestPlanDetail(id, 'upcoming', 'discover')}
+                    loading={discoverEventsLoading}
+                    loadingMore={discoverEventsLoadingMore}
+                    error={discoverEventsError}
+                    hasMore={discoverEventsHasMore}
+                    onLoadMore={loadMoreDiscoverEvents}
+                    onMoreDetails={openEvent}
                     onMapView={() => setDiscoverMapMode(true)}
                   />
                 )
@@ -457,6 +470,7 @@ function MainApp() {
                 className="sheet-image"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => handleEventImageError(activeEvent, e)}
               />
               <button
                 className="event-sheet-close"
@@ -466,36 +480,20 @@ function MainApp() {
               >
                 <X size={18} strokeWidth={2.25} aria-hidden />
               </button>
-              {activeEvent.bpReward != null || activeEvent.buzzPct != null ? (
-                <div className="feed-wf-badges event-sheet-badges">
-                  {activeEvent.bpReward != null ? (
-                    <span className="feed-wf-badge feed-wf-badge--bp">
-                      +{activeEvent.bpReward} BP
-                    </span>
-                  ) : null}
-                  {activeEvent.buzzPct != null ? (
-                    <span className="feed-wf-badge feed-wf-badge--buzz">
-                      <Zap size={12} strokeWidth={2.5} aria-hidden />
-                      {activeEvent.buzzPct}% BUZZ
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
             <div className="sheet-content">
               <div className="chip-row">
-                <span className="chip live">Live Now</span>
                 <span className="chip">{activeEvent.genre}</span>
-                <span className="chip verified">{activeEvent.verified} Verified</span>
+                {activeEvent.host ? <span className="chip">{activeEvent.host}</span> : null}
               </div>
               <h2>{activeEvent.title}</h2>
               <p>
-                {activeEvent.venue}, {activeEvent.district} · {activeEvent.time}
+                {activeEvent.venue}, {activeEvent.district} · {activeEvent.displayDateTimeLabel ?? activeEvent.time}
               </p>
               <div className="stats-grid">
                 <div>
                   <span>Starts</span>
-                  <strong>{activeEvent.time}</strong>
+                  <strong>{activeEvent.displayDateTimeLabel ?? activeEvent.time}</strong>
                 </div>
                 <div>
                   <span>Entry</span>
@@ -506,19 +504,21 @@ function MainApp() {
                 <button type="button" className="event-sheet-cta-primary">
                   I&apos;m Going
                 </button>
-                <button
-                  type="button"
-                  className="event-sheet-details-btn"
-                  aria-label={`More details for ${activeEvent.title}`}
-                  onClick={() => {
-                    const id = activeEvent.id
-                    closeEvent()
-                    requestPlanDetail(id, 'upcoming', tab)
-                  }}
-                >
-                  <Info size={17} strokeWidth={2} aria-hidden />
-                  <span>More details</span>
-                </button>
+                {getPlanDetailUpcoming(activeEvent.id) ? (
+                  <button
+                    type="button"
+                    className="event-sheet-details-btn"
+                    aria-label={`More details for ${activeEvent.title}`}
+                    onClick={() => {
+                      const id = activeEvent.id
+                      closeEvent()
+                      requestPlanDetail(id, 'upcoming', tab)
+                    }}
+                  >
+                    <Info size={17} strokeWidth={2} aria-hidden />
+                    <span>More details</span>
+                  </button>
+                ) : null}
               </div>
             </div>
           </motion.aside>

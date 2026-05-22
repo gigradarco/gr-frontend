@@ -130,11 +130,12 @@ function formatTicketPrice(row: Record<string, unknown>): string {
 }
 
 /**
- * `/api/events` Turso-backed rows using the current Turso schema.
+ * `/api/admin/events` Turso-backed rows using the current Turso schema.
  */
 export function mapRemoteEventRowToEventItem(row: Record<string, unknown>): EventItem {
   const id = firstText(row.event_id)
   const time = formatDateTimeLabel(row.event_datetime)
+  const eventDate = dateFromUnknown(row.event_datetime)
   const categoryTags = parseCategoryTags(row.category)
   const category = categoryTags[0] ?? ''
   const tasteTags = parseCategoryTags(row.taste_and_recommendations)
@@ -148,6 +149,8 @@ export function mapRemoteEventRowToEventItem(row: Record<string, unknown>): Even
     venue: firstText(row.location),
     district: firstText(row.address),
     time,
+    eventDateTime: eventDate ? eventDate.toISOString() : null,
+    displayDateTimeLabel: time || 'Date TBA',
     genre: category,
     exploreCategoryId: category,
     locationCityId: cityId,

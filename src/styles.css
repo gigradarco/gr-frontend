@@ -14715,7 +14715,7 @@ vite-error-overlay::part(window) {
   text-transform: uppercase;
 }
 
-.mv-pin-buzz {
+.mv-pin-time {
   font-size: 10px;
 }
 
@@ -14864,10 +14864,11 @@ vite-error-overlay::part(window) {
   letter-spacing: 0.12em;
 }
 
-.mv-card-buzz {
+.mv-card-time {
   color: var(--card-accent);
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .mv-card-title {

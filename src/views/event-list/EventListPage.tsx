@@ -318,7 +318,7 @@ function appendEventsQueryParams(
 }
 
 function eventsApiPath(
-  path: '/api/events' | '/api/events/count',
+  path: '/api/admin/events' | '/api/admin/events/count',
   mode: FilterMode,
   filters: DebugFilters,
   advanced: AdvancedCondition[],
@@ -1103,7 +1103,7 @@ export function EventListPage() {
   }, [])
 
   const requestPath = useMemo(
-    () => eventsApiPath('/api/events', appliedFilterMode, appliedFilters, appliedAdvanced),
+    () => eventsApiPath('/api/admin/events', appliedFilterMode, appliedFilters, appliedAdvanced),
     [appliedAdvanced, appliedFilterMode, appliedFilters],
   )
 
@@ -1158,11 +1158,11 @@ export function EventListPage() {
     try {
       const headers = { Authorization: `Bearer ${token}` }
       const [res, countRes] = await Promise.all([
-        fetch(eventsApiPath('/api/events', appliedFilterMode, appliedFilters, appliedAdvanced), {
+        fetch(eventsApiPath('/api/admin/events', appliedFilterMode, appliedFilters, appliedAdvanced), {
           credentials: 'include',
           headers,
         }),
-        fetch(eventsApiPath('/api/events/count', appliedFilterMode, appliedFilters, appliedAdvanced), {
+        fetch(eventsApiPath('/api/admin/events/count', appliedFilterMode, appliedFilters, appliedAdvanced), {
           credentials: 'include',
           headers,
         }),
@@ -1503,7 +1503,7 @@ export function EventListPage() {
             <div>
               <h1 className="event-list-h1">Events</h1>
               <p className="event-list-sub">
-                From <code className="event-list-code">/api/events</code> (Turso)
+                From <code className="event-list-code">/api/admin/events</code> (Turso)
                 {` · ${appliedFilterMode} filters`}
                 {rows
                   ? totalCount != null

@@ -15,6 +15,7 @@ import {
 import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
+import { handleEventImageError } from '../../lib/event-image-fallback'
 import type { EventItem } from '../../types'
 
 // ─── Category → accent (mirrors EventCardFeed) ───────────────────────────────
@@ -61,22 +62,8 @@ const CITY_CENTERS: Record<string, [number, number]> = {
   'new-york':  [40.7128, -74.0060],
 }
 
-// ─── District → centroid fallback (used when event has no lat/lng) ──────────
-const DISTRICT_CENTERS: Record<string, [number, number]> = {
-  // Singapore
-  'Marina Bay':     [1.2834, 103.8607],
-  'Raffles Place':  [1.2840, 103.8513],
-  'Tiong Bahru':    [1.2847, 103.8270],
-  'Clarke Quay':    [1.2906, 103.8467],
-  'Downtown Core':  [1.2790, 103.8536],
-  'Orchard':        [1.3048, 103.8318],
-  'Chinatown':      [1.2823, 103.8442],
-}
-
 function eventLatLng(event: EventItem): [number, number] | null {
   if (event.lat != null && event.lng != null) return [event.lat, event.lng]
-  const d = DISTRICT_CENTERS[event.district]
-  if (d) return d
   return null
 }
 
@@ -131,15 +118,28 @@ function getCityName(cityId: string): string {
   return cityId
 }
 
+function eventDateTimeLabel(event: EventItem): string {
+  return event.displayDateTimeLabel ?? event.time
+}
+
+function compactDateTimeLabel(event: EventItem): string {
+  const label = eventDateTimeLabel(event).trim()
+  if (!label) return 'TBA'
+  if (/^date tba/i.test(label)) return 'TBA'
+  const tonight = label.match(/^tonight\s+(.+)$/i)
+  if (tonight?.[1]) return tonight[1]
+  return label
+}
+
 // ─── Pin (Leaflet DivIcon) ───────────────────────────────────────────────────
 function buildPinIcon(event: EventItem, isSelected: boolean): L.DivIcon {
   const accent = getAccent(event)
-  const buzz = event.buzzPct ?? event.verified
+  const markerLabel = compactDateTimeLabel(event)
   const html = `
     <div class="mv-pin-stack">
       <div class="mv-pin-bubble${isSelected ? ' mv-pin-bubble--active' : ''}" style="--pin-accent:${accent};">
         ${isSelected ? `<span class="mv-pin-title">${escapeHtml(event.title)}</span>` : ''}
-        <span class="mv-pin-buzz">⚡${buzz}%</span>
+        <span class="mv-pin-time">${escapeHtml(markerLabel)}</span>
       </div>
       <div class="mv-pin-tail" style="--pin-accent:${accent};"></div>
     </div>
@@ -363,7 +363,7 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
                 ? <Pause size={12} strokeWidth={2.5} aria-hidden />
                 : <Play size={12} strokeWidth={2.5} aria-hidden />}
             </button>
-            <span className="mv-header-count">{cityEvents.length} tonight</span>
+            <span className="mv-header-count">{cityEvents.length} events</span>
           </div>
         </div>
       </div>
@@ -418,7 +418,7 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
                 const isGoing = going.includes(event.id)
                 const isSaved = saved.includes(event.id)
                 const accent = getAccent(event)
-                const buzz = event.buzzPct ?? event.verified
+                const dateTime = eventDateTimeLabel(event)
                 return (
                   <div
                     key={event.id}
@@ -431,15 +431,16 @@ export function MapView({ events, onBackToFeed, onMoreDetails }: MapViewProps) {
                       alt={event.title}
                       className="mv-card-img"
                       loading="lazy"
+                      onError={(e) => handleEventImageError(event, e)}
                     />
                     <div className="mv-card-body">
                       <div className="mv-card-meta-row">
                         <span className="mv-card-genre">{event.genre.toUpperCase()}</span>
-                        <span className="mv-card-buzz">⚡{buzz}%</span>
+                        <span className="mv-card-time">{compactDateTimeLabel(event)}</span>
                       </div>
                       <p className="mv-card-title">{event.title}</p>
                       <p className="mv-card-sub">
-                        {event.district} · {event.time}
+                        {event.district} · {dateTime}
                       </p>
                       <p className="mv-card-price">{event.ticketPrice}</p>
                       <div className="mv-card-actions">

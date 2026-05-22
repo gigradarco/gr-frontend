@@ -15,7 +15,12 @@ export type EventItem = {
   title: string
   venue: string
   district: string
+  /** Legacy display label used by older app surfaces. Prefer `displayDateTimeLabel` for Discover. */
   time: string
+  /** Machine-readable event datetime when available. */
+  eventDateTime?: string | null
+  /** User-facing date/time label such as `Tonight 22:30` or `Date TBA`. */
+  displayDateTimeLabel?: string
   genre: string
   /** Plan explore category id: tech, food, ai, arts, climate, fitness, wellness, crypto */
   exploreCategoryId: string

@@ -5,6 +5,7 @@ import { CheckCircle, Funnel, Heart, Info, Map, Share2, X } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { useAppState } from '../../store/appStore'
+import { handleEventImageError } from '../../lib/event-image-fallback'
 import type { EventItem } from '../../types'
 
 // ─── Category → visual accent mapping (keyed by exploreCategoryId) ───────────
@@ -75,7 +76,7 @@ const DEFAULT_FILTERS: EventFeedFilters = {
 }
 
 function parseEventTimeMinutes(time: string): number | null {
-  const m = time.trim().match(/^(\d{1,2}):(\d{2})/)
+  const m = time.trim().match(/(\d{1,2}):(\d{2})/)
   if (!m) return null
   return Number(m[1]) * 60 + Number(m[2])
 }
@@ -88,13 +89,56 @@ function parsePriceAmount(ticketPrice: string): number | null {
   return Number.parseFloat(m[1])
 }
 
+function eventDate(event: EventItem): Date | null {
+  if (event.eventDateTime) {
+    const date = new Date(event.eventDateTime)
+    return Number.isFinite(date.getTime()) ? date : null
+  }
+  const mins = parseEventTimeMinutes(event.displayDateTimeLabel ?? event.time)
+  if (mins == null) return null
+  const fallback = new Date()
+  fallback.setHours(Math.floor(mins / 60), mins % 60, 0, 0)
+  return fallback
+}
+
+function startOfDay(date: Date): Date {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
 export function eventMatchesFilters(event: EventItem, f: EventFeedFilters): boolean {
   if (f.categories !== 'All' && !f.categories.includes(event.exploreCategoryId)) return false
 
-  if (f.area !== 'All' && event.district !== f.area) return false
+  if (f.area !== 'All') {
+    const area = f.area.toLowerCase()
+    const locationText = `${event.venue} ${event.district}`.toLowerCase()
+    if (!locationText.includes(area)) return false
+  }
+
+  if (f.date !== 'All') {
+    const date = eventDate(event)
+    if (!date) return false
+    const today = startOfDay(new Date())
+    const eventDay = startOfDay(date)
+    const diffDays = Math.round((eventDay.getTime() - today.getTime()) / 86_400_000)
+    if (f.date === 'Tonight' && diffDays !== 0) return false
+    if (f.date === 'Tomorrow' && diffDays !== 1) return false
+    if (f.date === 'This Week' && (diffDays < 0 || diffDays >= 7)) return false
+    if (f.date === 'This Month') {
+      if (date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear()) return false
+    }
+    if (f.date === 'Next 90 Days' && (diffDays < 0 || eventDay >= addDays(today, 90))) return false
+  }
 
   if (f.time !== 'All') {
-    const mins = parseEventTimeMinutes(event.time)
+    const mins = parseEventTimeMinutes(event.displayDateTimeLabel ?? event.time)
     if (mins != null) {
       const t21 = 21 * 60
       const t23 = 23 * 60
@@ -147,11 +191,15 @@ function getBg(genre: string) {
 }
 
 function getTag(event: EventItem): string {
-  const buzz = event.buzzPct ?? event.verified
-  if (buzz >= 97) return 'SELLING FAST'
-  if (buzz >= 94) return 'HIGH BUZZ'
-  if (buzz >= 90) return 'LIMITED SEATS'
-  return 'TONIGHT'
+  const label = event.displayDateTimeLabel ?? event.time
+  if (/^date tba/i.test(label)) return 'DATE TBA'
+  if (/^tonight/i.test(label)) return 'TONIGHT'
+  if (/^tmr/i.test(label)) return 'TOMORROW'
+  return label.toUpperCase()
+}
+
+function eventDateTimeLabel(event: EventItem): string {
+  return event.displayDateTimeLabel ?? event.time
 }
 
 // ─── Single card ─────────────────────────────────────────────────────────────
@@ -168,7 +216,6 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
   const [loaded, setLoaded] = useState(false)
   const accent = getAccent(event.genre)
   const bgColor = getBg(event.genre)
-  const buzz = event.buzzPct ?? event.verified
   const tag = getTag(event)
 
   return (
@@ -178,6 +225,7 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
         alt={event.title}
         className={`ecf-bg-img${loaded ? ' ecf-bg-img--loaded' : ''}`}
         onLoad={() => setLoaded(true)}
+        onError={(e) => handleEventImageError(event, e)}
         loading="lazy"
         decoding="async"
       />
@@ -200,19 +248,8 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
 
       {/* Bottom content block */}
       <div className="ecf-body">
-        {/* Spacer pushes content down, buzz bar sits at top of body */}
+        {/* Spacer pushes content down to the bottom action zone. */}
         <div className="ecf-body-spacer" />
-        <div className="ecf-buzz-row">
-          <div className="ecf-buzz-track">
-            <div
-              className="ecf-buzz-fill"
-              style={{ width: `${buzz}%`, background: accent }}
-            />
-          </div>
-          <span className="ecf-buzz-pct" style={{ color: accent }}>
-            {buzz}% BUZZ
-          </span>
-        </div>
         <div className="ecf-headline">
           <p className="ecf-genre" style={{ color: accent }}>
             {event.genre.toUpperCase()}
@@ -237,11 +274,11 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
         <div
           className="ecf-meta-row"
           role="group"
-          aria-label={`${event.district}, ${event.time}, ${event.ticketPrice}`}
+          aria-label={`${event.district}, ${eventDateTimeLabel(event)}, ${event.ticketPrice}`}
         >
           {[
             { label: 'WHERE', value: event.district },
-            { label: 'WHEN',  value: event.time },
+            { label: 'WHEN',  value: eventDateTimeLabel(event) },
             { label: 'PRICE', value: event.ticketPrice },
           ].map((m) => (
             <div key={m.label} className="ecf-meta-col">
@@ -530,11 +567,25 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
 // ─── Main EventCardFeed ───────────────────────────────────────────────────────
 type EventCardFeedProps = {
   events: EventItem[]
+  loading?: boolean
+  loadingMore?: boolean
+  error?: string | null
+  hasMore?: boolean
+  onLoadMore?: () => void
   onMoreDetails: (eventId: string) => void
   onMapView?: () => void
 }
 
-export function EventCardFeed({ events, onMoreDetails, onMapView }: EventCardFeedProps) {
+export function EventCardFeed({
+  events,
+  loading = false,
+  loadingMore = false,
+  error = null,
+  hasMore = false,
+  onLoadMore,
+  onMoreDetails,
+  onMapView,
+}: EventCardFeedProps) {
   const locationCityId = useAppState((s) => s.feedLocationCityId)
 
   const initialCategories = useMemo(() => {
@@ -598,7 +649,11 @@ export function EventCardFeed({ events, onMoreDetails, onMapView }: EventCardFee
   onScrollRef.current = () => {
     const el = scrollElRef.current
     if (!el) return
-    setCardIdx(Math.round(el.scrollTop / el.clientHeight))
+    const idx = Math.round(el.scrollTop / el.clientHeight)
+    setCardIdx(idx)
+    if (hasMore && !loadingMore && idx >= filtered.length - 5) {
+      onLoadMore?.()
+    }
   }
 
   const onScrollEndRef = useRef<(() => void) | undefined>(undefined)
@@ -724,7 +779,25 @@ export function EventCardFeed({ events, onMoreDetails, onMapView }: EventCardFee
         role="feed"
         aria-label="Event cards"
       >
-        {filtered.length === 0 ? (
+        {loading && filtered.length === 0 ? (
+          <div className="ecf-empty">
+            <div className="ecf-empty-line" />
+            <p className="ecf-empty-text">
+              Loading events
+              <br />
+              <span>Pulling the latest Discover feed</span>
+            </p>
+          </div>
+        ) : error && filtered.length === 0 ? (
+          <div className="ecf-empty">
+            <div className="ecf-empty-line" />
+            <p className="ecf-empty-text">
+              Events failed to load
+              <br />
+              <span>{error}</span>
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="ecf-empty">
             <div className="ecf-empty-line" />
             {activeCount > 0 ? (
@@ -767,9 +840,9 @@ export function EventCardFeed({ events, onMoreDetails, onMapView }: EventCardFee
             <div className="ecf-end-card" role="status">
               <div className="ecf-end-line" />
               <p className="ecf-end-text">
-                That&apos;s all for tonight.
+                {loadingMore ? 'Loading more events.' : hasMore ? 'Scroll for more events.' : "That's all for now."}
                 <br />
-                <span>More drops at midnight.</span>
+                <span>{loadingMore ? 'Fetching the next page.' : hasMore ? 'More nights are queued up.' : 'Check back soon.'}</span>
               </p>
             </div>
           </>

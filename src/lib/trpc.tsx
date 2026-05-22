@@ -4,11 +4,9 @@ import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
 import type { AppRouter } from '../trpc/app-router'
 import { apiBase } from './api-base'
-import { postAnonymousSession } from './auth-api'
 import { consumeOAuthHash, getAccessToken } from './session'
 
 export const api = createTRPCReact<AppRouter>()
-let anonymousBootstrapAttempted = false
 
 export function TrpcProvider({
   children,
@@ -42,19 +40,10 @@ export function TrpcProvider({
     ;(async () => {
       try {
         // TrpcProvider mounts before AuthSync. Consume OAuth hash here so callback tokens
-        // are available before deciding to create an anonymous session.
+        // are available before tRPC starts sending Authorization headers.
         consumeOAuthHash()
-        if (!getAccessToken()) {
-          if (!anonymousBootstrapAttempted) {
-            anonymousBootstrapAttempted = true
-            await postAnonymousSession()
-          }
-        }
       } catch (e) {
-        console.warn(
-          '[gigradar] Anonymous session via backend failed — is gr-backend running? Discover may not work.',
-          e,
-        )
+        console.warn('[gigradar] OAuth callback token parsing failed.', e)
       } finally {
         if (!cancelled) {
           window.clearTimeout(forceReady)

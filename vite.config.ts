@@ -27,7 +27,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/trpc': toBackend,
-      '/api/events': toBackend,
+      '/api/admin': toBackend,
+      '/api/discover': toBackend,
       '/api/source-preview': toBackend,
       '/api/auth': toBackend,
       '/api/profile/taste': toBackend,
