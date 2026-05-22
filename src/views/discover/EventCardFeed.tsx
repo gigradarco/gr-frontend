@@ -202,6 +202,15 @@ function eventDateTimeLabel(event: EventItem): string {
   return event.displayDateTimeLabel ?? event.time
 }
 
+function titleDensityClass(title: string): string {
+  const normalized = title.trim().replace(/\s+/g, ' ')
+  const wordCount = normalized.split(' ').filter(Boolean).length
+  if (normalized.length >= 92 || wordCount >= 12) return ' ecf-title--extreme'
+  if (normalized.length >= 68 || wordCount >= 9) return ' ecf-title--very-long'
+  if (normalized.length >= 46 || wordCount >= 6) return ' ecf-title--long'
+  return ''
+}
+
 // ─── Single card ─────────────────────────────────────────────────────────────
 type EventCardProps = {
   event: EventItem
@@ -217,6 +226,7 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
   const accent = getAccent(event.genre)
   const bgColor = getBg(event.genre)
   const tag = getTag(event)
+  const titleClassName = `ecf-title${titleDensityClass(event.title)}`
 
   return (
     <div className="ecf-slide" style={{ background: bgColor }}>
@@ -254,7 +264,9 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
           <p className="ecf-genre" style={{ color: accent }}>
             {event.genre.toUpperCase()}
           </p>
-          <h2 className="ecf-title">{event.title.toUpperCase()}</h2>
+          <h2 className={titleClassName} title={event.title}>
+            {event.title.toUpperCase()}
+          </h2>
         </div>
 
         <div className="ecf-lede">

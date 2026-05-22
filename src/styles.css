@@ -13805,10 +13805,34 @@ button.taste-tag:focus-visible {
 .ecf-title {
   color: #fff;
   margin: 0;
-  font-size: clamp(30px, 11.5vw, 46px);
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 40px;
   line-height: 1.02;
   font-weight: 900;
-  letter-spacing: -1.2px;
+  letter-spacing: 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.ecf-title--long {
+  font-size: 32px;
+  line-height: 1.04;
+  -webkit-line-clamp: 4;
+}
+
+.ecf-title--very-long {
+  font-size: 28px;
+  line-height: 1.05;
+  -webkit-line-clamp: 3;
+}
+
+.ecf-title--extreme {
+  font-size: 25px;
+  line-height: 1.06;
+  -webkit-line-clamp: 3;
 }
 
 /* Two intentional lines: venue, then tags + hook (no awkward mid-sentence wrap) */
@@ -13821,21 +13845,29 @@ button.taste-tag:focus-visible {
 
 .ecf-lede-primary {
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 15px;
   line-height: 1.35;
   font-weight: 600;
   font-style: italic;
   color: rgba(255, 255, 255, 0.82);
   text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ecf-lede-secondary {
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 13px;
   line-height: 1.45;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.48);
   text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ecf-lede-hook {
@@ -13868,10 +13900,15 @@ button.taste-tag:focus-visible {
 }
 
 .ecf-meta-value {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: #d0d0d0;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .theme-light .ecf-meta-label {
@@ -14055,9 +14092,25 @@ button.taste-tag:focus-visible {
   }
 
   .ecf-title {
-    font-size: clamp(22px, 9vw, 32px);
-    letter-spacing: -0.6px;
+    font-size: 31px;
+    letter-spacing: 0;
     line-height: 1.05;
+    -webkit-line-clamp: 4;
+  }
+
+  .ecf-title--long {
+    font-size: 26px;
+    -webkit-line-clamp: 3;
+  }
+
+  .ecf-title--very-long {
+    font-size: 22px;
+    -webkit-line-clamp: 3;
+  }
+
+  .ecf-title--extreme {
+    font-size: 20px;
+    -webkit-line-clamp: 3;
   }
 
   .ecf-lede {
@@ -14688,6 +14741,7 @@ vite-error-overlay::part(window) {
 .mv-pin-bubble--active {
   border-radius: 8px;
   padding: 5px 11px;
+  max-width: min(320px, 72vw);
   background: var(--pin-accent);
   color: #fff;
   animation: mv-pin-pulse 1.4s ease-in-out infinite;
@@ -14709,13 +14763,19 @@ vite-error-overlay::part(window) {
 }
 
 .mv-pin-title {
+  min-width: 0;
+  max-width: min(240px, 52vw);
+  overflow: hidden;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mv-pin-time {
+  flex: 0 0 auto;
   font-size: 10px;
 }
 
@@ -14826,7 +14886,9 @@ vite-error-overlay::part(window) {
 .mv-card--active {
   border-color: var(--card-accent);
   transform: translateY(-2px);
-  animation: mv-border-pulse 1.4s ease-in-out infinite;
+  box-shadow:
+    0 0 18px 2px color-mix(in oklab, var(--card-accent) 42%, transparent),
+    0 12px 32px color-mix(in oklab, var(--card-accent) 18%, transparent);
 }
 
 .mv-card-img {

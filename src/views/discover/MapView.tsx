@@ -138,7 +138,6 @@ function buildPinIcon(event: EventItem, isSelected: boolean): L.DivIcon {
   const html = `
     <div class="mv-pin-stack">
       <div class="mv-pin-bubble${isSelected ? ' mv-pin-bubble--active' : ''}" style="--pin-accent:${accent};">
-        ${isSelected ? `<span class="mv-pin-title">${escapeHtml(event.title)}</span>` : ''}
         <span class="mv-pin-time">${escapeHtml(markerLabel)}</span>
       </div>
       <div class="mv-pin-tail" style="--pin-accent:${accent};"></div>
