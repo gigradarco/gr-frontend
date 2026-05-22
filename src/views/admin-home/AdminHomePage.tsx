@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Database, ExternalLink, ListChecks, Shield } from 'lucide-react'
+import { telegramBotLink } from '../../data/demoData'
 import './admin-home.css'
 
 const adminTools = [
@@ -15,6 +16,10 @@ const adminTools = [
 const themePages = [
   { label: 'Orange', path: '/design-theme/orange' },
   { label: 'Purple', path: '/design-theme/purple' },
+]
+
+const chatPages = [
+  { label: 'Telegram', path: telegramBotLink, external: true as const },
 ]
 
 const adminApiRoutes = [
@@ -54,6 +59,9 @@ export function AdminHomePage() {
               Internal tools and admin-only event routes.
             </p>
           </div>
+          <Link className="admin-home-discover-link" to="/discover">
+            Back to Discover
+          </Link>
         </div>
       </section>
 
@@ -117,6 +125,28 @@ export function AdminHomePage() {
                       <code>{theme.path}</code>
                       <ExternalLink size={14} aria-hidden />
                     </Link>
+                  ))}
+                </div>
+              </section>
+              <section className="admin-home-tool admin-home-tool--group" aria-labelledby="chat-pages-title">
+                <div className="admin-home-tool-top">
+                  <span className="admin-home-tool-status">Chat</span>
+                </div>
+                <h2 id="chat-pages-title">Chat</h2>
+                <p>Entry points for chat channels and assistant surfaces.</p>
+                <div className="admin-home-subtool-list">
+                  {chatPages.map((chat) => (
+                    <a
+                      key={chat.path}
+                      className="admin-home-subtool"
+                      href={chat.path}
+                      target={chat.external ? '_blank' : undefined}
+                      rel={chat.external ? 'noreferrer' : undefined}
+                    >
+                      <span>{chat.label}</span>
+                      <code>{chat.path}</code>
+                      <ExternalLink size={14} aria-hidden />
+                    </a>
                   ))}
                 </div>
               </section>

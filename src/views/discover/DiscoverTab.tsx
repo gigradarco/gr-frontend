@@ -10,7 +10,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Maximize2,
@@ -27,7 +26,6 @@ import {
   discoverSuggestedPrompts,
   discoverTargetPrompt,
   events as demoEventsFallback,
-  telegramBotLink,
 } from '../../data/demoData'
 import {
   type DiscoverAgentResult,
@@ -103,7 +101,6 @@ export function DiscoverTab({
   const [editingTitleDraft, setEditingTitleDraft] = useState('')
   const editingInputRef = useRef<HTMLInputElement | null>(null)
   const [pendingDeleteConvId, setPendingDeleteConvId] = useState<string | null>(null)
-  const [newChatMenuOpen, setNewChatMenuOpen] = useState(false)
   const [discoverMoreOpen, setDiscoverMoreOpen] = useState(false)
   /** Thread-mode composer: user can expand for more visible typing area */
   const [composerExpanded, setComposerExpanded] = useState(false)
@@ -117,7 +114,6 @@ export function DiscoverTab({
     canLeft: false,
     canRight: false,
   })
-  const newChatMenuRef = useRef<HTMLDivElement | null>(null)
   const discoverMoreRef = useRef<HTMLDivElement | null>(null)
   const agentEvent = useMemo(
     () => (agentEventId ? events.find((item) => item.id === agentEventId) ?? null : null),
@@ -156,7 +152,6 @@ export function DiscoverTab({
     setUsedDemoFallback(false)
     setCurrentConversationId(null)
     setIsDrawerOpen(false)
-    setNewChatMenuOpen(false)
     setDiscoverMoreOpen(false)
     setComposerExpanded(false)
   }
@@ -454,7 +449,7 @@ export function DiscoverTab({
   }, [hasThread, updateChipScrollHints])
 
   useEffect(() => {
-    if (!newChatMenuOpen && !discoverMoreOpen) {
+    if (!discoverMoreOpen) {
       return
     }
 
@@ -462,9 +457,6 @@ export function DiscoverTab({
       const t = e.target
       if (!(t instanceof Node)) {
         return
-      }
-      if (newChatMenuOpen && newChatMenuRef.current && !newChatMenuRef.current.contains(t)) {
-        setNewChatMenuOpen(false)
       }
       if (
         discoverMoreOpen &&
@@ -485,7 +477,6 @@ export function DiscoverTab({
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setNewChatMenuOpen(false)
         setDiscoverMoreOpen(false)
       }
     }
@@ -498,7 +489,7 @@ export function DiscoverTab({
       document.removeEventListener('touchstart', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [newChatMenuOpen, discoverMoreOpen])
+  }, [discoverMoreOpen])
 
   return (
     <motion.div
@@ -517,7 +508,6 @@ export function DiscoverTab({
             id="discover-more-trigger"
             aria-label={discoverMoreOpen ? 'Close more options' : 'More options'}
             onClick={() => {
-              setNewChatMenuOpen(false)
               setDiscoverMoreOpen((open) => !open)
             }}
           >
@@ -545,7 +535,6 @@ export function DiscoverTab({
                 type="button"
                 className="icon-btn discover-more-strip-btn"
                 onClick={() => {
-                  setNewChatMenuOpen(false)
                   toggleDiscoverExpanded()
                 }}
                 aria-label={isDiscoverExpanded ? 'Show header and footer' : 'Hide header and footer'}
@@ -556,7 +545,6 @@ export function DiscoverTab({
                 type="button"
                 className="icon-btn discover-more-strip-btn"
                 onClick={() => {
-                  setNewChatMenuOpen(false)
                   setIsDrawerOpen(true)
                 }}
                 aria-label="Open chat history"
@@ -580,53 +568,14 @@ export function DiscoverTab({
               {usedDemoFallback ? 'Offline' : 'Live'}
             </div>
           ) : null}
-          <div className="discover-new-chat-wrap" ref={newChatMenuRef}>
-            <div className="discover-chat-menu-split">
-              <button
-                className="discover-chat-menu-primary"
-                type="button"
-                aria-label="Start new chat"
-                onClick={() => handleNewChat()}
-              >
-                <span className="discover-new-chat-label">New chat</span>
-              </button>
-              <span className="discover-chat-menu-divider" aria-hidden="true" />
-              <button
-                className="discover-chat-menu-chevron-btn"
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={newChatMenuOpen}
-                aria-controls="discover-chat-menu"
-                id="discover-chat-menu-trigger"
-                aria-label="More new chat options"
-                onClick={() => setNewChatMenuOpen((open) => !open)}
-              >
-                <ChevronDown size={16} strokeWidth={2.25} className="discover-header-chevron" aria-hidden />
-              </button>
-            </div>
-            {newChatMenuOpen ? (
-              <div
-                id="discover-chat-menu"
-                className="discover-new-chat-menu"
-                role="menu"
-                aria-labelledby="discover-chat-menu-trigger"
-              >
-                <a
-                  role="menuitem"
-                  className="discover-new-chat-menu-item discover-new-chat-menu-item--link"
-                  href={telegramBotLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setNewChatMenuOpen(false)}
-                >
-                  <span className="discover-chat-menu-item-row">
-                    <span>Start in Telegram</span>
-                    <ChevronRight size={16} strokeWidth={2.25} className="discover-header-chevron" aria-hidden />
-                  </span>
-                </a>
-              </div>
-            ) : null}
-          </div>
+          <button
+            className="discover-new-chat-button"
+            type="button"
+            aria-label="Start new chat"
+            onClick={() => handleNewChat()}
+          >
+            <span className="discover-new-chat-label">New chat</span>
+          </button>
         </div>
       </div>
 

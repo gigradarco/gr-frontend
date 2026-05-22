@@ -11665,6 +11665,7 @@ button.taste-tag:focus-visible {
 
 .discover-more-btn {
   flex-shrink: 0;
+  border-radius: 10px;
 }
 
 .discover-more-panel-clip {
@@ -11684,6 +11685,7 @@ button.taste-tag:focus-visible {
 
 .discover-more-strip-btn {
   flex-shrink: 0;
+  border-radius: 10px;
 }
 
 .discover-secondary-header-actions {
@@ -11731,31 +11733,15 @@ button.taste-tag:focus-visible {
   flex-shrink: 0;
 }
 
-.discover-chat-menu-split {
-  display: inline-flex;
-  align-items: stretch;
-  flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid var(--stroke);
-  background: color-mix(in oklab, var(--card) 60%, transparent);
-  overflow: hidden;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
-
-.discover-chat-menu-split:hover {
-  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
-}
-
-.discover-chat-menu-primary,
-.discover-chat-menu-chevron-btn {
+.discover-new-chat-button {
   margin: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card) 60%, transparent);
   box-shadow: none;
   height: 36px;
   min-height: 36px;
+  padding: 0 14px;
   box-sizing: border-box;
   color: var(--text);
   font-size: 0.85rem;
@@ -11767,100 +11753,16 @@ button.taste-tag:focus-visible {
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.2s ease;
 }
 
-.discover-chat-menu-primary {
-  padding: 0 12px 0 14px;
-}
-
-.discover-chat-menu-primary:hover {
+.discover-new-chat-button:hover {
   background: var(--card);
-}
-
-.discover-chat-menu-divider {
-  width: 1px;
-  align-self: stretch;
-  flex-shrink: 0;
-  margin: 6px 0;
-  background: color-mix(in oklab, var(--stroke) 85%, transparent);
-}
-
-.discover-chat-menu-chevron-btn {
-  padding: 0 10px;
-  min-width: 36px;
-}
-
-.discover-chat-menu-chevron-btn:hover {
-  background: var(--card);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
 }
 
 .discover-new-chat-label {
   white-space: nowrap;
-}
-
-.discover-header-chevron {
-  flex-shrink: 0;
-  opacity: 0.85;
-  transition: transform 0.15s ease;
-}
-
-.discover-chat-menu-chevron-btn[aria-expanded='true'] .discover-header-chevron {
-  transform: rotate(180deg);
-}
-
-.discover-new-chat-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 200;
-  margin: 0;
-  padding: 6px;
-  min-width: 208px;
-  border-radius: 14px;
-  border: 1px solid var(--stroke);
-  background: color-mix(in oklab, var(--card) 96%, var(--bg));
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-}
-
-.discover-new-chat-menu-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.88rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.discover-new-chat-menu-item:hover {
-  background: color-mix(in oklab, var(--primary) 14%, transparent);
-}
-
-.discover-new-chat-menu-item:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--primary) 50%, transparent);
-  outline-offset: 0;
-}
-
-.discover-new-chat-menu-item--link {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  box-sizing: border-box;
-}
-
-.discover-chat-menu-item-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
 }
 
 /* ─── Discover drawer ─── */
