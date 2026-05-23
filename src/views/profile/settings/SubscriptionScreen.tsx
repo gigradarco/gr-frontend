@@ -7,6 +7,7 @@ import { api } from '../../../lib/trpc'
 
 const PLAN_COMPARE_ROWS: { label: string; basic: boolean; pro: boolean }[] = [
   { label: 'Discover & join public gigs near you', basic: true, pro: true },
+  { label: 'Filter range window (6 months on Basic, 1 year on Pro)', basic: true, pro: true },
   { label: 'Smarter recommendations based on your taste', basic: false, pro: true },
   { label: 'Early access to hot gigs & drops near you', basic: false, pro: true },
   { label: 'Ad-free home and discover', basic: false, pro: true },

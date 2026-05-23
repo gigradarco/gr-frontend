@@ -41,6 +41,8 @@ export type EventItem = {
   lat?: number
   /** Venue longitude (optional — falls back to district centroid). */
   lng?: number
+  /** Source event page URL (when available). */
+  sourceUrl?: string | null
 }
 
 /** Rich mock for the Plan tab event-detail layout (wireframe). */
@@ -64,6 +66,8 @@ export type PlanPastEvent = {
 export type PlanPageEvent = {
   /** Matches `EventItem.id` for upcoming (global sheet). Past rows use `past-*` ids. */
   eventId: string
+  /** Source event page URL (when available). */
+  sourceUrl?: string | null
   heroImage: string
   displayTitle: string
   artistLine: string

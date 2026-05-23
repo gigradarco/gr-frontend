@@ -9,6 +9,7 @@ import {
   Share2,
   Ticket,
 } from 'lucide-react'
+import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import type { PlanPageEvent } from '../../types'
 
 type PlanEventDetailProps = {
@@ -84,6 +85,37 @@ export function PlanEventDetail({
   const circumference = 2 * Math.PI * radius
   const scoreFraction = hasVibeScore ? data.aiVibeScore! / 10 : 0
   const dashOffset = circumference * (1 - (vibeAnimated ? scoreFraction : 0))
+  const openEventSourceInNewTab = async () => {
+    if (!isFavorited) {
+      onToggleFavorite()
+    }
+
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
+    const openTarget = (target: string) => {
+      if (popup) popup.location.replace(target)
+      else window.open(target, '_blank', 'noopener,noreferrer')
+    }
+
+    const directUrl = data.sourceUrl?.trim()
+    if (directUrl) {
+      openTarget(directUrl)
+      return
+    }
+
+    try {
+      const detail = await fetchDiscoverEventById(data.eventId)
+      const resolvedUrl = detail.sourceUrl?.trim()
+      if (resolvedUrl) {
+        openTarget(resolvedUrl)
+        return
+      }
+    } catch {
+      // Fall back below.
+    }
+
+    if (popup) popup.close()
+    onOpenEvent(data.eventId)
+  }
 
   return (
     <div className="screen-content plan-page plan-event-detail">
@@ -185,6 +217,39 @@ export function PlanEventDetail({
             ) : null}
           </div>
 
+          <div className="plan-cta-rail plan-cta-rail--inline">
+            {variant === 'upcoming' ? (
+              <button
+                type="button"
+                className="plan-cta-primary"
+                onClick={openEventSourceInNewTab}
+              >
+                I&apos;M GOING
+              </button>
+            ) : (
+              <button type="button" className="plan-cta-primary plan-cta-primary--disabled" disabled>
+                EVENT ENDED
+              </button>
+            )}
+            <button
+              type="button"
+              className="plan-cta-review"
+              disabled={variant === 'upcoming'}
+              aria-label={
+                variant === 'upcoming'
+                  ? 'Event review unlocks after the event'
+                  : 'Write an event review'
+              }
+              onClick={() => onOpenReview?.()}
+            >
+              EVENT REVIEW
+            </button>
+            <button type="button" className="plan-cta-secondary">
+              <Share2 size={18} strokeWidth={2} aria-hidden />
+              SHARE WITH FRIENDS
+            </button>
+          </div>
+
           {/* Experience quote */}
           <section className="plan-experience-block">
             <h2 className="plan-section-kicker">The Experience</h2>
@@ -273,39 +338,6 @@ export function PlanEventDetail({
           ) : null}
 
         </div>
-      </div>
-
-      <div className="plan-cta-rail">
-        {variant === 'upcoming' ? (
-          <button
-            type="button"
-            className="plan-cta-primary"
-            onClick={() => onOpenEvent(data.eventId)}
-          >
-            I&apos;M GOING
-          </button>
-        ) : (
-          <button type="button" className="plan-cta-primary plan-cta-primary--disabled" disabled>
-            EVENT ENDED
-          </button>
-        )}
-        <button
-          type="button"
-          className="plan-cta-review"
-          disabled={variant === 'upcoming'}
-          aria-label={
-            variant === 'upcoming'
-              ? 'Event review unlocks after the event'
-              : 'Write an event review'
-          }
-          onClick={() => onOpenReview?.()}
-        >
-          EVENT REVIEW
-        </button>
-        <button type="button" className="plan-cta-secondary">
-          <Share2 size={18} strokeWidth={2} aria-hidden />
-          SHARE WITH FRIENDS
-        </button>
       </div>
     </div>
   )

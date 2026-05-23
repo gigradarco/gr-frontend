@@ -40,6 +40,8 @@ type ImageInfoModalState = {
 type DebugFilters = {
   cityId: string
   categoryId: string
+  startDate: string
+  endDate: string
   limit: string
   search: string
   minPrice: string
@@ -117,6 +119,8 @@ const MAX_LIMIT = 1000
 const DEFAULT_DEBUG_FILTERS: DebugFilters = {
   cityId: '',
   categoryId: '',
+  startDate: '',
+  endDate: '',
   limit: String(DEFAULT_LIMIT),
   search: '',
   minPrice: '',
@@ -277,6 +281,37 @@ function normalizeLimitInput(value: string): string {
   return String(Math.min(Math.max(Math.trunc(n), MIN_LIMIT), MAX_LIMIT))
 }
 
+function toIsoLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function datePresetRange(preset: 'today' | 'week' | 'month'): { startDate: string; endDate: string } {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  if (preset === 'today') {
+    const d = toIsoLocalDate(today)
+    return { startDate: d, endDate: d }
+  }
+
+  if (preset === 'week') {
+    const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ... 6=Sat
+    const offsetToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const start = new Date(today)
+    start.setDate(today.getDate() + offsetToMonday)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    return { startDate: toIsoLocalDate(start), endDate: toIsoLocalDate(end) }
+  }
+
+  const start = new Date(today.getFullYear(), today.getMonth(), 1)
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  return { startDate: toIsoLocalDate(start), endDate: toIsoLocalDate(end) }
+}
+
 function normalizeFilters(filters: DebugFilters): DebugFilters {
   return {
     ...filters,
@@ -284,6 +319,8 @@ function normalizeFilters(filters: DebugFilters): DebugFilters {
     categoryId: filters.categoryId.trim(),
     limit: normalizeLimitInput(filters.limit),
     search: filters.search.trim(),
+    startDate: filters.startDate.trim(),
+    endDate: filters.endDate.trim(),
     minPrice: filters.minPrice.trim(),
     maxPrice: filters.maxPrice.trim(),
   }
@@ -304,6 +341,8 @@ function appendEventsQueryParams(
       params.set('categoryId', resolveCategoryQuery(filters.categoryId))
     }
     if (filters.search.trim()) params.set('search', filters.search.trim())
+    if (filters.startDate.trim()) params.set('startDate', filters.startDate.trim())
+    if (filters.endDate.trim()) params.set('endDate', filters.endDate.trim())
     if (filters.minPrice.trim()) params.set('minPrice', filters.minPrice.trim())
     if (filters.maxPrice.trim()) params.set('maxPrice', filters.maxPrice.trim())
     return
@@ -1387,6 +1426,8 @@ export function EventListPage() {
       if (appliedFilters.cityId) chips.push({ id: 'basic:cityId', label: 'City', value: appliedFilters.cityId })
       if (appliedFilters.categoryId) chips.push({ id: 'basic:categoryId', label: 'Category', value: appliedFilters.categoryId })
       if (appliedFilters.search) chips.push({ id: 'basic:search', label: 'Search', value: appliedFilters.search })
+      if (appliedFilters.startDate) chips.push({ id: 'basic:startDate', label: 'From', value: appliedFilters.startDate })
+      if (appliedFilters.endDate) chips.push({ id: 'basic:endDate', label: 'To', value: appliedFilters.endDate })
       if (appliedFilters.minPrice) chips.push({ id: 'basic:minPrice', label: 'Min price', value: appliedFilters.minPrice })
       if (appliedFilters.maxPrice) chips.push({ id: 'basic:maxPrice', label: 'Max price', value: appliedFilters.maxPrice })
     } else {
@@ -1796,6 +1837,57 @@ export function EventListPage() {
                 onChange={(e) => setDraftFilters((f) => ({ ...f, search: e.target.value }))}
               />
             </label>
+            <label className="event-list-filter-label">
+              <span>start date</span>
+              <input
+                className="event-list-filter-input"
+                type="date"
+                value={draftFilters.startDate}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, startDate: e.target.value }))}
+              />
+            </label>
+            <label className="event-list-filter-label">
+              <span>end date</span>
+              <input
+                className="event-list-filter-input"
+                type="date"
+                value={draftFilters.endDate}
+                onChange={(e) => setDraftFilters((f) => ({ ...f, endDate: e.target.value }))}
+              />
+            </label>
+            <div className="event-list-advanced-presets" role="group" aria-label="Date filter presets">
+              <span>Date presets</span>
+              <button
+                type="button"
+                className="event-list-filter-preset-btn"
+                onClick={() => {
+                  const range = datePresetRange('today')
+                  setDraftFilters((f) => ({ ...f, ...range }))
+                }}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className="event-list-filter-preset-btn"
+                onClick={() => {
+                  const range = datePresetRange('week')
+                  setDraftFilters((f) => ({ ...f, ...range }))
+                }}
+              >
+                This week
+              </button>
+              <button
+                type="button"
+                className="event-list-filter-preset-btn"
+                onClick={() => {
+                  const range = datePresetRange('month')
+                  setDraftFilters((f) => ({ ...f, ...range }))
+                }}
+              >
+                This month
+              </button>
+            </div>
             <label className="event-list-filter-label">
               <span>min price</span>
               <input

@@ -6,6 +6,17 @@ import { LocationCityPickerControl, CityPickerSheet } from '../../components/Loc
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { useAppState } from '../../store/appStore'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
+import {
+  AREA_FILTER,
+  DATE_FILTER,
+  DEFAULT_DISCOVER_FILTERS,
+  PRICE_FILTER,
+  TIME_FILTER,
+  persistDiscoverCategoryFilters,
+  readInitialDiscoverFilters,
+  type DiscoverEventFilters,
+} from '../../lib/discover-filters'
 import type { EventItem } from '../../types'
 
 // ─── Category → visual accent mapping (keyed by exploreCategoryId) ───────────
@@ -43,37 +54,8 @@ const GENRE_TO_CATEGORY: Record<string, string> = {
   'Cocktail Bar':'food',
 }
 
-const DATE_FILTER = ['All', 'Tonight', 'Tomorrow', 'This Week', 'This Month', 'Next 90 Days'] as const
-const TIME_FILTER = ['All', 'Before 9PM', '9PM-11PM', 'After 11PM'] as const
-const AREA_FILTER = [
-  'All',
-  'Clarke Quay',
-  'Marina Bay',
-  'Tiong Bahru',
-  'Raffles Place',
-  'Downtown Core',
-] as const
-const PRICE_FILTER = ['All', 'Free', 'Under $20', '$20-$50', '$50+'] as const
-
-export type EventFeedFilters = {
-  /**
-   * Category filter: `All`, or one or more `exploreCategoryId` values (multi-select).
-   * When not `All`, events must match any selected category.
-   */
-  categories: 'All' | string[]
-  date: (typeof DATE_FILTER)[number]
-  time: (typeof TIME_FILTER)[number]
-  area: (typeof AREA_FILTER)[number]
-  price: (typeof PRICE_FILTER)[number]
-}
-
-const DEFAULT_FILTERS: EventFeedFilters = {
-  categories: 'All',
-  date: 'All',
-  time: 'All',
-  area: 'All',
-  price: 'All',
-}
+export type EventFeedFilters = DiscoverEventFilters
+const DEFAULT_FILTERS: EventFeedFilters = DEFAULT_DISCOVER_FILTERS
 
 function parseEventTimeMinutes(time: string): number | null {
   const m = time.trim().match(/(\d{1,2}):(\d{2})/)
@@ -130,21 +112,43 @@ export function eventMatchesFilters(event: EventItem, f: EventFeedFilters): bool
     const diffDays = Math.round((eventDay.getTime() - today.getTime()) / 86_400_000)
     if (f.date === 'Tonight' && diffDays !== 0) return false
     if (f.date === 'Tomorrow' && diffDays !== 1) return false
-    if (f.date === 'This Week' && (diffDays < 0 || diffDays >= 7)) return false
+    if (f.date === 'Next 7 Days' && (diffDays < 0 || diffDays >= 7)) return false
     if (f.date === 'This Month') {
       if (date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear()) return false
     }
     if (f.date === 'Next 90 Days' && (diffDays < 0 || eventDay >= addDays(today, 90))) return false
+    if (f.date === 'Custom Range') {
+      const hasStartDate = f.startDate.trim().length > 0
+      const hasEndDate = f.endDate.trim().length > 0
+      const hasStartTime = f.startTime.trim().length > 0
+      const hasEndTime = f.endTime.trim().length > 0
+      if (hasStartDate || hasEndDate || hasStartTime || hasEndTime) {
+        const eventMs = date.getTime()
+        let startMs: number | null = null
+        let endMs: number | null = null
+        if (hasStartDate) {
+          const start = new Date(`${f.startDate}T${hasStartTime ? f.startTime : '00:00'}:00`)
+          if (Number.isFinite(start.getTime())) startMs = start.getTime()
+        }
+        if (hasEndDate) {
+          const end = new Date(`${f.endDate}T${hasEndTime ? f.endTime : '23:59'}:59`)
+          if (Number.isFinite(end.getTime())) endMs = end.getTime()
+        }
+        if (startMs != null && eventMs < startMs) return false
+        if (endMs != null && eventMs > endMs) return false
+      }
+    }
   }
 
   if (f.time !== 'All') {
     const mins = parseEventTimeMinutes(event.displayDateTimeLabel ?? event.time)
     if (mins != null) {
+      const t18 = 18 * 60
       const t21 = 21 * 60
       const t23 = 23 * 60
-      if (f.time === 'Before 9PM' && mins >= t21) return false
-      if (f.time === '9PM-11PM' && (mins < t21 || mins >= t23)) return false
-      if (f.time === 'After 11PM' && mins < t23) return false
+      if (f.time === 'Early Evening (6-9PM)' && (mins < t18 || mins >= t21)) return false
+      if (f.time === 'Prime (9-11PM)' && (mins < t21 || mins >= t23)) return false
+      if (f.time === 'Late Night (11PM+)' && mins < t23) return false
     }
   }
 
@@ -200,6 +204,17 @@ function getTag(event: EventItem): string {
 
 function eventDateTimeLabel(event: EventItem): string {
   return event.displayDateTimeLabel ?? event.time
+}
+
+function toFavoriteEvent(event: EventItem) {
+  return {
+    id: event.id,
+    title: event.title,
+    venueLine: [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', '),
+    timeLabel: event.displayDateTimeLabel ?? event.time,
+    image: event.image,
+    variant: 'upcoming' as const,
+  }
 }
 
 function titleDensityClass(title: string): string {
@@ -305,7 +320,6 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onMoreDetails }: 
           <button
             type="button"
             className={`ecf-going-btn${isGoing ? ' ecf-going-btn--active' : ''}`}
-            style={isGoing ? { background: accent, borderColor: accent } : undefined}
             onClick={onGoing}
             title={isGoing ? "You're going — tap to undo" : "Mark yourself as going"}
           >
@@ -363,6 +377,7 @@ export type FilterSheetProps = {
 export { DEFAULT_FILTERS }
 
 export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
+  const subscriptionTier = useAppState((s) => s.subscriptionTier)
   const [draft, setDraft] = useState<EventFeedFilters>(applied)
   const [activeSection, setActiveSection] = useState<FilterSectionName>('Category')
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -477,7 +492,12 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
           ))}
         </div>
 
-        <h2 className="ecf-filter-title">Filter</h2>
+        <div className="ecf-filter-title-row">
+          <h2 className="ecf-filter-title">Filter</h2>
+          <span className={`ecf-filter-tier-hint ecf-filter-tier-hint--${subscriptionTier}`}>
+            {subscriptionTier === 'pro' ? 'Pro search · up to 1 year' : 'Free search · up to 6 months'}
+          </span>
+        </div>
 
         <div className="ecf-filter-body" ref={bodyRef} onScroll={handleBodyScroll}>
           <section
@@ -519,9 +539,37 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
             <p className="ecf-filter-section-label">Date</p>
             <div className="ecf-filter-chips">
               {DATE_FILTER.map((d) =>
-                chip(draft.date === d, d, () => setDraft((prev) => ({ ...prev, date: d }))),
+                chip(draft.date === d, d, () =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    date: d,
+                    ...(d !== 'Custom Range'
+                      ? { startDate: '', endDate: '', startTime: '', endTime: '' }
+                      : {}),
+                  })),
+                ),
               )}
             </div>
+            {draft.date === 'Custom Range' ? (
+              <div className="ecf-filter-range-grid">
+                <label className="ecf-filter-range-field">
+                  <span>Start date</span>
+                  <input
+                    type="date"
+                    value={draft.startDate}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
+                  />
+                </label>
+                <label className="ecf-filter-range-field">
+                  <span>End date</span>
+                  <input
+                    type="date"
+                    value={draft.endDate}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
+                  />
+                </label>
+              </div>
+            ) : null}
           </section>
 
           <section
@@ -530,11 +578,32 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
             ref={(el) => { if (el) sectionRefs.current.Time = el }}
           >
             <p className="ecf-filter-section-label">Time</p>
+            <p className="ecf-filter-section-note">Times shown in SGT</p>
             <div className="ecf-filter-chips">
               {TIME_FILTER.map((t) =>
                 chip(draft.time === t, t, () => setDraft((d) => ({ ...d, time: t }))),
               )}
             </div>
+            {draft.date === 'Custom Range' ? (
+              <div className="ecf-filter-range-grid">
+                <label className="ecf-filter-range-field">
+                  <span>Start time</span>
+                  <input
+                    type="time"
+                    value={draft.startTime}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, startTime: e.target.value }))}
+                  />
+                </label>
+                <label className="ecf-filter-range-field">
+                  <span>End time</span>
+                  <input
+                    type="time"
+                    value={draft.endTime}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, endTime: e.target.value }))}
+                  />
+                </label>
+              </div>
+            ) : null}
           </section>
 
           <section
@@ -567,7 +636,18 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
         <button
           type="button"
           className="ecf-filter-apply"
-          onClick={() => onApply(draft)}
+          onClick={() => {
+            if (
+              draft.date === 'Custom Range' &&
+              draft.startDate &&
+              draft.endDate &&
+              new Date(`${draft.startDate}T${draft.startTime || '00:00'}:00`).getTime() >
+                new Date(`${draft.endDate}T${draft.endTime || '23:59'}:59`).getTime()
+            ) {
+              return
+            }
+            onApply(draft)
+          }}
         >
           Show Results
         </button>
@@ -579,10 +659,13 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
 // ─── Main EventCardFeed ───────────────────────────────────────────────────────
 type EventCardFeedProps = {
   events: EventItem[]
+  filters: EventFeedFilters
+  onFiltersChange: (next: EventFeedFilters) => void
   loading?: boolean
   loadingMore?: boolean
   error?: string | null
   hasMore?: boolean
+  totalAvailable?: number | null
   onLoadMore?: () => void
   onMoreDetails: (eventId: string) => void
   onMapView?: () => void
@@ -591,10 +674,13 @@ type EventCardFeedProps = {
 
 export function EventCardFeed({
   events,
+  filters,
+  onFiltersChange,
   loading = false,
   loadingMore = false,
   error = null,
   hasMore = false,
+  totalAvailable = null,
   onLoadMore,
   onMoreDetails,
   onMapView,
@@ -604,40 +690,30 @@ export function EventCardFeed({
   const isDiscoverExpanded = useAppState((s) => s.isDiscoverExpanded)
   const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
 
-  const initialCategories = useMemo(() => {
-    // Prefer localStorage override (set when user changes filter — survives refresh for anon users)
-    try {
-      const raw = window.localStorage.getItem('buzo-feed-category-ids')
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[]
-        if (Array.isArray(parsed) && parsed.length === 0) return 'All' as const
-      }
-    } catch { /* ignore */ }
-    return 'All' as const
-  }, [])
-
-  const [filters, setFilters] = useState<EventFeedFilters>(() => ({
-    ...DEFAULT_FILTERS,
-    categories: initialCategories,
-  }))
+  const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
   const [going, setGoing] = useState<string[]>([])
-  const [saved, setSaved] = useState<string[]>([])
+  const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
+  const isEventFavorited = useAppState((s) => s.isEventFavorited)
   const [cardIdx, setCardIdx] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollElRef = useRef<HTMLDivElement | null>(null)
+  const endSentinelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setLocalFilters(filters)
+  }, [filters])
 
   const filtered = useMemo(
     () =>
       events
         .filter((e) => e.locationCityId === locationCityId)
-        .filter((e) => eventMatchesFilters(e, filters)),
-    [events, locationCityId, filters],
+        .filter((e) => eventMatchesFilters(e, localFilters)),
+    [events, localFilters, locationCityId],
   )
 
-  const activeCount = countActiveFilters(filters)
+  const activeCount = countActiveFilters(localFilters)
 
   const scrollToCard = useCallback((idx: number) => {
     const el = scrollElRef.current
@@ -684,39 +760,86 @@ export function EventCardFeed({
   const prevShowOnboarding = useRef(showOnboarding)
   useEffect(() => {
     if (prevShowOnboarding.current && !showOnboarding) {
-      // Onboarding just closed — re-read localStorage
-      try {
-        const raw = window.localStorage.getItem('buzo-feed-category-ids')
-        if (raw) {
-          const parsed = JSON.parse(raw) as unknown
-          if (Array.isArray(parsed)) {
-            setFilters((prev) => ({
-              ...prev,
-              categories: parsed.length > 0 ? (parsed as string[]) : 'All',
-            }))
-          }
-        }
-      } catch { /* ignore */ }
+      const next = readInitialDiscoverFilters()
+      setLocalFilters((prev) => ({ ...prev, categories: next.categories }))
+      onFiltersChange({ ...localFilters, categories: next.categories })
     }
     prevShowOnboarding.current = showOnboarding
-  }, [showOnboarding])
+  }, [localFilters, onFiltersChange, showOnboarding])
 
   // Reset scroll position when city or filters change
   useEffect(() => {
     const el = scrollElRef.current
     if (el) el.scrollTop = 0
     setCardIdx(0)
-  }, [filters, locationCityId])
+  }, [localFilters, locationCityId])
+
+  useEffect(() => {
+    const root = scrollElRef.current
+    const sentinel = endSentinelRef.current
+    if (!root || !sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const hit = entries.some((entry) => entry.isIntersecting)
+        if (!hit) return
+        if (hasMore && !loadingMore && !loading) {
+          onLoadMore?.()
+        }
+      },
+      {
+        root,
+        rootMargin: '0px 0px 45% 0px',
+        threshold: 0.01,
+      },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, onLoadMore, filtered.length])
+
+  // Fail-safe for snap/observer edge cases:
+  // if user is already on the end card and we still have more pages, keep loading.
+  useEffect(() => {
+    if (!hasMore || loadingMore || loading) return
+    if (filtered.length === 0) return
+    if (cardIdx >= filtered.length) {
+      onLoadMore?.()
+    }
+  }, [cardIdx, filtered.length, hasMore, loading, loadingMore, onLoadMore])
 
   const toggleGoing = (id: string) =>
     setGoing((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
 
-  const toggleSaved = (id: string) =>
-    setSaved((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
+  const openEventSourceInNewTab = useCallback(async (event: EventItem) => {
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
+    const openTarget = (target: string) => {
+      if (popup) popup.location.replace(target)
+      else window.open(target, '_blank', 'noopener,noreferrer')
+    }
+
+    const directUrl = event.sourceUrl?.trim()
+    if (directUrl) {
+      openTarget(directUrl)
+      toggleGoing(event.id)
+      return
+    }
+
+    try {
+      const detail = await fetchDiscoverEventById(event.id)
+      const resolvedUrl = detail.sourceUrl?.trim()
+      if (resolvedUrl) {
+        openTarget(resolvedUrl)
+        toggleGoing(event.id)
+        return
+      }
+    } catch {
+      // Fall back below.
+    }
+
+    if (popup) popup.close()
+    onMoreDetails(event.id)
+  }, [onMoreDetails])
 
   return (
     <div className="ecf-root">
@@ -777,8 +900,9 @@ export function EventCardFeed({
                 type="button"
                 className="ecf-chip-btn ecf-chip-btn--active ecf-chip-btn--clear"
                 onClick={() => {
-                  setFilters(DEFAULT_FILTERS)
-                  try { window.localStorage.setItem('buzo-feed-category-ids', JSON.stringify([])) } catch { /* ignore */ }
+                  setLocalFilters(DEFAULT_FILTERS)
+                  onFiltersChange(DEFAULT_FILTERS)
+                  persistDiscoverCategoryFilters('All')
                 }}
                 title="Clear all filters"
                 aria-label="Clear all filters"
@@ -788,6 +912,11 @@ export function EventCardFeed({
               </button>
             )}
           </div>
+          <span className="ecf-header-count">
+            {typeof totalAvailable === 'number'
+              ? `${filtered.length} of ${totalAvailable} events`
+              : `${filtered.length} ${filtered.length === 1 ? 'event' : 'events'}`}
+          </span>
           <button
             type="button"
             className="ecf-map-view-btn"
@@ -854,7 +983,11 @@ export function EventCardFeed({
                 <button
                   type="button"
                   className="ecf-empty-clear"
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  onClick={() => {
+                    setLocalFilters(DEFAULT_FILTERS)
+                    onFiltersChange(DEFAULT_FILTERS)
+                    persistDiscoverCategoryFilters('All')
+                  }}
                 >
                   Clear filters
                 </button>
@@ -874,19 +1007,26 @@ export function EventCardFeed({
                 key={ev.id}
                 event={ev}
                 isGoing={going.includes(ev.id)}
-                isSaved={saved.includes(ev.id)}
-                onGoing={() => toggleGoing(ev.id)}
-                onSave={() => toggleSaved(ev.id)}
+                isSaved={isEventFavorited(ev.id)}
+                onGoing={() => openEventSourceInNewTab(ev)}
+                onSave={() => toggleFavoriteEvent(toFavoriteEvent(ev))}
                 onMoreDetails={() => onMoreDetails(ev.id)}
               />
             ))}
             {/* End-of-feed sentinel */}
-            <div className="ecf-end-card" role="status">
+            <div className="ecf-end-card" role="status" aria-live="polite" ref={endSentinelRef}>
               <div className="ecf-end-line" />
+              {loadingMore && <span className="ecf-end-spinner" aria-hidden />}
               <p className="ecf-end-text">
-                {loadingMore ? 'Loading more events.' : hasMore ? 'Scroll for more events.' : "That's all for now."}
+                {loadingMore ? 'Loading more events...' : hasMore ? 'Scroll for more events.' : 'No more events.'}
                 <br />
-                <span>{loadingMore ? 'Fetching the next page.' : hasMore ? 'More nights are queued up.' : 'Check back soon.'}</span>
+                <span>
+                  {loadingMore
+                    ? 'Hang tight while we pull in the next batch.'
+                    : hasMore
+                      ? 'More nights are queued up.'
+                      : 'You can scroll back up to revisit earlier picks.'}
+                </span>
               </p>
             </div>
           </>
@@ -898,20 +1038,12 @@ export function EventCardFeed({
         <AnimatePresence>
           {showFilter && (
             <FilterSheet
-              applied={filters}
+              applied={localFilters}
               onApply={(next) => {
-                setFilters(next)
+                setLocalFilters(next)
+                onFiltersChange(next)
                 setShowFilter(false)
-                // Persist category selection to localStorage so it survives refresh
-                if (next.categories !== filters.categories) {
-                  const categoryIds = next.categories === 'All' ? [] : next.categories
-                  try {
-                    window.localStorage.setItem(
-                      'buzo-feed-category-ids',
-                      JSON.stringify(categoryIds),
-                    )
-                  } catch { /* ignore */ }
-                }
+                if (next.categories !== localFilters.categories) persistDiscoverCategoryFilters(next.categories)
               }}
               onClose={() => setShowFilter(false)}
             />

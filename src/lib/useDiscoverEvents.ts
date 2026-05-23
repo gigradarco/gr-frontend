@@ -3,10 +3,11 @@ import { events as demoEvents } from '../data/demoData'
 import type { EventItem } from '../types'
 import { apiBase } from './api-base'
 import { resolveEventImagePlaceholder } from './resolve-event-image'
+import type { DiscoverEventFilters } from './discover-filters'
 
 const DISCOVER_PAGE_SIZE = 30
-const SOFT_RENDER_CAP = 90
-const HARD_RENDER_CAP = 120
+const APPEND_LOADING_MIN_MS = 450
+const APPEND_LOAD_COOLDOWN_MS = 300
 
 export type DiscoverEventsSource = 'live' | 'demo' | 'auto'
 
@@ -27,11 +28,13 @@ type DiscoverEventListItem = {
   ticketPrice: string
   lat: number | null
   lng: number | null
+  sourceUrl?: string | null
 }
 
 type DiscoverEventsPage = {
   items: DiscoverEventListItem[]
   nextCursor: string | null
+  totalAvailable: number
 }
 
 type DiscoverEventDetail = DiscoverEventListItem & {
@@ -45,6 +48,7 @@ type DiscoverEventsState = {
   loadingMore: boolean
   error: string | null
   hasMore: boolean
+  totalAvailable: number | null
   loadMore: () => void
   refresh: () => void
 }
@@ -89,14 +93,28 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem)
     buzzPct: undefined,
     lat: item.lat ?? undefined,
     lng: item.lng ?? undefined,
+    sourceUrl: item.sourceUrl ?? null,
   }
 }
 
-function discoverEventsUrl(cityId: string, cursor: string | null): string {
+function discoverEventsUrl(cityId: string, cursor: string | null, filters: DiscoverEventFilters): string {
   const params = new URLSearchParams()
   params.set('cityId', cityId)
   params.set('limit', String(DISCOVER_PAGE_SIZE))
   if (cursor) params.set('cursor', cursor)
+  if (filters.categories !== 'All' && filters.categories.length > 0) {
+    params.set('categoryIds', filters.categories.join(','))
+  }
+  if (filters.date !== 'All' && filters.date !== 'Custom Range') params.set('datePreset', filters.date)
+  if (filters.time !== 'All') params.set('timePreset', filters.time)
+  if (filters.date === 'Custom Range') {
+    if (filters.startDate.trim()) params.set('startDate', filters.startDate.trim())
+    if (filters.endDate.trim()) params.set('endDate', filters.endDate.trim())
+    if (filters.startTime.trim()) params.set('startTime', filters.startTime.trim())
+    if (filters.endTime.trim()) params.set('endTime', filters.endTime.trim())
+  }
+  if (filters.area !== 'All') params.set('area', filters.area)
+  if (filters.price !== 'All') params.set('pricePreset', filters.price)
   const base = apiBase()
   const path = `/api/discover/events?${params.toString()}`
   return base ? `${base}${path}` : path
@@ -109,8 +127,7 @@ function discoverEventDetailUrl(eventId: string): string {
 }
 
 function trimEventWindow(events: EventItem[]): EventItem[] {
-  if (events.length <= HARD_RENDER_CAP) return events
-  return events.slice(-SOFT_RENDER_CAP)
+  return events
 }
 
 export async function fetchDiscoverEventById(eventId: string, signal?: AbortSignal): Promise<EventItem> {
@@ -126,7 +143,7 @@ export async function fetchDiscoverEventById(eventId: string, signal?: AbortSign
   return mapDiscoverEventListItemToEventItem(item)
 }
 
-export function useDiscoverEvents(cityId: string): DiscoverEventsState {
+export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters): DiscoverEventsState {
   const source = useMemo(() => configuredSource(), [])
   const [events, setEvents] = useState<EventItem[]>(() => (source === 'demo' ? demoEvents : []))
   const [cursor, setCursor] = useState<string | null>(null)
@@ -134,8 +151,10 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(source !== 'demo')
+  const [totalAvailable, setTotalAvailable] = useState<number | null>(source === 'demo' ? demoEvents.length : null)
   const abortRef = useRef<AbortController | null>(null)
   const pendingCursorRef = useRef<string | null>(null)
+  const lastAppendFinishedAtRef = useRef(0)
 
   const fetchPage = useCallback(
     async (nextCursor: string | null, mode: 'reset' | 'append') => {
@@ -143,6 +162,7 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
       if (pendingCursorRef.current === nextCursor && mode === 'append') return
       pendingCursorRef.current = nextCursor
 
+      const appendStartedAt = mode === 'append' ? performance.now() : 0
       if (mode === 'reset') {
         abortRef.current?.abort()
         abortRef.current = new AbortController()
@@ -154,7 +174,7 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
 
       const controller = mode === 'reset' ? abortRef.current! : new AbortController()
       try {
-        const res = await fetch(discoverEventsUrl(cityId, nextCursor), {
+        const res = await fetch(discoverEventsUrl(cityId, nextCursor, filters), {
           credentials: 'include',
           signal: controller.signal,
         })
@@ -172,24 +192,34 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
         })
         setCursor(page.nextCursor)
         setHasMore(Boolean(page.nextCursor))
+        setTotalAvailable(Number.isFinite(page.totalAvailable) ? page.totalAvailable : null)
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return
         if (source === 'auto') {
           setEvents(demoEvents)
           setCursor(null)
           setHasMore(false)
+          setTotalAvailable(demoEvents.length)
           setError(null)
           return
         }
         setError(e instanceof Error ? e.message : 'Failed to load Discover events')
         setHasMore(false)
+        setTotalAvailable(null)
       } finally {
+        if (mode === 'append') {
+          const elapsed = performance.now() - appendStartedAt
+          if (elapsed < APPEND_LOADING_MIN_MS) {
+            await new Promise((resolve) => window.setTimeout(resolve, APPEND_LOADING_MIN_MS - elapsed))
+          }
+          lastAppendFinishedAtRef.current = Date.now()
+        }
         pendingCursorRef.current = null
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [cityId, source],
+    [cityId, filters, source],
   )
 
   useEffect(() => {
@@ -197,6 +227,7 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
       setEvents(demoEvents)
       setCursor(null)
       setHasMore(false)
+      setTotalAvailable(demoEvents.length)
       setLoading(false)
       setLoadingMore(false)
       setError(null)
@@ -206,12 +237,15 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
     setEvents([])
     setCursor(null)
     setHasMore(true)
+    setTotalAvailable(null)
     void fetchPage(null, 'reset')
     return () => abortRef.current?.abort()
   }, [cityId, fetchPage, source])
 
   const loadMore = useCallback(() => {
     if (source === 'demo' || loading || loadingMore || !hasMore) return
+    const now = Date.now()
+    if (now - lastAppendFinishedAtRef.current < APPEND_LOAD_COOLDOWN_MS) return
     void fetchPage(cursor, 'append')
   }, [cursor, fetchPage, hasMore, loading, loadingMore, source])
 
@@ -229,6 +263,7 @@ export function useDiscoverEvents(cityId: string): DiscoverEventsState {
     loadingMore,
     error,
     hasMore,
+    totalAvailable,
     loadMore,
     refresh,
   }

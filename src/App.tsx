@@ -44,6 +44,7 @@ import { UserAnalyticsPage } from './views/user-analytics/UserAnalyticsPage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
 import { fetchDiscoverEventById, useDiscoverEvents } from './lib/useDiscoverEvents'
+import { readInitialDiscoverFilters, type DiscoverEventFilters } from './lib/discover-filters'
 import { handleEventImageError } from './lib/event-image-fallback'
 
 const DiscoverTab = lazy(() =>
@@ -81,6 +82,7 @@ function planDetailFromDiscoverEvent(event: EventItem): PlanPageEvent {
 
   return {
     eventId: event.id,
+    sourceUrl: event.sourceUrl ?? null,
     heroImage: event.image,
     displayTitle: event.title,
     artistLine: event.host ? `HOST · ${event.host}` : cleanLabel(event.genre, 'LIVE EVENT').toUpperCase(),
@@ -224,6 +226,7 @@ function MainApp() {
   const [sheetPlanOverlay, setSheetPlanOverlay] = useState<SheetPlanOverlay | null>(null)
   const [sheetPlanReturnTab, setSheetPlanReturnTab] = useState<Tab | null>(null)
   const [discoverMapMode, setDiscoverMapMode] = useState(false)
+  const [discoverFilters, setDiscoverFilters] = useState<DiscoverEventFilters>(() => readInitialDiscoverFilters())
   const [discoverDetailEventId, setDiscoverDetailEventId] = useState<string | null>(null)
   const [discoverDetailRemoteEvent, setDiscoverDetailRemoteEvent] = useState<EventItem | null>(null)
   const [discoverDetailLoading, setDiscoverDetailLoading] = useState(false)
@@ -236,9 +239,10 @@ function MainApp() {
     loadingMore: discoverEventsLoadingMore,
     error: discoverEventsError,
     hasMore: discoverEventsHasMore,
+    totalAvailable: discoverEventsTotalAvailable,
     loadMore: loadMoreDiscoverEvents,
     refresh: refreshDiscoverEvents,
-  } = useDiscoverEvents(feedLocationCityId)
+  } = useDiscoverEvents(feedLocationCityId, discoverFilters)
 
   useEffect(() => {
     if (!pendingPlanDetail) return
@@ -521,7 +525,12 @@ function MainApp() {
                 ) : discoverMapMode ? (
                   <MapView
                     events={discoverEvents}
+                    filters={discoverFilters}
+                    onFiltersChange={setDiscoverFilters}
                     loading={discoverEventsLoading}
+                    loadingMore={discoverEventsLoadingMore}
+                    hasMore={discoverEventsHasMore}
+                    onLoadMore={loadMoreDiscoverEvents}
                     onBackToFeed={() => setDiscoverMapMode(false)}
                     onMoreDetails={openDiscoverDetail}
                     onRefresh={refreshDiscoverEvents}
@@ -529,10 +538,13 @@ function MainApp() {
                 ) : (
                   <EventCardFeed
                     events={discoverEvents}
+                    filters={discoverFilters}
+                    onFiltersChange={setDiscoverFilters}
                     loading={discoverEventsLoading}
                     loadingMore={discoverEventsLoadingMore}
                     error={discoverEventsError}
                     hasMore={discoverEventsHasMore}
+                    totalAvailable={discoverEventsTotalAvailable}
                     onLoadMore={loadMoreDiscoverEvents}
                     onMoreDetails={openDiscoverDetail}
                     onMapView={() => setDiscoverMapMode(true)}

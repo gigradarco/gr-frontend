@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
@@ -8,7 +8,6 @@ import { CheckCircle, ChevronLeft, Funnel, Heart, Info, Maximize2, Minimize2, Pa
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import {
   FilterSheet,
-  DEFAULT_FILTERS,
   countActiveFilters,
   eventMatchesFilters,
 } from './EventCardFeed'
@@ -16,6 +15,7 @@ import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS, getLocationCityCentroid } from '../../data/locationRegions'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 
 // ─── Category → accent (mirrors EventCardFeed) ───────────────────────────────
@@ -172,6 +172,17 @@ function compactDateTimeLabel(event: EventItem): string {
   const tonight = label.match(/^tonight\s+(.+)$/i)
   if (tonight?.[1]) return tonight[1]
   return label
+}
+
+function toFavoriteEvent(event: EventItem) {
+  return {
+    id: event.id,
+    title: event.title,
+    venueLine: [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', '),
+    timeLabel: event.displayDateTimeLabel ?? event.time,
+    image: event.image,
+    variant: 'upcoming' as const,
+  }
 }
 
 // ─── Pin (Leaflet DivIcon) ───────────────────────────────────────────────────
@@ -361,7 +372,12 @@ function ZoomWatcher({
 // ─── Main MapView ────────────────────────────────────────────────────────────
 type MapViewProps = {
   events: EventItem[]
+  filters: EventFeedFilters
+  onFiltersChange: (next: EventFeedFilters) => void
   loading?: boolean
+  loadingMore?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
   onBackToFeed: () => void
   onMoreDetails: (eventId: string) => void
   onRefresh?: () => void
@@ -377,19 +393,31 @@ const MAP_SHEET_Y: Record<MapSheetState, number> = {
   expanded: 0,
 }
 
-export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, onRefresh }: MapViewProps) {
+export function MapView({
+  events,
+  filters,
+  onFiltersChange,
+  loading = false,
+  loadingMore = false,
+  hasMore = false,
+  onLoadMore,
+  onBackToFeed,
+  onMoreDetails,
+  onRefresh,
+}: MapViewProps) {
   const locationCityId = useAppState((s) => s.feedLocationCityId)
   const theme = useAppState((s) => s.theme)
   const isDiscoverExpanded = useAppState((s) => s.isDiscoverExpanded)
   const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
+  const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
+  const isEventFavorited = useAppState((s) => s.isEventFavorited)
   const tileUrl =
     theme === 'light'
       ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [going, setGoing] = useState<string[]>([])
-  const [saved, setSaved] = useState<string[]>([])
-  const [filters, setFilters] = useState<EventFeedFilters>(DEFAULT_FILTERS)
+  const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
   const [isCycling, setIsCycling] = useState(false)
@@ -398,21 +426,26 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
   const [mapZoom, setMapZoom] = useState<number>(11.5)
   const cycleIdxRef = useRef(0)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const carouselEndRef = useRef<HTMLDivElement | null>(null)
   const holdRafRef = useRef<number | null>(null)
   const holdStartedAtRef = useRef<number | null>(null)
   const holdTriggeredRef = useRef(false)
   const suppressTapRef = useRef(false)
 
-  const activeFilterCount = countActiveFilters(filters)
+  useEffect(() => {
+    setLocalFilters(filters)
+  }, [filters])
+
+  const activeFilterCount = countActiveFilters(localFilters)
 
   const cityEvents = useMemo(() => {
     const raw = events
       .filter((e) => e.locationCityId === locationCityId)
-      .filter((e) => eventMatchesFilters(e, filters))
+      .filter((e) => eventMatchesFilters(e, localFilters))
       .map((e) => ({ event: e, pos: eventLatLng(e) }))
       .filter((r): r is { event: EventItem; pos: [number, number] } => r.pos != null)
     return spreadOverlappingPositions(raw)
-  }, [events, locationCityId, filters])
+  }, [events, localFilters, locationCityId])
 
   const cityCenter = getCityCenter(locationCityId)
   const cityDefaultZoom = getCityDefaultZoom(locationCityId)
@@ -439,10 +472,70 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
     el.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
   }
 
+  useEffect(() => {
+    const el = carouselRef.current
+    const sentinel = carouselEndRef.current
+    if (!el || !sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return
+        if (hasMore && !loadingMore && !loading) onLoadMore?.()
+      },
+      {
+        root: el,
+        rootMargin: '0px 35% 0px 0px',
+        threshold: 0.01,
+      },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, onLoadMore, cityEvents.length])
+
+  useEffect(() => {
+    const el = carouselRef.current
+    if (!el) return
+    const onScroll = () => {
+      const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 160
+      if (nearEnd && hasMore && !loadingMore && !loading) onLoadMore?.()
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [hasMore, loading, loadingMore, onLoadMore])
+
   const toggle = (
     id: string,
     setter: React.Dispatch<React.SetStateAction<string[]>>,
   ) => setter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const openEventSourceInNewTab = useCallback(async (event: EventItem) => {
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
+    const openTarget = (target: string) => {
+      if (popup) popup.location.replace(target)
+      else window.open(target, '_blank', 'noopener,noreferrer')
+    }
+
+    const directUrl = event.sourceUrl?.trim()
+    if (directUrl) {
+      openTarget(directUrl)
+      toggle(event.id, setGoing)
+      return
+    }
+
+    try {
+      const detail = await fetchDiscoverEventById(event.id)
+      const resolvedUrl = detail.sourceUrl?.trim()
+      if (resolvedUrl) {
+        openTarget(resolvedUrl)
+        toggle(event.id, setGoing)
+        return
+      }
+    } catch {
+      // Fall back below.
+    }
+
+    if (popup) popup.close()
+    onMoreDetails(event.id)
+  }, [onMoreDetails])
 
   // Auto-cycle through events
   useEffect(() => {
@@ -760,7 +853,7 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
                 {cityEvents.map(({ event }) => {
                   const isSel = selectedId === event.id
                   const isGoing = going.includes(event.id)
-                  const isSaved = saved.includes(event.id)
+                  const isSaved = isEventFavorited(event.id)
                   const accent = getAccent(event)
                   const dateTime = eventDateTimeLabel(event)
                   return (
@@ -793,7 +886,7 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
                             className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation()
-                              toggle(event.id, setGoing)
+                              openEventSourceInNewTab(event)
                             }}
                           >
                             {isGoing ? "✓ I'm Going" : "I'm Going"}
@@ -816,7 +909,7 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
                             aria-label="Save event"
                             onClick={(e) => {
                               e.stopPropagation()
-                              toggle(event.id, setSaved)
+                              toggleFavoriteEvent(toFavoriteEvent(event))
                             }}
                           >
                             <Heart
@@ -840,6 +933,20 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
                     </div>
                   )
                 })}
+                <div className="mv-end-card" role="status" aria-live="polite" ref={carouselEndRef}>
+                  {loadingMore ? (
+                    <>
+                      <span className="mv-end-spinner" aria-hidden />
+                      <p>Loading more events…</p>
+                    </>
+                  ) : hasMore ? (
+                    <button type="button" className="mv-end-load-btn" onClick={() => onLoadMore?.()}>
+                      Load more
+                    </button>
+                  ) : (
+                    <p>No more events.</p>
+                  )}
+                </div>
               </div>
             </motion.div>
             {mapSheetState === 'hidden' ? (
@@ -860,9 +967,10 @@ export function MapView({ events, loading = false, onBackToFeed, onMoreDetails, 
         <AnimatePresence>
           {showFilter && (
             <FilterSheet
-              applied={filters}
+              applied={localFilters}
               onApply={(next) => {
-                setFilters(next)
+                setLocalFilters(next)
+                onFiltersChange(next)
                 setShowFilter(false)
               }}
               onClose={() => setShowFilter(false)}
