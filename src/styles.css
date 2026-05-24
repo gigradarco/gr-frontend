@@ -15824,3 +15824,94 @@ vite-error-overlay::part(window) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* iPhone SE / very compact widths: prevent Discover + Map top controls from colliding */
+@media (max-width: 390px) {
+  .mv-header {
+    padding: 10px 10px 8px;
+  }
+
+  .mv-header-row {
+    gap: 6px;
+  }
+
+  .mv-back-btn {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 9px;
+    border-radius: 10px;
+  }
+
+  .mv-back-btn span {
+    display: none;
+  }
+
+  .mv-chip-row {
+    gap: 4px;
+  }
+
+  .mv-chip-row .ecf-chip-btn {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .mv-header-meta {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 7px;
+    gap: 4px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .mv-header-meta .mv-cycle-btn {
+    width: 19px;
+    height: 19px;
+  }
+
+  .ecf-header-inner {
+    gap: 6px;
+  }
+
+  .ecf-chip-row {
+    gap: 4px;
+  }
+
+  .ecf-chip-btn {
+    height: 34px;
+    min-height: 34px;
+  }
+
+  .ecf-chip-btn--icon-only {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .ecf-header-count {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ecf-map-view-btn {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+  }
+
+  .ecf-map-view-btn span {
+    display: none;
+  }
+
+}
