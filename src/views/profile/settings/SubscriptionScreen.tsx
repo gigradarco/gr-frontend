@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Check, ChevronRight, Download, Minus, Sparkles, Ticket } from 'lucide-react'
 import { BUZO_PRO_MONTHLY_PRICE_DISPLAY } from '../../../config/pricing'
+import { FAVORITES_CONFIG } from '../../../config/favorites'
 import { useAppState } from '../../../store/appStore'
 import { api } from '../../../lib/trpc'
 
-const PLAN_COMPARE_ROWS: { label: string; basic: boolean; pro: boolean }[] = [
+const PLAN_COMPARE_ROWS: { label: string; basic: boolean | string; pro: boolean | string }[] = [
   { label: 'Discover & join public gigs near you', basic: true, pro: true },
+  {
+    label: 'Favorite event limit',
+    basic: `${FAVORITES_CONFIG.limits.free} favourites`,
+    pro: `${FAVORITES_CONFIG.limits.pro} favourites`,
+  },
   { label: 'Filter range window (6 months on Basic, 1 year on Pro)', basic: true, pro: true },
   { label: 'Smarter recommendations based on your taste', basic: false, pro: true },
   { label: 'Early access to hot gigs & drops near you', basic: false, pro: true },
@@ -91,6 +97,7 @@ export function SubscriptionScreen() {
             transition={{ delay: 0.55 }}
           >
             {[
+              `Save up to ${FAVORITES_CONFIG.limits.pro} favourite events`,
               'Smarter recommendations based on your taste',
               'Early access to hot gigs & drops near you',
               'Ad-free home and discover',
@@ -238,7 +245,9 @@ export function SubscriptionScreen() {
             <p className={['subscription-plan-price', !isFreeTier ? 'subscription-plan-price--basic' : ''].filter(Boolean).join(' ')}>
               Free
             </p>
-            <p className="subscription-plan-renew">Core discovery &amp; public gigs</p>
+            <p className="subscription-plan-renew">
+              Up to {FAVORITES_CONFIG.limits.free} favourites
+            </p>
           </div>
 
           {/* Pro card */}
@@ -264,7 +273,7 @@ export function SubscriptionScreen() {
               {BUZO_PRO_MONTHLY_PRICE_DISPLAY}
             </p>
             <p className="subscription-plan-renew">
-              {isProTier ? renewalLabel() : 'Upgrade anytime'}
+              {isProTier ? renewalLabel() : `Up to ${FAVORITES_CONFIG.limits.pro} favourites`}
             </p>
           </div>
         </div>
@@ -317,18 +326,22 @@ export function SubscriptionScreen() {
                   role="cell"
                   aria-label={row.basic ? 'Included on Basic' : 'Not included on Basic'}
                 >
-                  {row.basic
-                    ? <Check size={16} strokeWidth={2.5} className="subscription-compare-yes" aria-hidden />
-                    : <Minus size={16} strokeWidth={2} className="subscription-compare-no" aria-hidden />}
+                  {typeof row.basic === 'string'
+                    ? <span className="subscription-compare-value">{row.basic}</span>
+                    : row.basic
+                      ? <Check size={16} strokeWidth={2.5} className="subscription-compare-yes" aria-hidden />
+                      : <Minus size={16} strokeWidth={2} className="subscription-compare-no" aria-hidden />}
                 </span>
                 <span
                   className={['subscription-compare-cell', isProTier ? 'subscription-compare-cell--accent-pro' : ''].filter(Boolean).join(' ')}
                   role="cell"
                   aria-label={row.pro ? 'Included on Pro' : 'Not included on Pro'}
                 >
-                  {row.pro
-                    ? <Check size={16} strokeWidth={2.5} className="subscription-compare-yes" aria-hidden />
-                    : <Minus size={16} strokeWidth={2} className="subscription-compare-no" aria-hidden />}
+                  {typeof row.pro === 'string'
+                    ? <span className="subscription-compare-value">{row.pro}</span>
+                    : row.pro
+                      ? <Check size={16} strokeWidth={2.5} className="subscription-compare-yes" aria-hidden />
+                      : <Minus size={16} strokeWidth={2} className="subscription-compare-no" aria-hidden />}
                 </span>
               </div>
             ))}

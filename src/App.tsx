@@ -21,6 +21,7 @@ import { tabNavItems } from './config/tabNavigation'
 import { EventCardFeed } from './views/discover/EventCardFeed'
 import { MapView } from './views/discover/MapView'
 import { FavoritesTab } from './views/favorites/FavoritesTab'
+import { UploadToast } from './components/UploadToast'
 import { BuzzPointsScreen } from './views/profile/BuzzPointsScreen'
 import { ProfileReputationScreen } from './views/profile/ProfileReputationScreen'
 import { ProfileTasteIdentityScreen } from './views/profile/ProfileTasteIdentityScreen'
@@ -165,6 +166,8 @@ function MainApp() {
     clearPendingPlanDetail,
     isDiscoverExpanded,
     feedLocationCityId,
+    favoriteNotice,
+    clearFavoriteNotice,
   } = useAppState()
   const navigate = useNavigate()
   const location = useLocation()
@@ -414,6 +417,10 @@ function MainApp() {
     <div className={`app theme-${theme}`}>
       <div className="glow glow-1" />
       <div className="glow glow-2" />
+      <UploadToast
+        toast={favoriteNotice ? { id: favoriteNotice.id, variant: 'error', message: favoriteNotice.message } : null}
+        onDismiss={clearFavoriteNotice}
+      />
 
       {!welcomeDismissed ? (
         <WelcomeScreen
@@ -562,9 +569,11 @@ function MainApp() {
               )}
               {tab === 'favorites' && (
                 <FavoritesTab
-                  onOpenFavorite={(event) => {
-                    requestPlanDetail(event.id, event.variant, 'favorites')
-                    navigateShellToTab('plan')
+                  events={discoverEvents}
+                  onOpenFavorite={(eventId) => {
+                    setDiscoverMapMode(false)
+                    setDiscoverDetailEventId(eventId)
+                    navigate(getDiscoverEventPath(eventId))
                   }}
                 />
               )}

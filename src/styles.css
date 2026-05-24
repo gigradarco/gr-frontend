@@ -5515,7 +5515,7 @@ button.taste-tag:focus-visible {
 .subscription-compare-head,
 .subscription-compare-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px 44px;
+  grid-template-columns: minmax(0, 1fr) 64px 64px;
   gap: 6px 8px;
   align-items: center;
   padding: 11px 14px;
@@ -5592,10 +5592,19 @@ button.taste-tag:focus-visible {
   align-items: center;
   justify-content: center;
   justify-self: center;
-  width: 28px;
-  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 5px 7px;
   border-radius: 8px;
   background: color-mix(in oklab, var(--text) 6%, transparent);
+}
+
+.subscription-compare-value {
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  color: color-mix(in oklab, var(--text) 84%, var(--muted));
 }
 
 .subscription-compare-cell--accent-basic {
@@ -9129,6 +9138,72 @@ button.taste-tag:focus-visible {
   gap: 14px;
 }
 
+.favorites-refresh {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  color: color-mix(in oklab, var(--text) 88%, var(--muted));
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.favorites-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.favorites-refresh-icon.is-spinning {
+  animation: spin 0.85s linear infinite;
+}
+
+.favorites-limit-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.favorites-limit-bubble {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--stroke) 88%, var(--text) 12%);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  color: color-mix(in oklab, var(--text) 84%, var(--muted));
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.favorites-limit-bubble--free {
+  border-color: color-mix(in oklab, #52b788 24%, var(--stroke));
+  background: color-mix(in oklab, #52b788 10%, var(--card));
+  color: color-mix(in oklab, #a8cdbd 82%, var(--text));
+}
+
+.favorites-limit-bubble--pro {
+  border-color: color-mix(in oklab, #8b5a2e 38%, var(--stroke));
+  background: color-mix(in oklab, #8b5a2e 14%, var(--card));
+  color: color-mix(in oklab, #d9b784 78%, var(--text));
+}
+
+.favorites-refresh-error {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #fca5a5;
+}
+
 .favorites-empty {
   margin-top: 8px;
   border: 1px dashed color-mix(in oklab, var(--primary) 35%, var(--stroke));
@@ -9157,6 +9232,14 @@ button.taste-tag:focus-visible {
 
 .favorites-list-card {
   position: relative;
+}
+
+.favorites-list-card-img-placeholder {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 30% 25%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 36%),
+    color-mix(in oklab, var(--card) 82%, black);
 }
 
 .favorites-list-item-wrap {

@@ -15,6 +15,7 @@ import {
   FAVORITES_STORAGE_KEY,
   WELCOME_SESSION_STORAGE_KEY,
 } from '../config/storage'
+import { favoriteLimitForTier } from '../config/favorites'
 import type { Tab, Theme } from '../types'
 
 function readWelcomeDismissed(): boolean {
@@ -66,40 +67,85 @@ export type FavoriteEvent = {
   variant: 'upcoming' | 'past'
 }
 
-function readPersistedFavoriteEvents(): FavoriteEvent[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .filter((row): row is FavoriteEvent => {
-        if (!row || typeof row !== 'object') return false
-        const r = row as Record<string, unknown>
-        return (
-          typeof r.id === 'string' &&
-          typeof r.title === 'string' &&
-          typeof r.venueLine === 'string' &&
-          typeof r.timeLabel === 'string' &&
-          typeof r.image === 'string' &&
-          (r.variant === 'upcoming' || r.variant === 'past')
-        )
-      })
-      .slice(0, 100)
-  } catch {
-    return []
-  }
+type PersistedFavorites = {
+  ids: string[]
+  snapshots: FavoriteEvent[]
 }
 
-function persistFavoriteEvents(items: FavoriteEvent[]) {
+function uniqueFavoriteIds(ids: string[]): string[] {
+  return [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(0, favoriteLimitForTier('pro'))
+}
+
+function persistFavoriteEventIds(ids: string[]) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(items))
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(uniqueFavoriteIds(ids)))
   } catch {
     /* ignore quota / private mode */
   }
 }
+
+function favoriteSnapshotFromUnknown(row: unknown): FavoriteEvent | null {
+  if (!row || typeof row !== 'object') return null
+  const r = row as Record<string, unknown>
+  if (
+    typeof r.id === 'string' &&
+    typeof r.title === 'string' &&
+    typeof r.venueLine === 'string' &&
+    typeof r.timeLabel === 'string' &&
+    typeof r.image === 'string' &&
+    (r.variant === 'upcoming' || r.variant === 'past')
+  ) {
+    return {
+      id: r.id,
+      title: r.title,
+      venueLine: r.venueLine,
+      timeLabel: r.timeLabel,
+      image: r.image,
+      variant: r.variant,
+    }
+  }
+  return null
+}
+
+function readPersistedFavorites(): PersistedFavorites {
+  if (typeof window === 'undefined') return { ids: [], snapshots: [] }
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
+    if (!raw) return { ids: [], snapshots: [] }
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return { ids: [], snapshots: [] }
+
+    const ids: string[] = []
+    const snapshots: FavoriteEvent[] = []
+    let sawLegacySnapshot = false
+
+    for (const row of parsed) {
+      if (typeof row === 'string') {
+        ids.push(row)
+        continue
+      }
+      const snapshot = favoriteSnapshotFromUnknown(row)
+      if (snapshot) {
+        ids.push(snapshot.id)
+        snapshots.push(snapshot)
+        sawLegacySnapshot = true
+      }
+    }
+
+    const uniqueIds = uniqueFavoriteIds(ids)
+    if (sawLegacySnapshot) persistFavoriteEventIds(uniqueIds)
+    const allowed = new Set(uniqueIds)
+    return {
+      ids: uniqueIds,
+      snapshots: snapshots.filter((item) => allowed.has(item.id)).slice(0, favoriteLimitForTier('pro')),
+    }
+  } catch {
+    return { ids: [], snapshots: [] }
+  }
+}
+
+const persistedFavorites = readPersistedFavorites()
 
 function persistWelcomeDismissed() {
   try {
@@ -140,6 +186,11 @@ export type PendingPlanDetail = {
   returnTab?: Tab
 }
 
+export type FavoriteNotice = {
+  id: number
+  message: string
+}
+
 export type SubscriptionTier = 'free' | 'pro'
 export type LocationPreferenceMode = 'precise' | 'city'
 export type LocationPermissionState = 'unknown' | 'granted' | 'denied'
@@ -175,7 +226,11 @@ type AppState = {
   activeEventId: string | null
   /** When set, Plan tab opens this detail (same as tapping a plan list card). */
   pendingPlanDetail: PendingPlanDetail | null
+  /** Persisted favorite ids. The localStorage value is `string[]`, not event snapshots. */
+  favoriteEventIds: string[]
+  /** Session-only display cache for favorites saved before their details are reloaded. */
   favoriteEvents: FavoriteEvent[]
+  favoriteNotice: FavoriteNotice | null
   /** Feed location pill — Plan explore detail defaults country/city filter to this. */
   feedLocationCityId: string
   /** Nullable profile-level default city preference from local storage / profiles.default_city_id. */
@@ -252,6 +307,7 @@ type AppState = {
   clearPendingPlanDetail: () => void
   toggleFavoriteEvent: (event: FavoriteEvent) => void
   isEventFavorited: (eventId: string) => boolean
+  clearFavoriteNotice: () => void
   openBuzzPoints: () => void
   closeBuzzPoints: () => void
   openProfileTasteAll: () => void
@@ -302,7 +358,9 @@ export const useAppState = create<AppState>((set, get) => ({
   subscriptionTier: 'free',
   activeEventId: null,
   pendingPlanDetail: null,
-  favoriteEvents: readPersistedFavoriteEvents(),
+  favoriteEventIds: persistedFavorites.ids,
+  favoriteEvents: persistedFavorites.snapshots,
+  favoriteNotice: null,
   feedLocationCityId: readPersistedDefaultCityId() ?? DEFAULT_LOCATION_CITY_ID,
   profileDefaultCityId: readPersistedDefaultCityId(),
   locationPreferenceMode: 'city',
@@ -499,14 +557,34 @@ export const useAppState = create<AppState>((set, get) => ({
   clearPendingPlanDetail: () => set({ pendingPlanDetail: null }),
   toggleFavoriteEvent: (event) =>
     set((state) => {
-      const alreadyFavorited = state.favoriteEvents.some((item) => item.id === event.id)
-      const next = alreadyFavorited
-        ? state.favoriteEvents.filter((item) => item.id !== event.id)
-        : [event, ...state.favoriteEvents.filter((item) => item.id !== event.id)]
-      persistFavoriteEvents(next)
-      return { favoriteEvents: next }
+      const favoriteId = event.id.trim()
+      if (!favoriteId) return {}
+      const alreadyFavorited = state.favoriteEventIds.includes(favoriteId)
+      if (!alreadyFavorited) {
+        const limit = favoriteLimitForTier(state.subscriptionTier)
+        if (state.favoriteEventIds.length >= limit) {
+          return {
+            favoriteNotice: {
+              id: Date.now(),
+              message:
+                state.subscriptionTier === 'pro'
+                  ? `You can save up to ${limit} favourite events.`
+                  : `Buzo Basic can save up to ${limit} favourites. Upgrade to Buzo Pro for up to ${favoriteLimitForTier('pro')}.`,
+            },
+          }
+        }
+      }
+      const nextIds = alreadyFavorited
+        ? state.favoriteEventIds.filter((id) => id !== favoriteId)
+        : uniqueFavoriteIds([favoriteId, ...state.favoriteEventIds.filter((id) => id !== favoriteId)])
+      const nextEvents = alreadyFavorited
+        ? state.favoriteEvents.filter((item) => item.id !== favoriteId)
+        : [event, ...state.favoriteEvents.filter((item) => item.id !== favoriteId)]
+      persistFavoriteEventIds(nextIds)
+      return { favoriteEventIds: nextIds, favoriteEvents: nextEvents }
     }),
-  isEventFavorited: (eventId) => get().favoriteEvents.some((item) => item.id === eventId),
+  isEventFavorited: (eventId) => get().favoriteEventIds.includes(eventId),
+  clearFavoriteNotice: () => set({ favoriteNotice: null }),
   openBuzzPoints: () => set({ showBuzzPoints: true }),
   closeBuzzPoints: () => set({ showBuzzPoints: false }),
   setTasteIdentityItems: (items) => set({ tasteIdentityItems: items }),
