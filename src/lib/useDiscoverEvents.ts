@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { events as demoEvents } from '../data/demoData'
 import type { EventItem } from '../types'
 import { apiBase } from './api-base'
-import { resolveEventImagePlaceholder } from './resolve-event-image'
+import { resolveListImage } from './resolve-event-image'
 import type { DiscoverEventFilters } from './discover-filters'
 import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/discoverFeed'
 
@@ -25,7 +25,6 @@ type DiscoverEventListItem = {
   ticketPrice: string
   lat: number | null
   lng: number | null
-  sourceUrl?: string | null
 }
 
 type DiscoverEventsPage = {
@@ -35,7 +34,7 @@ type DiscoverEventsPage = {
 }
 
 type DiscoverEventDetail = DiscoverEventListItem & {
-  sourceUrl?: string | null
+  sourceUrl: string | null
 }
 
 type DiscoverEventsState = {
@@ -61,19 +60,8 @@ function demoFallbackEnabled(): boolean {
   return raw === DISCOVER_EVENTS_SOURCE_CONFIG.demoFallbackEnvValue
 }
 
-export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem): EventItem {
-  const image =
-    item.imageUrl ||
-    resolveEventImagePlaceholder(
-      {
-        event_id: item.id,
-        title: item.title,
-        category: item.category,
-      },
-      { id: item.id, title: item.title, genre: item.category },
-    )
-
-  return {
+export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem | DiscoverEventDetail): EventItem {
+  const event: EventItem = {
     id: item.id,
     title: item.title,
     venue: item.venue,
@@ -85,7 +73,7 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem)
     exploreCategoryId: item.categoryId,
     locationCityId: item.locationCityId,
     verified: 0,
-    image,
+    image: '',
     host: item.host,
     hostPrompt: item.summary,
     friendsGoing: 0,
@@ -95,7 +83,22 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem)
     buzzPct: undefined,
     lat: item.lat ?? undefined,
     lng: item.lng ?? undefined,
-    sourceUrl: item.sourceUrl ?? null,
+    sourceUrl: 'sourceUrl' in item ? item.sourceUrl ?? null : null,
+  }
+
+  const resolvedImage = resolveListImage(
+    {
+      event_id: item.id,
+      title: item.title,
+      category: item.category,
+      event_img: item.imageUrl,
+    },
+    event,
+  )
+
+  return {
+    ...event,
+    image: resolvedImage.url,
   }
 }
 
@@ -128,8 +131,12 @@ function discoverEventDetailUrl(eventId: string): string {
   return base ? `${base}${path}` : path
 }
 
-function trimEventWindow(events: EventItem[]): EventItem[] {
-  return events
+export function trimEventWindow(events: EventItem[]): EventItem[] {
+  const hardLimit = DISCOVER_FEED_CONFIG.hardRenderedEventCount
+  if (events.length <= hardLimit) return events
+
+  const softLimit = Math.min(DISCOVER_FEED_CONFIG.softRenderedEventCount, hardLimit)
+  return events.slice(-softLimit)
 }
 
 export async function fetchDiscoverEventById(eventId: string, signal?: AbortSignal): Promise<EventItem> {
