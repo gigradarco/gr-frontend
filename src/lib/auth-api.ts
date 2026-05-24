@@ -1,4 +1,5 @@
 import type { AuthUserPayload } from '../store/appStore'
+import { ACCESS_TOKEN_REFRESH_SKEW_SEC } from '../config/auth'
 import { apiBase } from './api-base'
 import { clearSession, getAccessToken, getRefreshToken, notifyAuthChanged, setTokens } from './session'
 
@@ -136,9 +137,6 @@ async function parseErrorMessage(r: Response, fallback: string): Promise<string>
   }
   return msg
 }
-
-/** Refresh access token this many seconds before Supabase JWT expiry (e.g. before avatar upload). */
-const ACCESS_TOKEN_REFRESH_SKEW_SEC = 5 * 60
 
 /** JWT payload `exp` is seconds since epoch. */
 function accessTokenExpiresWithin(token: string, skewSeconds: number): boolean {

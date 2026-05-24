@@ -13798,6 +13798,8 @@ button.taste-tag:focus-visible {
   box-sizing: border-box;
   height: 100%;
   min-height: 100%;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vh;
 }
 
 .ecf-bg-img {
@@ -14353,6 +14355,13 @@ button.taste-tag:focus-visible {
 }
 
 /* End-of-feed card */
+.ecf-load-more-sentinel {
+  height: 1px;
+  min-height: 1px;
+  scroll-snap-align: none;
+  pointer-events: none;
+}
+
 .ecf-end-card {
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -14397,6 +14406,24 @@ button.taste-tag:focus-visible {
   text-transform: none;
   letter-spacing: 0;
   font-size: 16px;
+}
+
+.ecf-end-load-more {
+  border: 1px solid rgba(255, 61, 0, 0.65);
+  background: rgba(255, 61, 0, 0.12);
+  color: #f3f3f3;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ecf-end-load-more:hover {
+  border-color: var(--primary);
+  background: rgba(255, 61, 0, 0.2);
 }
 
 @keyframes ecf-spin {
@@ -14747,6 +14774,11 @@ button.taste-tag:focus-visible {
 .theme-light .ecf-end-spinner {
   border-color: color-mix(in oklab, var(--muted) 30%, transparent);
   border-top-color: var(--primary);
+}
+
+.theme-light .ecf-end-load-more {
+  color: var(--text);
+  background: color-mix(in oklab, var(--primary) 11%, transparent);
 }
 
 /* Empty state */

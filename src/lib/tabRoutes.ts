@@ -1,14 +1,7 @@
 import type { NavigateFunction } from 'react-router-dom'
+import { TAB_PATHS } from '../config/routes'
 import type { Tab } from '../types'
-
-/** Canonical paths for main shell tabs (mobile web). */
-export const TAB_PATHS: Record<Tab, string> = {
-  discover: '/discover',
-  ask: '/ask-buzo',
-  plan: '/plan',
-  profile: '/profile',
-  favorites: '/favorites',
-}
+export { TAB_PATHS } from '../config/routes'
 
 const PATH_TO_TAB = Object.fromEntries(
   Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab]),

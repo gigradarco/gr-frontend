@@ -1,8 +1,11 @@
-const AT = 'buzo_access_token'
-const RT = 'buzo_refresh_token'
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  PENDING_HOME_COMPOSER_PREFILL_SESSION_KEY,
+  REFRESH_TOKEN_STORAGE_KEY,
+} from '../config/storage'
 
 /** Homepage composer prompt stashed before OAuth; opens Ask Buzo after sign-in when non-empty. */
-export const SESSION_PENDING_HOME_COMPOSER_PREFILL_KEY = 'buzo-pending-discover-prefill'
+export const SESSION_PENDING_HOME_COMPOSER_PREFILL_KEY = PENDING_HOME_COMPOSER_PREFILL_SESSION_KEY
 
 export function peekPendingHomeComposerPrefill(): string {
   if (typeof window === 'undefined') return ''
@@ -31,7 +34,7 @@ export function clearOAuthReturnPendingWelcome(): void {
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return window.localStorage.getItem(AT)
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
   } catch {
     return null
   }
@@ -40,7 +43,7 @@ export function getAccessToken(): string | null {
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return window.localStorage.getItem(RT)
+    return window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
   } catch {
     return null
   }
@@ -48,9 +51,9 @@ export function getRefreshToken(): string | null {
 
 export function setTokens(tokens: { access_token: string; refresh_token?: string | null }) {
   try {
-    window.localStorage.setItem(AT, tokens.access_token)
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, tokens.access_token)
     if (tokens.refresh_token) {
-      window.localStorage.setItem(RT, tokens.refresh_token)
+      window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, tokens.refresh_token)
     }
   } catch {
     /* private mode */
@@ -60,8 +63,8 @@ export function setTokens(tokens: { access_token: string; refresh_token?: string
 
 export function clearSession() {
   try {
-    window.localStorage.removeItem(AT)
-    window.localStorage.removeItem(RT)
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+    window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   } catch {
     /* ignore */
   }

@@ -1,4 +1,4 @@
-const KEY = 'buzo_last_account'
+import { LAST_USED_ACCOUNT_STORAGE_KEY } from '../config/storage'
 
 export type LastUsedAccount = {
   email: string
@@ -8,7 +8,7 @@ export type LastUsedAccount = {
 
 export function saveLastUsedAccount(account: LastUsedAccount): void {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(account))
+    window.localStorage.setItem(LAST_USED_ACCOUNT_STORAGE_KEY, JSON.stringify(account))
   } catch {
     /* ignore quota / private mode */
   }
@@ -16,7 +16,7 @@ export function saveLastUsedAccount(account: LastUsedAccount): void {
 
 export function getLastUsedAccount(): LastUsedAccount | null {
   try {
-    const raw = window.localStorage.getItem(KEY)
+    const raw = window.localStorage.getItem(LAST_USED_ACCOUNT_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as unknown
     if (
@@ -35,7 +35,7 @@ export function getLastUsedAccount(): LastUsedAccount | null {
 
 export function clearLastUsedAccount(): void {
   try {
-    window.localStorage.removeItem(KEY)
+    window.localStorage.removeItem(LAST_USED_ACCOUNT_STORAGE_KEY)
   } catch {
     /* ignore quota / private mode */
   }

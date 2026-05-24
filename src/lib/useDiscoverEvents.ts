@@ -4,10 +4,7 @@ import type { EventItem } from '../types'
 import { apiBase } from './api-base'
 import { resolveEventImagePlaceholder } from './resolve-event-image'
 import type { DiscoverEventFilters } from './discover-filters'
-
-const DISCOVER_PAGE_SIZE = 30
-const APPEND_LOADING_MIN_MS = 450
-const APPEND_LOAD_COOLDOWN_MS = 300
+import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/discoverFeed'
 
 export type DiscoverEventsSource = 'live' | 'demo' | 'auto'
 
@@ -56,7 +53,12 @@ type DiscoverEventsState = {
 function configuredSource(): DiscoverEventsSource {
   const raw = (import.meta.env.VITE_DISCOVER_EVENTS_SOURCE as string | undefined)?.trim().toLowerCase()
   if (raw === 'demo' || raw === 'auto' || raw === 'live') return raw
-  return 'live'
+  return DISCOVER_EVENTS_SOURCE_CONFIG.defaultSource
+}
+
+function demoFallbackEnabled(): boolean {
+  const raw = (import.meta.env.VITE_DISCOVER_EVENTS_ALLOW_DEMO_FALLBACK as string | undefined)?.trim().toLowerCase()
+  return raw === DISCOVER_EVENTS_SOURCE_CONFIG.demoFallbackEnvValue
 }
 
 export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem): EventItem {
@@ -100,7 +102,7 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem)
 function discoverEventsUrl(cityId: string, cursor: string | null, filters: DiscoverEventFilters): string {
   const params = new URLSearchParams()
   params.set('cityId', cityId)
-  params.set('limit', String(DISCOVER_PAGE_SIZE))
+  params.set('limit', String(DISCOVER_FEED_CONFIG.pageSize))
   if (cursor) params.set('cursor', cursor)
   if (filters.categories !== 'All' && filters.categories.length > 0) {
     params.set('categoryIds', filters.categories.join(','))
@@ -155,6 +157,7 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
   const abortRef = useRef<AbortController | null>(null)
   const pendingCursorRef = useRef<string | null>(null)
   const lastAppendFinishedAtRef = useRef(0)
+  const allowDemoFallback = useMemo(() => demoFallbackEnabled(), [])
 
   const fetchPage = useCallback(
     async (nextCursor: string | null, mode: 'reset' | 'append') => {
@@ -195,7 +198,7 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
         setTotalAvailable(Number.isFinite(page.totalAvailable) ? page.totalAvailable : null)
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return
-        if (source === 'auto') {
+        if (source === 'auto' && allowDemoFallback) {
           setEvents(demoEvents)
           setCursor(null)
           setHasMore(false)
@@ -209,8 +212,8 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
       } finally {
         if (mode === 'append') {
           const elapsed = performance.now() - appendStartedAt
-          if (elapsed < APPEND_LOADING_MIN_MS) {
-            await new Promise((resolve) => window.setTimeout(resolve, APPEND_LOADING_MIN_MS - elapsed))
+          if (elapsed < DISCOVER_FEED_CONFIG.appendLoadingMinMs) {
+            await new Promise((resolve) => window.setTimeout(resolve, DISCOVER_FEED_CONFIG.appendLoadingMinMs - elapsed))
           }
           lastAppendFinishedAtRef.current = Date.now()
         }
@@ -219,7 +222,7 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
         setLoadingMore(false)
       }
     },
-    [cityId, filters, source],
+    [allowDemoFallback, cityId, filters, source],
   )
 
   useEffect(() => {
@@ -245,7 +248,7 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
   const loadMore = useCallback(() => {
     if (source === 'demo' || loading || loadingMore || !hasMore) return
     const now = Date.now()
-    if (now - lastAppendFinishedAtRef.current < APPEND_LOAD_COOLDOWN_MS) return
+    if (now - lastAppendFinishedAtRef.current < DISCOVER_FEED_CONFIG.appendLoadCooldownMs) return
     void fetchPage(cursor, 'append')
   }, [cursor, fetchPage, hasMore, loading, loadingMore, source])
 

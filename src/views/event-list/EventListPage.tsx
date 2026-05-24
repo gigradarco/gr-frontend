@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { apiBase } from '../../lib/api-base'
-import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
-import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/event-list-normaliser'
 import { getAccessToken } from '../../lib/session'
 import {
@@ -16,6 +14,35 @@ import {
   type ImageSourceFilter,
 } from '../../lib/resolve-event-image'
 import { useAppState } from '../../store/appStore'
+import {
+  ADVANCED_RULE_PRESETS,
+  BOOLEAN_TURSO_FIELDS,
+  CATEGORY_LABEL_BY_ID,
+  CATEGORY_OPTIONS,
+  CITY_OPTIONS,
+  DEFAULT_ADVANCED_CONDITION,
+  DEFAULT_DEBUG_FILTERS,
+  EVENT_LIST_LIMITS,
+  HIDDEN_TURSO_FIELDS,
+  IMAGE_SOURCE_FILTERS,
+  OPERATOR_LABEL_BY_ID,
+  OPERATOR_OPTIONS,
+  OTHERS_CATEGORY_VALUE,
+  TABLE_COLUMN_PRESETS,
+  TABLE_THUMB_COLUMN,
+  TURSO_EVENT_SCHEMA_FIELDS,
+  TURSO_FACT_GROUP_BY_KEY,
+  WIDE_TURSO_FIELDS,
+  WRAP_TURSO_FIELDS,
+  type EventListActiveFilterChip as ActiveFilterChip,
+  type EventListAdvancedCondition as AdvancedCondition,
+  type EventListDebugFilters as DebugFilters,
+  type EventListFilterMode as FilterMode,
+  type EventListFilterOperator as FilterOperator,
+  type EventListTableColumnPreset as TableColumnPreset,
+  type EventListTableSortDirection as TableSortDirection,
+  type EventListViewMode as ViewMode,
+} from '../../config/eventList'
 import type { EventItem } from '../../types'
 import './event-list.css'
 
@@ -25,10 +52,6 @@ type EventRow = {
   sourceUrl?: string
 }
 
-type ViewMode = 'list' | 'table'
-type FilterMode = 'basic' | 'advanced'
-type TableColumnPreset = 'overview' | 'timing' | 'taste' | 'price' | 'images' | 'all'
-type TableSortDirection = 'asc' | 'desc'
 type TableSortState = { column: string; direction: TableSortDirection } | null
 type AdminAccessStatus = 'authorized' | 'denied' | 'signed-out' | 'error'
 type ImageInfoModalState = {
@@ -37,214 +60,11 @@ type ImageInfoModalState = {
   title: string
 }
 
-type DebugFilters = {
-  cityId: string
-  categoryId: string
-  startDate: string
-  endDate: string
-  limit: string
-  search: string
-  minPrice: string
-  maxPrice: string
-}
-
-type CityOption = {
-  id: string
-  name: string
-  regionId: string
-  regionLabel: string
-}
-
-type CategoryOption = {
-  id: string
-  label: string
-  queryValue: string
-}
-
-type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'nlike' | 'in' | 'isnull' | 'notnull'
-
-type AdvancedCondition = {
-  id: string
-  column: (typeof TURSO_EVENT_SCHEMA_FIELDS)[number]
-  operator: FilterOperator
-  value: string
-}
-
-type OperatorOption = {
-  id: FilterOperator
-  label: string
-}
-
-type ActiveFilterChip = {
-  id: string
-  label: string
-  value: string
-}
-
-const TURSO_EVENT_SCHEMA_FIELDS = [
-  'event_id',
-  'title',
-  'location',
-  'address',
-  'host',
-  'platform',
-  'event_datetime',
-  'event_time_raw',
-  'the_experience',
-  'taste_and_recommendations',
-  'category',
-  'is_price_range',
-  'currencyId',
-  'min_price',
-  'max_price',
-  'source_url',
-  'event_img',
-  'fallback_event_img',
-  'lat',
-  'lon',
-  'ingestion_datetime',
-  'location_city_id',
-  'verified',
-  'is_deleted',
-] as const
-
-const HIDDEN_TURSO_FIELDS = new Set(['vibe_tags'])
-const BOOLEAN_TURSO_FIELDS = new Set(['is_price_range', 'is_deleted'])
-
-/** Synthetic table column — thumbnail preview, inserted after `event_id`. */
-const TABLE_THUMB_COLUMN = '__thumb'
-const DEFAULT_LIMIT = 100
-const MIN_LIMIT = 1
-const MAX_LIMIT = 1000
-const DEFAULT_DEBUG_FILTERS: DebugFilters = {
-  cityId: '',
-  categoryId: '',
-  startDate: '',
-  endDate: '',
-  limit: String(DEFAULT_LIMIT),
-  search: '',
-  minPrice: '',
-  maxPrice: '',
-}
-
 function eventListLoadError(status: number, fallback?: string): string {
   if (status === 401) return 'Sign in again to continue.'
   if (status === 403) return 'Admin access required.'
   return fallback ?? `HTTP ${status}`
 }
-const IMAGE_SOURCE_FILTERS: Array<{ id: ImageSourceFilter; label: string }> = [
-  { id: 'all', label: 'All images' },
-  { id: 'event-img', label: 'event-img' },
-  { id: 'fallback-img', label: 'fallback-img' },
-  { id: 'splash-img', label: 'splash-img' },
-  { id: 'failed-load', label: 'failed load' },
-]
-const TABLE_COLUMN_PRESETS: Array<{
-  id: TableColumnPreset
-  label: string
-  columns: string[] | null
-}> = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    columns: [
-      'event_id',
-      TABLE_THUMB_COLUMN,
-      'title',
-      'event_time_raw',
-      'location',
-      'category',
-      'taste_and_recommendations',
-      'is_price_range',
-      'min_price',
-      'max_price',
-      'source_url',
-    ],
-  },
-  {
-    id: 'timing',
-    label: 'Timing',
-    columns: ['event_id', 'title', 'event_datetime', 'event_time_raw', 'ingestion_datetime'],
-  },
-  {
-    id: 'taste',
-    label: 'Taste',
-    columns: [
-      'event_id',
-      'title',
-      'category',
-      'taste_and_recommendations',
-      'the_experience',
-      'host',
-      'platform',
-    ],
-  },
-  {
-    id: 'price',
-    label: 'Price',
-    columns: ['event_id', 'title', 'is_price_range', 'currencyId', 'min_price', 'max_price', 'source_url'],
-  },
-  {
-    id: 'images',
-    label: 'Images',
-    columns: ['event_id', TABLE_THUMB_COLUMN, 'title', 'event_img', 'fallback_event_img', 'source_url'],
-  },
-  { id: 'all', label: 'Raw all', columns: null },
-]
-const DEFAULT_ADVANCED_CONDITION: AdvancedCondition = {
-  id: 'rule-1',
-  column: 'category',
-  operator: 'eq',
-  value: '',
-}
-const ADVANCED_RULE_PRESETS: Array<{ label: string; rule: Omit<AdvancedCondition, 'id'> }> = [
-  { label: 'Missing datetime', rule: { column: 'event_datetime', operator: 'isnull', value: '' } },
-  { label: 'Has source URL', rule: { column: 'source_url', operator: 'notnull', value: '' } },
-  { label: 'Missing price', rule: { column: 'min_price', operator: 'isnull', value: '' } },
-  { label: 'Deleted only', rule: { column: 'is_deleted', operator: 'eq', value: '1' } },
-  { label: 'Tech House taste', rule: { column: 'taste_and_recommendations', operator: 'like', value: 'Tech House' } },
-]
-const OTHERS_CATEGORY_VALUE = '__others__'
-const OPERATOR_OPTIONS: OperatorOption[] = [
-  { id: 'eq', label: 'equals (=)' },
-  { id: 'neq', label: 'not equals (!=)' },
-  { id: 'gt', label: 'greater (>)' },
-  { id: 'gte', label: 'greater or equals (>=)' },
-  { id: 'lt', label: 'less (<)' },
-  { id: 'lte', label: 'less or equals (<=)' },
-  { id: 'like', label: 'like' },
-  { id: 'nlike', label: 'not like' },
-  { id: 'in', label: 'in (comma-separated)' },
-  { id: 'isnull', label: 'is null' },
-  { id: 'notnull', label: 'is not null' },
-]
-const OPERATOR_LABEL_BY_ID = new Map(OPERATOR_OPTIONS.map((option) => [option.id, option.label]))
-
-const CITY_OPTIONS: CityOption[] = LOCATION_REGIONS.flatMap((region) =>
-  region.cities.map((city) => ({
-    id: city.id,
-    name: city.name,
-    regionId: region.id,
-    regionLabel: region.label,
-  })),
-)
-
-const CATEGORY_OPTIONS: CategoryOption[] = [
-  ...DISCOVER_FEED_CATEGORY_FILTER_OPTIONS.map((option) => ({
-    id: option.id === 'All' ? '' : option.id,
-    label: option.label,
-    queryValue: option.id === 'All' ? '' : option.label,
-  })),
-  {
-    id: OTHERS_CATEGORY_VALUE,
-    label: 'Others',
-    queryValue: OTHERS_CATEGORY_VALUE,
-  },
-]
-
-const CATEGORY_LABEL_BY_ID = new Map(
-  CATEGORY_OPTIONS.filter((option) => option.id.length > 0).map((option) => [option.id.toLowerCase(), option.label]),
-)
 
 function resolveCategoryQuery(rawCategory: string): string {
   const t = rawCategory.trim()
@@ -275,10 +95,10 @@ function normalizeAdvancedRules(rules: AdvancedCondition[]): AdvancedCondition[]
 
 function normalizeLimitInput(value: string): string {
   const trimmed = value.trim()
-  if (!trimmed) return String(DEFAULT_LIMIT)
+  if (!trimmed) return String(EVENT_LIST_LIMITS.default)
   const n = Number(trimmed)
-  if (!Number.isFinite(n)) return String(DEFAULT_LIMIT)
-  return String(Math.min(Math.max(Math.trunc(n), MIN_LIMIT), MAX_LIMIT))
+  if (!Number.isFinite(n)) return String(EVENT_LIST_LIMITS.default)
+  return String(Math.min(Math.max(Math.trunc(n), EVENT_LIST_LIMITS.min), EVENT_LIST_LIMITS.max))
 }
 
 function toIsoLocalDate(date: Date): string {
@@ -685,61 +505,6 @@ function tursoSchemaRows(row: Record<string, unknown>): Array<{ key: string; val
     value: row[key],
   }))
 }
-
-const WIDE_TURSO_FIELDS = new Set([
-  'title',
-  'location',
-  'address',
-  'the_experience',
-  'taste_and_recommendations',
-  'source_url',
-  'event_img',
-  'fallback_event_img',
-])
-
-const WRAP_TURSO_FIELDS = new Set(['event_datetime', 'event_time_raw', 'ingestion_datetime'])
-
-const TURSO_FACT_ROW_GROUPS = [
-  {
-    id: 'datetime',
-    className: 'event-list-fact-pair event-list-fact-pair--triple',
-    keys: ['event_datetime', 'event_time_raw', 'ingestion_datetime'],
-  },
-  {
-    id: 'taste',
-    className: 'event-list-fact-stack',
-    keys: ['taste_and_recommendations'],
-  },
-  {
-    id: 'host-platform',
-    className: 'event-list-fact-pair',
-    keys: ['host', 'platform'],
-  },
-  {
-    id: 'price',
-    className: 'event-list-fact-pair event-list-fact-pair--quad',
-    keys: ['is_price_range', 'currencyId', 'min_price', 'max_price'],
-  },
-  {
-    id: 'images',
-    className: 'event-list-fact-stack',
-    keys: ['event_img', 'fallback_event_img'],
-  },
-  {
-    id: 'location-geo',
-    className: 'event-list-fact-pair event-list-fact-pair--triple',
-    keys: ['location_city_id', 'lat', 'lon'],
-  },
-  {
-    id: 'flags',
-    className: 'event-list-fact-pair event-list-fact-pair--compact',
-    keys: ['verified', 'is_deleted'],
-  },
-] as const
-
-const TURSO_FACT_GROUP_BY_KEY = new Map<string, (typeof TURSO_FACT_ROW_GROUPS)[number]>(
-  TURSO_FACT_ROW_GROUPS.flatMap((group) => group.keys.map((key) => [key, group] as const)),
-)
 
 function tursoFieldLabel(key: string): string {
   return key.replace(/_/g, ' ')
@@ -1332,7 +1097,10 @@ export function EventListPage() {
       city.regionLabel.toLowerCase().includes(cityQuery)
     )
   })
-  const cityGroups = LOCATION_REGIONS.map((region) => ({
+  const cityRegions = Array.from(
+    new Map(CITY_OPTIONS.map((city) => [city.regionId, { id: city.regionId, label: city.regionLabel }])).values(),
+  )
+  const cityGroups = cityRegions.map((region) => ({
     region,
     options: filteredCityOptions.filter((city) => city.regionId === region.id),
   })).filter((group) => group.options.length > 0)
@@ -1599,10 +1367,10 @@ export function EventListPage() {
                   className="event-list-filter-input"
                   value={draftFilters.limit}
                   inputMode="numeric"
-                  min={MIN_LIMIT}
-                  max={MAX_LIMIT}
+                  min={EVENT_LIST_LIMITS.min}
+                  max={EVENT_LIST_LIMITS.max}
                   placeholder="100"
-                  title={`Limit is clamped to ${MIN_LIMIT}-${MAX_LIMIT} when filters are applied.`}
+                  title={`Limit is clamped to ${EVENT_LIST_LIMITS.min}-${EVENT_LIST_LIMITS.max} when filters are applied.`}
                   onBlur={() => setDraftFilters((f) => ({ ...f, limit: normalizeLimitInput(f.limit) }))}
                   onChange={(e) => {
                     const next = e.target.value.replace(/[^\d]/g, '')

@@ -5,8 +5,8 @@
  * Only one entry is kept at a time (the current user's avatar).
  */
 
-const LS_KEY = 'gr_avatar_cache'
-const MAX_DATA_URL_BYTES = 400 * 1024 // 400 KB – well within 5 MB localStorage limit
+import { AVATAR_CACHE_MAX_DATA_URL_BYTES } from '../config/avatar'
+import { AVATAR_CACHE_STORAGE_KEY } from '../config/storage'
 
 interface AvatarCacheEntry {
   url: string
@@ -15,7 +15,7 @@ interface AvatarCacheEntry {
 
 function readEntry(): AvatarCacheEntry | null {
   try {
-    const raw = localStorage.getItem(LS_KEY)
+    const raw = localStorage.getItem(AVATAR_CACHE_STORAGE_KEY)
     if (!raw) return null
     return JSON.parse(raw) as AvatarCacheEntry
   } catch {
@@ -24,9 +24,9 @@ function readEntry(): AvatarCacheEntry | null {
 }
 
 function writeEntry(entry: AvatarCacheEntry): void {
-  if (entry.dataUrl.length > MAX_DATA_URL_BYTES) return
+  if (entry.dataUrl.length > AVATAR_CACHE_MAX_DATA_URL_BYTES) return
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(entry))
+    localStorage.setItem(AVATAR_CACHE_STORAGE_KEY, JSON.stringify(entry))
   } catch {
     // Quota exceeded or storage unavailable — silent fail
   }

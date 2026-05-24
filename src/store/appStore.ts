@@ -10,18 +10,19 @@ import { postProfileDefaultCity } from '../lib/auth-api'
 import { navigateShellToPath } from '../lib/tabRoutes'
 import { persistSignupOnboardingDismissed, readSignupOnboardingDismissed, setOnboardingFlagUserId } from '../lib/signup-onboarding-flag'
 import { saveLastUsedAccount } from '../lib/last-used-account'
+import {
+  DEFAULT_CITY_STORAGE_KEY,
+  FAVORITES_STORAGE_KEY,
+  WELCOME_SESSION_STORAGE_KEY,
+} from '../config/storage'
 import type { Tab, Theme } from '../types'
-
-const WELCOME_SESSION_KEY = 'buzo-welcome-dismissed'
-const DEFAULT_CITY_STORAGE_KEY = 'buzo-default-city-id'
-const FAVORITES_STORAGE_KEY = 'buzo-favorite-events'
 
 function readWelcomeDismissed(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
   try {
-    return window.sessionStorage.getItem(WELCOME_SESSION_KEY) === '1'
+    return window.sessionStorage.getItem(WELCOME_SESSION_STORAGE_KEY) === '1'
   } catch {
     return false
   }
@@ -102,7 +103,7 @@ function persistFavoriteEvents(items: FavoriteEvent[]) {
 
 function persistWelcomeDismissed() {
   try {
-    window.sessionStorage.setItem(WELCOME_SESSION_KEY, '1')
+    window.sessionStorage.setItem(WELCOME_SESSION_STORAGE_KEY, '1')
   } catch {
     /* ignore quota / private mode */
   }
@@ -110,7 +111,7 @@ function persistWelcomeDismissed() {
 
 function clearWelcomeDismissedPersisted() {
   try {
-    window.sessionStorage.removeItem(WELCOME_SESSION_KEY)
+    window.sessionStorage.removeItem(WELCOME_SESSION_STORAGE_KEY)
   } catch {
     /* ignore */
   }

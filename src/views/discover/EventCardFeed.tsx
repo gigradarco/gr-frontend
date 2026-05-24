@@ -8,6 +8,8 @@ import { useAppState } from '../../store/appStore'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import { EventShareSheet } from '../../components/EventShareSheet'
+import { DISCOVER_FEED_CONFIG } from '../../config/discoverFeed'
+import { DISCOVER_FILTER_SECTIONS } from '../../config/discoverUi'
 import {
   AREA_FILTER,
   DATE_FILTER,
@@ -368,8 +370,7 @@ function EventCard({ event, isGoing, isSaved, onGoing, onSave, onShare, onMoreDe
 }
 
 // ─── Filter bottom sheet ──────────────────────────────────────────────────────
-const FILTER_SECTIONS = ['Category', 'Date', 'Time', 'Area', 'Price'] as const
-type FilterSectionName = (typeof FILTER_SECTIONS)[number]
+type FilterSectionName = (typeof DISCOVER_FILTER_SECTIONS)[number]
 
 export type FilterSheetProps = {
   applied: EventFeedFilters
@@ -403,14 +404,14 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
     cascadeTimers.current = []
     cascadeTargetRef.current = target
 
-    const fromIdx = FILTER_SECTIONS.indexOf(activeSectionRef.current)
-    const toIdx   = FILTER_SECTIONS.indexOf(target)
+    const fromIdx = DISCOVER_FILTER_SECTIONS.indexOf(activeSectionRef.current)
+    const toIdx   = DISCOVER_FILTER_SECTIONS.indexOf(target)
     if (toIdx === fromIdx) return
 
     const dir = toIdx > fromIdx ? 1 : -1
     const steps: FilterSectionName[] = []
     for (let i = fromIdx + dir; dir > 0 ? i <= toIdx : i >= toIdx; i += dir) {
-      steps.push(FILTER_SECTIONS[i])
+      steps.push(DISCOVER_FILTER_SECTIONS[i])
     }
 
     steps.forEach((section, i) => {
@@ -438,10 +439,10 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
 
     const progress = body.scrollTop / maxScroll                        // 0 → 1
     const idx = Math.min(
-      Math.floor(progress * FILTER_SECTIONS.length),
-      FILTER_SECTIONS.length - 1,
+      Math.floor(progress * DISCOVER_FILTER_SECTIONS.length),
+      DISCOVER_FILTER_SECTIONS.length - 1,
     )
-    cascadeTo(FILTER_SECTIONS[idx])
+    cascadeTo(DISCOVER_FILTER_SECTIONS[idx])
   }, [cascadeTo])
 
   const scrollToSection = useCallback((name: FilterSectionName) => {
@@ -482,7 +483,7 @@ export function FilterSheet({ applied, onApply, onClose }: FilterSheetProps) {
 
         {/* Section indicator dots */}
         <div className="ecf-filter-nav" aria-hidden>
-          {FILTER_SECTIONS.map((name) => (
+          {DISCOVER_FILTER_SECTIONS.map((name) => (
             <button
               key={name}
               type="button"
@@ -703,7 +704,10 @@ export function EventCardFeed({
   const [shareEventTarget, setShareEventTarget] = useState<EventItem | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollElRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null)
   const endSentinelRef = useRef<HTMLDivElement | null>(null)
+  const prevRenderedLengthRef = useRef(0)
+  const prevRenderWindowOffsetRef = useRef(0)
 
   useEffect(() => {
     setLocalFilters(filters)
@@ -717,6 +721,15 @@ export function EventCardFeed({
     [events, localFilters, locationCityId],
   )
 
+  const renderWindowOffset =
+    filtered.length > DISCOVER_FEED_CONFIG.hardRenderedEventCount
+      ? Math.max(0, filtered.length - DISCOVER_FEED_CONFIG.softRenderedEventCount)
+      : 0
+  const renderedEvents = useMemo(
+    () => (renderWindowOffset > 0 ? filtered.slice(renderWindowOffset) : filtered),
+    [filtered, renderWindowOffset],
+  )
+
   const activeCount = countActiveFilters(localFilters)
 
   const scrollToCard = useCallback((idx: number) => {
@@ -724,6 +737,23 @@ export function EventCardFeed({
     if (!el) return
     el.scrollTo({ top: idx * el.clientHeight, behavior: 'smooth' })
   }, [])
+
+  const requestLoadMore = useCallback(() => {
+    if (!hasMore || loadingMore || loading) return
+    onLoadMore?.()
+  }, [hasMore, loading, loadingMore, onLoadMore])
+
+  const maybeLoadMoreFromScroll = useCallback(() => {
+    const el = scrollElRef.current
+    if (!el || !hasMore || loadingMore || loading) return
+    const remainingPx = el.scrollHeight - el.scrollTop - el.clientHeight
+    const nearEndByDistance = remainingPx <= el.clientHeight * DISCOVER_FEED_CONFIG.loadMoreScrollBufferScreens
+    const idx = Math.round(el.scrollTop / el.clientHeight)
+    const nearEndByCard = idx >= Math.max(0, renderedEvents.length - DISCOVER_FEED_CONFIG.loadMoreCardBuffer)
+    if (nearEndByDistance || nearEndByCard) {
+      onLoadMore?.()
+    }
+  }, [hasMore, loading, loadingMore, onLoadMore, renderedEvents.length])
 
   // Callback ref — attaches scroll + scrollend listeners the instant the div mounts
   const setScrollEl = useCallback((el: HTMLDivElement | null) => {
@@ -747,9 +777,7 @@ export function EventCardFeed({
     if (!el) return
     const idx = Math.round(el.scrollTop / el.clientHeight)
     setCardIdx(idx)
-    if (hasMore && !loadingMore && idx >= filtered.length - 5) {
-      onLoadMore?.()
-    }
+    maybeLoadMoreFromScroll()
   }
 
   const onScrollEndRef = useRef<(() => void) | undefined>(undefined)
@@ -757,6 +785,7 @@ export function EventCardFeed({
     const el = scrollElRef.current
     if (!el) return
     setCardIdx(Math.round(el.scrollTop / el.clientHeight))
+    maybeLoadMoreFromScroll()
   }
 
   // When onboarding finishes, pick up the newly written localStorage categories
@@ -771,44 +800,68 @@ export function EventCardFeed({
     prevShowOnboarding.current = showOnboarding
   }, [localFilters, onFiltersChange, showOnboarding])
 
-  // Reset scroll position when city or filters change
-  useEffect(() => {
+  // Reset scroll position when city or filters change.
+  useLayoutEffect(() => {
     const el = scrollElRef.current
     if (el) el.scrollTop = 0
     setCardIdx(0)
+    prevRenderedLengthRef.current = renderedEvents.length
+    prevRenderWindowOffsetRef.current = renderWindowOffset
   }, [localFilters, locationCityId])
+
+  useLayoutEffect(() => {
+    const prevLength = prevRenderedLengthRef.current
+    const prevOffset = prevRenderWindowOffsetRef.current
+    const droppedFromWindow = renderWindowOffset - prevOffset
+    const el = scrollElRef.current
+    if (el && droppedFromWindow > 0) {
+      const nextIdx = Math.max(0, cardIdx - droppedFromWindow)
+      el.scrollTo({ top: nextIdx * el.clientHeight, behavior: 'auto' })
+      setCardIdx(nextIdx)
+    } else if (el && prevLength > 0 && renderedEvents.length > prevLength && cardIdx >= prevLength) {
+      el.scrollTo({ top: prevLength * el.clientHeight, behavior: 'auto' })
+      setCardIdx(prevLength)
+    }
+    prevRenderedLengthRef.current = renderedEvents.length
+    prevRenderWindowOffsetRef.current = renderWindowOffset
+  }, [cardIdx, renderedEvents.length, renderWindowOffset])
 
   useEffect(() => {
     const root = scrollElRef.current
-    const sentinel = endSentinelRef.current
-    if (!root || !sentinel) return
+    const sentinels = [loadMoreSentinelRef.current, endSentinelRef.current].filter(
+      (node): node is HTMLDivElement => node != null,
+    )
+    if (!root || sentinels.length === 0) return
     const observer = new IntersectionObserver(
       (entries) => {
         const hit = entries.some((entry) => entry.isIntersecting)
         if (!hit) return
-        if (hasMore && !loadingMore && !loading) {
-          onLoadMore?.()
-        }
+        requestLoadMore()
       },
       {
         root,
-        rootMargin: '0px 0px 45% 0px',
+        rootMargin: '0px 0px 200% 0px',
         threshold: 0.01,
       },
     )
-    observer.observe(sentinel)
+    sentinels.forEach((sentinel) => observer.observe(sentinel))
     return () => observer.disconnect()
-  }, [hasMore, loading, loadingMore, onLoadMore, filtered.length])
+  }, [renderedEvents.length, requestLoadMore])
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => maybeLoadMoreFromScroll())
+    return () => window.cancelAnimationFrame(frame)
+  }, [renderedEvents.length, maybeLoadMoreFromScroll])
 
   // Fail-safe for snap/observer edge cases:
   // if user is already on the end card and we still have more pages, keep loading.
   useEffect(() => {
     if (!hasMore || loadingMore || loading) return
-    if (filtered.length === 0) return
-    if (cardIdx >= filtered.length) {
-      onLoadMore?.()
+    if (renderedEvents.length === 0) return
+    if (cardIdx >= renderedEvents.length) {
+      requestLoadMore()
     }
-  }, [cardIdx, filtered.length, hasMore, loading, loadingMore, onLoadMore])
+  }, [cardIdx, hasMore, loading, loadingMore, renderedEvents.length, requestLoadMore])
 
   const toggleGoing = (id: string) =>
     setGoing((prev) =>
@@ -937,7 +990,7 @@ export function EventCardFeed({
       {/* Scroll progress indicator */}
       {filtered.length > 0 && (
         <div className="ecf-progress">
-          {filtered.map((_, i) => (
+          {renderedEvents.map((_, i) => (
             <button
               key={i}
               type="button"
@@ -1006,7 +1059,7 @@ export function EventCardFeed({
           </div>
         ) : (
           <>
-            {filtered.map((ev) => (
+            {renderedEvents.map((ev) => (
               <EventCard
                 key={ev.id}
                 event={ev}
@@ -1018,6 +1071,7 @@ export function EventCardFeed({
                 onMoreDetails={() => onMoreDetails(ev.id)}
               />
             ))}
+            <div className="ecf-load-more-sentinel" ref={loadMoreSentinelRef} aria-hidden />
             {/* End-of-feed sentinel */}
             <div className="ecf-end-card" role="status" aria-live="polite" ref={endSentinelRef}>
               <div className="ecf-end-line" />
@@ -1033,6 +1087,15 @@ export function EventCardFeed({
                       : 'You can scroll back up to revisit earlier picks.'}
                 </span>
               </p>
+              {hasMore && !loadingMore && (
+                <button
+                  type="button"
+                  className="ecf-end-load-more"
+                  onClick={requestLoadMore}
+                >
+                  Load more events
+                </button>
+              )}
             </div>
           </>
         )}

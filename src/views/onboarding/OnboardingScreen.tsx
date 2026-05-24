@@ -14,8 +14,7 @@ import {
   primaryCityIdFromSelection,
 } from '../../data/locationRegions'
 import { useAppState } from '../../store/appStore'
-
-const ONBOARDING_CITIES_STORAGE_KEY = 'buzo-onboarding-city-ids'
+import { ONBOARDING_CITIES_STORAGE_KEY } from '../../config/storage'
 
 function readInitialCitySelection(feedLocationCityId: string): string[] {
   if (typeof window === 'undefined') {

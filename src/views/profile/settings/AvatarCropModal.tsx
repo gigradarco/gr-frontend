@@ -9,12 +9,13 @@ import {
 } from 'react'
 import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
+import { AVATAR_CROP_CONFIG } from '../../../config/avatar'
 
-const VIEWPORT = 280
-const OUTPUT = 640
-const ZOOM_MIN = 1
-const ZOOM_MAX = 3
-const JPEG_QUALITY = 0.92
+const VIEWPORT: number = AVATAR_CROP_CONFIG.viewportPx
+const OUTPUT: number = AVATAR_CROP_CONFIG.outputPx
+const ZOOM_MIN: number = AVATAR_CROP_CONFIG.zoomMin
+const ZOOM_MAX: number = AVATAR_CROP_CONFIG.zoomMax
+const JPEG_QUALITY: number = AVATAR_CROP_CONFIG.jpegQuality
 
 type Props = {
   file: File

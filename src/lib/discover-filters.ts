@@ -1,45 +1,27 @@
-export const DATE_FILTER = ['All', 'Tonight', 'Tomorrow', 'Next 7 Days', 'This Month', 'Next 90 Days', 'Custom Range'] as const
-export const TIME_FILTER = ['All', 'Early Evening (6-9PM)', 'Prime (9-11PM)', 'Late Night (11PM+)'] as const
-export const AREA_FILTER = [
-  'All',
-  'Clarke Quay',
-  'Marina Bay',
-  'Tiong Bahru',
-  'Raffles Place',
-  'Downtown Core',
-] as const
-export const PRICE_FILTER = ['All', 'Free', 'Under $20', '$20-$50', '$50+'] as const
+import {
+  AREA_FILTER,
+  DATE_FILTER,
+  DEFAULT_DISCOVER_FILTERS,
+  PRICE_FILTER,
+  TIME_FILTER,
+  type DiscoverAreaFilter,
+  type DiscoverDateFilter,
+  type DiscoverEventFilters,
+  type DiscoverPriceFilter,
+  type DiscoverTimeFilter,
+} from '../config/discoverFilters'
+import { DISCOVER_CATEGORY_STORAGE_KEY } from '../config/storage'
 
-export type DiscoverDateFilter = (typeof DATE_FILTER)[number]
-export type DiscoverTimeFilter = (typeof TIME_FILTER)[number]
-export type DiscoverAreaFilter = (typeof AREA_FILTER)[number]
-export type DiscoverPriceFilter = (typeof PRICE_FILTER)[number]
-
-export type DiscoverEventFilters = {
-  categories: 'All' | string[]
-  date: DiscoverDateFilter
-  time: DiscoverTimeFilter
-  startDate: string
-  endDate: string
-  startTime: string
-  endTime: string
-  area: DiscoverAreaFilter
-  price: DiscoverPriceFilter
+export { AREA_FILTER, DATE_FILTER, DEFAULT_DISCOVER_FILTERS, PRICE_FILTER, TIME_FILTER }
+export type {
+  DiscoverAreaFilter,
+  DiscoverDateFilter,
+  DiscoverEventFilters,
+  DiscoverPriceFilter,
+  DiscoverTimeFilter,
 }
 
-export const DEFAULT_DISCOVER_FILTERS: DiscoverEventFilters = {
-  categories: 'All',
-  date: 'All',
-  time: 'All',
-  startDate: '',
-  endDate: '',
-  startTime: '',
-  endTime: '',
-  area: 'All',
-  price: 'All',
-}
-
-export const DISCOVER_CATEGORY_STORAGE_KEY = 'buzo-feed-category-ids'
+export { DISCOVER_CATEGORY_STORAGE_KEY }
 
 export function readInitialDiscoverFilters(): DiscoverEventFilters {
   if (typeof window === 'undefined') return DEFAULT_DISCOVER_FILTERS

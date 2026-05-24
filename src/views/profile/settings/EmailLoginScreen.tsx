@@ -1,13 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
+import { DEMO_EMAIL_LOGIN } from '../../../config/profileSettings'
 import { useAppState } from '../../../store/appStore'
-
-/** Demo account — replace with session user.email */
-const CURRENT_EMAIL = 'vincenzo@example.com'
-
-/** Shown when Google is linked — replace with OAuth profile email. */
-const DEMO_GOOGLE_EMAIL = 'vincenzo.k@gmail.com'
 
 type EmailLoginTab = 'google' | 'email'
 
@@ -70,7 +65,7 @@ export function EmailLoginScreen() {
       window.alert('Enter your current password to save changes.')
       return
     }
-    const emailChanging = newEmail.trim() !== '' && newEmail.trim().toLowerCase() !== CURRENT_EMAIL
+  const emailChanging = newEmail.trim() !== '' && newEmail.trim().toLowerCase() !== DEMO_EMAIL_LOGIN.currentEmail
     const passwordChanging = newPassword.trim() !== '' || confirmPassword.trim() !== ''
     if (passwordChanging && newPassword !== confirmPassword) {
       window.alert('New password and confirmation do not match.')
@@ -168,7 +163,7 @@ export function EmailLoginScreen() {
 
             {googleLinked ? (
               <>
-                <p className="email-login-google-email-display">{DEMO_GOOGLE_EMAIL}</p>
+                <p className="email-login-google-email-display">{DEMO_EMAIL_LOGIN.googleEmail}</p>
                 <p className="email-login-google-note">
                   You can still sign in with your Buzo email and password when needed.
                 </p>
@@ -209,7 +204,7 @@ export function EmailLoginScreen() {
                 </span>
                 <div className="email-login-identity-body">
                   <span className="email-login-identity-label">Signed in as</span>
-                  <span className="email-login-identity-email">{CURRENT_EMAIL}</span>
+                  <span className="email-login-identity-email">{DEMO_EMAIL_LOGIN.currentEmail}</span>
                   {googleLinked && (
                     <span className="email-login-identity-meta">
                       May differ from your Google address

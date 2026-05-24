@@ -1,8 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown, ImageUp, Paperclip } from 'lucide-react'
-
-/** JPG, JPEG, PNG only — matches picker filter and validation. */
-const IMAGE_ACCEPT = 'image/jpeg,image/jpg,image/png,.jpg,.jpeg,.png'
+import { ATTACH_IMAGE_ACCEPT } from '../config/avatar'
 
 function isAllowedImageFile(file: File): boolean {
   const mime = file.type.toLowerCase()
@@ -68,7 +66,7 @@ export function LaylaAttachDropdown({ variant }: LaylaAttachDropdownProps) {
         ref={inputRef}
         type="file"
         className="welcome-layla-attach-file-input"
-        accept={IMAGE_ACCEPT}
+        accept={ATTACH_IMAGE_ACCEPT}
         onChange={onFileChange}
         tabIndex={-1}
         aria-hidden

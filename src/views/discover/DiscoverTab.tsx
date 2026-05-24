@@ -37,12 +37,8 @@ import { LaylaAttachDropdown } from '../../components/LaylaAttachDropdown'
 import { api } from '../../lib/trpc'
 import { getAccessToken } from '../../lib/session'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
 import type { EventItem } from '../../types'
-
-const SAMPLE_PLACEHOLDER = 'Chat With Buzo...'
-
-/** Matches the hardcoded jazz typing window in the `useEffect` below (~2500ms). */
-const DISCOVER_CHIP_AGENT_MIN_LOADING_MS = 2500
 
 type DiscoverTabProps = {
   onOpenEvent: (eventId: string) => void
@@ -339,7 +335,7 @@ export function DiscoverTab({
 
     if (needsMinAgentLoading) {
       const elapsed = performance.now() - agentLoadingStartedAt
-      const waitMs = Math.max(0, DISCOVER_CHIP_AGENT_MIN_LOADING_MS - elapsed)
+      const waitMs = Math.max(0, DISCOVER_COMPOSER_CONFIG.chipAgentMinLoadingMs - elapsed)
       if (waitMs > 0) {
         await new Promise((resolve) => window.setTimeout(resolve, waitMs))
       }
@@ -925,7 +921,7 @@ export function DiscoverTab({
             <textarea
               ref={textareaRef}
               className="welcome-layla-textarea"
-              placeholder={SAMPLE_PLACEHOLDER}
+              placeholder={DISCOVER_COMPOSER_CONFIG.samplePlaceholder}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {

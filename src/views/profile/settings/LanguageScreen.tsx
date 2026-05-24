@@ -1,9 +1,7 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft, Check } from 'lucide-react'
+import { LANGUAGE_OPTIONS } from '../../../config/profileSettings'
 import { useAppState } from '../../../store/appStore'
-
-/** Single option for now; extend when you add locales. */
-const LANGUAGES = [{ id: 'en', label: 'English' }] as const
 
 export function LanguageScreen() {
   const { closeLanguage } = useAppState()
@@ -32,7 +30,7 @@ export function LanguageScreen() {
       <div className="language-screen-body">
         <p className="language-screen-hint">App language</p>
         <div className="language-list-card">
-          {LANGUAGES.map((lang) => (
+          {LANGUAGE_OPTIONS.map((lang) => (
             <div
               key={lang.id}
               className="language-option language-option--selected"

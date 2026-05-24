@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
+import { PRIVACY_SAFETY_LAST_UPDATED } from '../../../config/profileSettings'
 import { useAppState } from '../../../store/appStore'
-
-const LAST_UPDATED = 'April 19, 2026'
 
 export function PrivacySafetyScreen() {
   const { closePrivacySafety } = useAppState()
@@ -30,7 +29,7 @@ export function PrivacySafetyScreen() {
 
       <div className="privacy-policy-body">
         <article className="privacy-policy-article">
-          <p className="privacy-policy-meta">Last updated: {LAST_UPDATED}</p>
+          <p className="privacy-policy-meta">Last updated: {PRIVACY_SAFETY_LAST_UPDATED}</p>
 
           <p className="privacy-policy-lead">
             Buzo (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) helps you discover gigs, scenes, and live
