@@ -15751,6 +15751,12 @@ vite-error-overlay::part(window) {
   letter-spacing: 0.02em;
 }
 
+.event-share-sub {
+  margin: 4px 0 0;
+  color: rgba(245, 246, 247, 0.6);
+  font-size: 0.82rem;
+}
+
 .event-share-close {
   width: 38px;
   height: 38px;
@@ -15758,6 +15764,7 @@ vite-error-overlay::part(window) {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.04);
   color: rgba(245, 246, 247, 0.92);
+  cursor: pointer;
 }
 
 .event-share-grid {
@@ -15774,9 +15781,16 @@ vite-error-overlay::part(window) {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.event-share-target-label {
   font-size: 0.8rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  color: rgba(245, 246, 247, 0.88);
 }
 
 .event-share-target-dot {
@@ -15789,6 +15803,90 @@ vite-error-overlay::part(window) {
   background: rgba(255, 255, 255, 0.09);
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #f4f5f7;
+}
+
+.event-share-target-dot--wa {
+  background: #25d366;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.event-share-target-dot--tg {
+  background: #2aabee;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.event-share-target-dot--x {
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.event-share-target-dot--fb {
+  background: #1877f2;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.event-share-target-dot--sms {
+  background: #34c759;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.event-share-preview {
+  margin: 2px 0 10px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(226, 67, 37, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.event-share-preview-title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.event-share-preview-meta {
+  margin: 4px 0 0;
+  color: rgba(245, 246, 247, 0.68);
+  font-size: 0.8rem;
+}
+
+.event-share-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.event-share-mode {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(245, 246, 247, 0.86);
+  border-radius: 999px;
+  height: 32px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.event-share-mode.is-active {
+  border-color: color-mix(in oklab, var(--primary) 58%, rgba(255, 255, 255, 0.15));
+  background: color-mix(in oklab, var(--primary) 20%, rgba(255, 255, 255, 0.08));
+  color: #fff;
 }
 
 .event-share-link-row {
@@ -15817,6 +15915,29 @@ vite-error-overlay::part(window) {
   min-width: 84px;
   padding: 0 14px;
   font-weight: 700;
+  height: 42px;
+  cursor: pointer;
+}
+
+.event-share-link-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.event-share-open {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(245, 246, 247, 0.95);
+  border-radius: 999px;
+  min-width: 90px;
+  padding: 0 14px;
+  font-weight: 700;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
 @media (max-width: 560px) {
