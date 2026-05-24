@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { events as demoEvents } from '../data/demoData'
 import type { EventItem } from '../types'
 import { apiBase } from './api-base'
+import { proxiedEventImageUrl } from './image-proxy'
 import { resolveListImage } from './resolve-event-image'
 import type { DiscoverEventFilters } from './discover-filters'
 import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/discoverFeed'
@@ -98,7 +99,7 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem 
 
   return {
     ...event,
-    image: resolvedImage.url,
+    image: resolvedImage.url ? proxiedEventImageUrl(resolvedImage.url, { quality: 80, width: 1200 }) : '',
   }
 }
 

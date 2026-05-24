@@ -90,6 +90,12 @@ export const EVENT_LIST_LIMITS = {
   max: 1000,
 } as const
 
+export const EVENT_LIST_IMAGE_PROBE_CONFIG = {
+  concurrency: 6,
+  maxRows: 80,
+  timeoutMs: 5000,
+} as const
+
 export const DEFAULT_DEBUG_FILTERS: EventListDebugFilters = {
   cityId: '',
   categoryId: '',

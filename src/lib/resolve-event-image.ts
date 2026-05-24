@@ -67,6 +67,24 @@ function fallbackImageUrl(value: unknown): string {
   return isHttpImageUrl(url) ? url : ''
 }
 
+function imageStatus(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+function isServerFailedImage(raw: Record<string, unknown>, key: 'event_img' | 'fallback_event_img'): boolean {
+  const statusKey = key === 'event_img' ? 'event_img_status' : 'fallback_event_img_status'
+  return imageStatus(raw[statusKey]) === 'failed'
+}
+
+function imageFailed(
+  raw: Record<string, unknown>,
+  key: 'event_img' | 'fallback_event_img',
+  url: string,
+  failedImageUrls: ReadonlySet<string>,
+): boolean {
+  return failedImageUrls.has(url) || isServerFailedImage(raw, key)
+}
+
 function pushFailedUrlDiagnostic(
   diagnostics: EventImageDiagnostic[],
   diagnosedUrls: Set<string>,
@@ -106,9 +124,11 @@ function imageDiagnosticsForRow(
         url: splashImg,
       })
     }
-  } else if (failedImageUrls.has(eventImg)) {
+  } else if (imageFailed(raw, 'event_img', eventImg, failedImageUrls)) {
     pushFailedUrlDiagnostic(diagnostics, diagnosedUrls, {
-      message: 'event_img failed to load.',
+      message: isServerFailedImage(raw, 'event_img')
+        ? 'event_img is marked failed by the server.'
+        : 'event_img failed to load.',
       severity: 'error',
       source: 'event-img',
       url: eventImg,
@@ -128,9 +148,11 @@ function imageDiagnosticsForRow(
       severity: 'warning',
       source: 'fallback-img',
     })
-  } else if (failedImageUrls.has(fallbackImg)) {
+  } else if (imageFailed(raw, 'fallback_event_img', fallbackImg, failedImageUrls)) {
     pushFailedUrlDiagnostic(diagnostics, diagnosedUrls, {
-      message: 'fallback_event_img failed to load.',
+      message: isServerFailedImage(raw, 'fallback_event_img')
+        ? 'fallback_event_img is marked failed by the server.'
+        : 'fallback_event_img failed to load.',
       severity: 'error',
       source: 'fallback-img',
       url: fallbackImg,
@@ -171,7 +193,7 @@ export function resolveListImage(
   const eventImg = firstImageUrl(raw.event_img)
   const fallbackImg = fallbackImageUrl(raw.fallback_event_img)
 
-  if (eventImg && !failedImageUrls.has(eventImg)) {
+  if (eventImg && !imageFailed(raw, 'event_img', eventImg, failedImageUrls)) {
     if (isSplashImageUrl(eventImg)) {
       const splashImg = splashImageForEventRow(raw, item)
       if (!failedImageUrls.has(splashImg)) {
@@ -182,7 +204,7 @@ export function resolveListImage(
     }
   }
 
-  if (fallbackImg && !failedImageUrls.has(fallbackImg)) {
+  if (fallbackImg && !imageFailed(raw, 'fallback_event_img', fallbackImg, failedImageUrls)) {
     return { url: fallbackImg, source: 'fallback-img' }
   }
 

@@ -44,7 +44,8 @@ describe('mapDiscoverEventListItemToEventItem', () => {
     })
 
     expect(event.sourceUrl).toBeNull()
-    expect(event.image).toMatch(/^https:\/\/images\.unsplash\.com\//)
+    expect(event.image).toContain('/api/image-proxy?')
+    expect(decodeURIComponent(event.image)).toContain('https://images.unsplash.com/')
   })
 })
 

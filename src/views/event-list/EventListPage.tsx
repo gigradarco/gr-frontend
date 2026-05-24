@@ -4,10 +4,12 @@ import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { apiBase } from '../../lib/api-base'
 import { mapRemoteEventRowToEventItem, parseCategoryTags } from '../../lib/event-list-normaliser'
+import { probeImageUrl } from '../../lib/image-load-probe'
 import { getAccessToken } from '../../lib/session'
 import {
   describeImageState,
   isHttpImageUrl,
+  resolveListImage,
   resolveTableThumbUrl,
   rowMatchesImageSourceFilter,
   type EventImageState,
@@ -22,6 +24,7 @@ import {
   CITY_OPTIONS,
   DEFAULT_ADVANCED_CONDITION,
   DEFAULT_DEBUG_FILTERS,
+  EVENT_LIST_IMAGE_PROBE_CONFIG,
   EVENT_LIST_LIMITS,
   HIDDEN_TURSO_FIELDS,
   IMAGE_SOURCE_FILTERS,
@@ -848,6 +851,7 @@ export function EventListPage() {
   const [imageInfoModal, setImageInfoModal] = useState<ImageInfoModalState | null>(null)
   const [loading, setLoading] = useState(true)
   const [adminAccessStatus, setAdminAccessStatus] = useState<AdminAccessStatus>('authorized')
+  const probedImageUrlsRef = useRef<Set<string>>(new Set())
 
   const toggleAllCardFacts = useCallback(() => {
     setGlobalFactsExpanded((current) => {
@@ -1001,6 +1005,7 @@ export function EventListPage() {
         setCountWarning(`Count unavailable: ${eventListLoadError(countRes.status, j.error)}`)
       }
       setAdminAccessStatus('authorized')
+      probedImageUrlsRef.current = new Set()
       setRows(
         data.map((r) => ({
           item: mapRemoteEventRowToEventItem(r),
@@ -1034,6 +1039,7 @@ export function EventListPage() {
     setAppliedFilterMode('basic')
     setAppliedFilters(normalized)
     setAppliedAdvanced([])
+    probedImageUrlsRef.current = new Set()
     setFailedImageUrls(new Set())
   }, [draftFilters])
 
@@ -1046,6 +1052,7 @@ export function EventListPage() {
       limit: normalizedLimit,
     })
     setAppliedAdvanced(normalizeAdvancedRules(draftAdvanced))
+    probedImageUrlsRef.current = new Set()
     setFailedImageUrls(new Set())
   }, [draftAdvanced, draftFilters.limit])
 
@@ -1057,6 +1064,7 @@ export function EventListPage() {
     setImageSourceFilter('all')
     setDraftAdvanced([{ ...DEFAULT_ADVANCED_CONDITION, id: `rule-${Date.now()}` }])
     setAppliedAdvanced([])
+    probedImageUrlsRef.current = new Set()
     setFailedImageUrls(new Set())
     setTableSort(null)
     setTableColumnFilters({})
@@ -1087,6 +1095,43 @@ export function EventListPage() {
       ),
     [failedImageUrls, imageSourceFilter, rows],
   )
+  useEffect(() => {
+    if (imageSourceFilter !== 'failed-load' || !rows || rows.length === 0) return
+
+    const urls: string[] = []
+    for (const row of rows) {
+      if (urls.length >= EVENT_LIST_IMAGE_PROBE_CONFIG.maxRows) break
+      const url = resolveListImage(row.raw, row.item, failedImageUrls).url
+      if (!url || probedImageUrlsRef.current.has(url)) continue
+      probedImageUrlsRef.current.add(url)
+      urls.push(url)
+    }
+    if (urls.length === 0) return
+
+    let cancelled = false
+    let index = 0
+
+    async function worker() {
+      while (!cancelled) {
+        const url = urls[index]
+        index += 1
+        if (!url) return
+
+        const result = await probeImageUrl(url, EVENT_LIST_IMAGE_PROBE_CONFIG.timeoutMs)
+        if (cancelled) return
+        if (result === 'failed') markImageUrlFailed(url)
+        if (result === 'loaded') markImageUrlLoaded(url)
+      }
+    }
+
+    for (let i = 0; i < Math.min(EVENT_LIST_IMAGE_PROBE_CONFIG.concurrency, urls.length); i += 1) {
+      void worker()
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [failedImageUrls, imageSourceFilter, markImageUrlFailed, markImageUrlLoaded, rows])
   const totalRows = imageFilteredRows.length
   const cityQuery = draftFilters.cityId.trim().toLowerCase()
   const filteredCityOptions = CITY_OPTIONS.filter((city) => {

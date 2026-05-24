@@ -74,6 +74,36 @@ describe('resolveListImage', () => {
     })
   })
 
+  it('uses server-side failed image status before browser load events fire', () => {
+    const event = eventItem()
+    const eventUrl = 'https://cdn.example.com/server-failed.jpg'
+    const fallbackUrl = 'https://cdn.example.com/fallback.jpg'
+
+    const state = describeImageState({
+      item: event,
+      raw: {
+        event_img: eventUrl,
+        event_img_status: 'failed',
+        fallback_event_img: fallbackUrl,
+      },
+    })
+
+    expect(state.resolved).toEqual({
+      url: fallbackUrl,
+      source: 'fallback-img',
+    })
+    expect(state.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'event_img is marked failed by the server.',
+          severity: 'error',
+          source: 'event-img',
+          url: eventUrl,
+        }),
+      ]),
+    )
+  })
+
   it('skips non-http fallback values and records a warning', () => {
     const event = eventItem()
     const raw = {
