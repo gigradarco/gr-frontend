@@ -45,6 +45,7 @@ import { UserAnalyticsPage } from './views/user-analytics/UserAnalyticsPage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
 import { fetchDiscoverEventById, useDiscoverEvents } from './lib/useDiscoverEvents'
+import { useEventPlans } from './lib/useEventPlans'
 import { readInitialDiscoverFilters, type DiscoverEventFilters } from './lib/discover-filters'
 import { handleEventImageError } from './lib/event-image-fallback'
 
@@ -169,6 +170,7 @@ function MainApp() {
     favoriteNotice,
     clearFavoriteNotice,
   } = useAppState()
+  const { isEventPlanned, toggleEventPlan } = useEventPlans()
   const navigate = useNavigate()
   const location = useLocation()
   const discoverRouteEventId = useMemo(
@@ -401,6 +403,8 @@ function MainApp() {
         onToggleFavorite={() =>
           toggleFavoriteEvent(toFavoriteEvent(data.eventId, sheetPlanOverlay.kind, data))
         }
+        isPlanned={isEventPlanned(data.eventId)}
+        onTogglePlan={() => toggleEventPlan(data.eventId)}
       />
     )
   }, [
@@ -409,7 +413,9 @@ function MainApp() {
     closeSheetPlanOverlay,
     openEvent,
     isEventFavorited,
+    isEventPlanned,
     toggleFavoriteEvent,
+    toggleEventPlan,
     toFavoriteEvent,
   ])
 
@@ -512,6 +518,8 @@ function MainApp() {
                       onOpenEvent={() => undefined}
                       isFavorited={isEventFavorited(discoverDetailEvent.id)}
                       onToggleFavorite={() => toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent))}
+                      isPlanned={isEventPlanned(discoverDetailEvent.id)}
+                      onTogglePlan={() => toggleEventPlan(discoverDetailEvent.id)}
                     />
                   ) : (
                     <div className="plan-detail-overlay-fallback screen-content plan-home">
@@ -701,8 +709,12 @@ function MainApp() {
                 </div>
               </div>
               <div className="event-sheet-actions">
-                <button type="button" className="event-sheet-cta-primary">
-                  I&apos;m Going
+                <button
+                  type="button"
+                  className="event-sheet-cta-primary"
+                  onClick={() => toggleEventPlan(activeEvent.id)}
+                >
+                  {isEventPlanned(activeEvent.id) ? 'Planned' : 'I\'m Going'}
                 </button>
                 {getPlanDetailUpcoming(activeEvent.id) ? (
                   <button

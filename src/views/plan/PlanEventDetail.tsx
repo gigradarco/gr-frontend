@@ -21,6 +21,8 @@ type PlanEventDetailProps = {
   onOpenEvent: (eventId: string) => void
   isFavorited: boolean
   onToggleFavorite: () => void
+  isPlanned?: boolean
+  onTogglePlan?: () => void
   /** Past events only: opens post-event review flow. */
   onOpenReview?: () => void
 }
@@ -60,6 +62,8 @@ export function PlanEventDetail({
   onOpenEvent,
   isFavorited,
   onToggleFavorite,
+  isPlanned = false,
+  onTogglePlan,
   onOpenReview,
 }: PlanEventDetailProps) {
   const [playing, setPlaying] = useState(false)
@@ -88,10 +92,6 @@ export function PlanEventDetail({
   const scoreFraction = hasVibeScore ? data.aiVibeScore! / 10 : 0
   const dashOffset = circumference * (1 - (vibeAnimated ? scoreFraction : 0))
   const openEventSourceInNewTab = async () => {
-    if (!isFavorited) {
-      onToggleFavorite()
-    }
-
     const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
     const openTarget = (target: string) => {
       if (popup) popup.location.replace(target)
@@ -223,10 +223,10 @@ export function PlanEventDetail({
             {variant === 'upcoming' ? (
               <button
                 type="button"
-                className="plan-cta-primary"
-                onClick={openEventSourceInNewTab}
+                className={`plan-cta-primary${isPlanned ? ' plan-cta-primary--active' : ''}`}
+                onClick={onTogglePlan}
               >
-                I&apos;M GOING
+                {isPlanned ? 'PLANNED' : 'I\'M GOING'}
               </button>
             ) : (
               <button type="button" className="plan-cta-primary plan-cta-primary--disabled" disabled>
@@ -250,6 +250,12 @@ export function PlanEventDetail({
               <Share2 size={18} strokeWidth={2} aria-hidden />
               SHARE WITH FRIENDS
             </button>
+            {variant === 'upcoming' ? (
+              <button type="button" className="plan-cta-secondary" onClick={openEventSourceInNewTab}>
+                <ExternalLink size={18} strokeWidth={2} aria-hidden />
+                OPEN SOURCE
+              </button>
+            ) : null}
           </div>
 
           {/* Experience quote */}

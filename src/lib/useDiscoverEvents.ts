@@ -9,7 +9,7 @@ import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/d
 
 export type DiscoverEventsSource = 'live' | 'demo' | 'auto'
 
-type DiscoverEventListItem = {
+export type DiscoverEventListItem = {
   id: string
   title: string
   venue: string
@@ -34,7 +34,7 @@ type DiscoverEventsPage = {
   totalAvailable: number
 }
 
-type DiscoverEventDetail = DiscoverEventListItem & {
+export type DiscoverEventDetail = DiscoverEventListItem & {
   sourceUrl: string | null
 }
 

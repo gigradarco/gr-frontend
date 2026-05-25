@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
@@ -16,7 +16,7 @@ import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS, getLocationCityCentroid } from '../../data/locationRegions'
 import { handleEventImageError } from '../../lib/event-image-fallback'
-import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
+import { useEventPlans } from '../../lib/useEventPlans'
 import type { EventItem } from '../../types'
 
 // ─── Category → accent (mirrors EventCardFeed) ───────────────────────────────
@@ -412,12 +412,12 @@ export function MapView({
   const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
+  const { isEventPlanned, toggleEventPlan } = useEventPlans()
   const tileUrl =
     theme === 'light'
       ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [going, setGoing] = useState<string[]>([])
   const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
@@ -503,41 +503,6 @@ export function MapView({
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
   }, [hasMore, loading, loadingMore, onLoadMore])
-
-  const toggle = (
-    id: string,
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
-  ) => setter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-
-  const openEventSourceInNewTab = useCallback(async (event: EventItem) => {
-    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
-    const openTarget = (target: string) => {
-      if (popup) popup.location.replace(target)
-      else window.open(target, '_blank', 'noopener,noreferrer')
-    }
-
-    const directUrl = event.sourceUrl?.trim()
-    if (directUrl) {
-      openTarget(directUrl)
-      toggle(event.id, setGoing)
-      return
-    }
-
-    try {
-      const detail = await fetchDiscoverEventById(event.id)
-      const resolvedUrl = detail.sourceUrl?.trim()
-      if (resolvedUrl) {
-        openTarget(resolvedUrl)
-        toggle(event.id, setGoing)
-        return
-      }
-    } catch {
-      // Fall back below.
-    }
-
-    if (popup) popup.close()
-    onMoreDetails(event.id)
-  }, [onMoreDetails])
 
   // Auto-cycle through events
   useEffect(() => {
@@ -854,7 +819,7 @@ export function MapView({
               <div className="mv-carousel" ref={carouselRef}>
                 {cityEvents.map(({ event }) => {
                   const isSel = selectedId === event.id
-                  const isGoing = going.includes(event.id)
+                  const isGoing = isEventPlanned(event.id)
                   const isSaved = isEventFavorited(event.id)
                   const accent = getAccent(event)
                   const dateTime = eventDateTimeLabel(event)
@@ -888,7 +853,7 @@ export function MapView({
                             className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation()
-                              openEventSourceInNewTab(event)
+                              toggleEventPlan(event.id)
                             }}
                           >
                             {isGoing ? "✓ I'm Going" : "I'm Going"}

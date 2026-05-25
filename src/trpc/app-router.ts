@@ -7,6 +7,34 @@ import { z } from 'zod'
  */
 const t = initTRPC.create()
 
+type PlanEventListItem = {
+  id: string
+  title: string
+  venue: string
+  district: string
+  category: string
+  categoryId: string
+  locationCityId: string
+  eventDateTime: string | null
+  displayDateTimeLabel: string
+  imageUrl: string
+  host: string
+  summary: string
+  tags: string[]
+  ticketPrice: string
+  lat: number | null
+  lng: number | null
+  plannedAt: string
+}
+
+type PlanHistoryPage = {
+  items: PlanEventListItem[]
+  total: number
+  limit: number
+  offset: number
+  nextOffset: number | null
+}
+
 export const appRouter = t.router({
   discover: t.router({
     recommend: t.procedure
@@ -33,8 +61,28 @@ export const appRouter = t.router({
     byId: t.procedure.input(z.object({ id: z.string() })).query(() => null as unknown),
   }),
   plan: t.router({
-    upcoming: t.procedure.query(() => [] as unknown[]),
-    past: t.procedure.query(() => [] as unknown[]),
+    ids: t.procedure.query(() => ({ ids: [] as string[] })),
+    upcoming: t.procedure.query(() => [] as PlanEventListItem[]),
+    past: t.procedure
+      .input(
+        z.object({
+          limit: z.number().optional(),
+          offset: z.number().optional(),
+        }).optional(),
+      )
+      .query(() => ({
+        items: [] as PlanEventListItem[],
+        total: 0,
+        limit: 10,
+        offset: 0,
+        nextOffset: null as number | null,
+      }) satisfies PlanHistoryPage),
+    add: t.procedure
+      .input(z.object({ eventId: z.string() }))
+      .mutation(() => ({ eventId: '' })),
+    remove: t.procedure
+      .input(z.object({ eventId: z.string() }))
+      .mutation(() => ({ eventId: '' })),
   }),
   profile: t.router({
     get: t.procedure

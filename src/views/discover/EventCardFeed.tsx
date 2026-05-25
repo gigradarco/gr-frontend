@@ -6,7 +6,7 @@ import { LocationCityPickerControl, CityPickerSheet } from '../../components/Loc
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { useAppState } from '../../store/appStore'
 import { handleEventImageError } from '../../lib/event-image-fallback'
-import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
+import { useEventPlans } from '../../lib/useEventPlans'
 import { EventShareSheet } from '../../components/EventShareSheet'
 import { DISCOVER_FEED_CONFIG } from '../../config/discoverFeed'
 import { DISCOVER_FILTER_SECTIONS } from '../../config/discoverUi'
@@ -697,9 +697,9 @@ export function EventCardFeed({
   const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
-  const [going, setGoing] = useState<string[]>([])
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
+  const { isEventPlanned, toggleEventPlan } = useEventPlans()
   const [cardIdx, setCardIdx] = useState(0)
   const [shareEventTarget, setShareEventTarget] = useState<EventItem | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -862,41 +862,6 @@ export function EventCardFeed({
       requestLoadMore()
     }
   }, [cardIdx, hasMore, loading, loadingMore, renderedEvents.length, requestLoadMore])
-
-  const toggleGoing = (id: string) =>
-    setGoing((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-
-  const openEventSourceInNewTab = useCallback(async (event: EventItem) => {
-    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
-    const openTarget = (target: string) => {
-      if (popup) popup.location.replace(target)
-      else window.open(target, '_blank', 'noopener,noreferrer')
-    }
-
-    const directUrl = event.sourceUrl?.trim()
-    if (directUrl) {
-      openTarget(directUrl)
-      toggleGoing(event.id)
-      return
-    }
-
-    try {
-      const detail = await fetchDiscoverEventById(event.id)
-      const resolvedUrl = detail.sourceUrl?.trim()
-      if (resolvedUrl) {
-        openTarget(resolvedUrl)
-        toggleGoing(event.id)
-        return
-      }
-    } catch {
-      // Fall back below.
-    }
-
-    if (popup) popup.close()
-    onMoreDetails(event.id)
-  }, [onMoreDetails])
 
   return (
     <div className="ecf-root">
@@ -1063,9 +1028,9 @@ export function EventCardFeed({
               <EventCard
                 key={ev.id}
                 event={ev}
-                isGoing={going.includes(ev.id)}
+                isGoing={isEventPlanned(ev.id)}
                 isSaved={isEventFavorited(ev.id)}
-                onGoing={() => openEventSourceInNewTab(ev)}
+                onGoing={() => toggleEventPlan(ev.id)}
                 onSave={() => toggleFavoriteEvent(toFavoriteEvent(ev))}
                 onShare={() => setShareEventTarget(ev)}
                 onMoreDetails={() => onMoreDetails(ev.id)}
