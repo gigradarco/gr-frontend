@@ -695,6 +695,8 @@ export function EventCardFeed({
   const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
   const [showCityPicker, setShowCityPicker] = useState(false)
+  const isAuthenticated = useAppState((s) => s.isAuthenticated)
+  const openSignIn = useAppState((s) => s.openSignIn)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
   const { isEventPlanned } = useEventPlans()
@@ -723,6 +725,17 @@ export function EventCardFeed({
     filtered.length > DISCOVER_FEED_CONFIG.hardRenderedEventCount
       ? Math.max(0, filtered.length - DISCOVER_FEED_CONFIG.softRenderedEventCount)
       : 0
+
+  const saveEvent = useCallback(
+    (event: EventItem) => {
+      if (!isAuthenticated) {
+        openSignIn('Sign in to save this event.')
+        return
+      }
+      toggleFavoriteEvent(toFavoriteEvent(event))
+    },
+    [isAuthenticated, openSignIn, toggleFavoriteEvent],
+  )
   const renderedEvents = useMemo(
     () => (renderWindowOffset > 0 ? filtered.slice(renderWindowOffset) : filtered),
     [filtered, renderWindowOffset],
@@ -1028,7 +1041,7 @@ export function EventCardFeed({
                 event={ev}
                 isGoing={isEventPlanned(ev.id)}
                 isSaved={isEventFavorited(ev.id)}
-                onSave={() => toggleFavoriteEvent(toFavoriteEvent(ev))}
+                onSave={() => saveEvent(ev)}
                 onShare={() => setShareEventTarget(ev)}
                 onMoreDetails={() => onMoreDetails(ev.id)}
               />

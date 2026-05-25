@@ -50,12 +50,12 @@ function AvatarInitial({ name, avatarUrl }: { name: string; avatarUrl?: string |
 }
 
 export function SignInSheet() {
-  const { closeSignIn, signInRedirectError } = useAppState()
+  const { closeSignIn, signInPromptMessage, signInRedirectError } = useAppState()
   const [busy, setBusy] = useState<'idle' | 'last' | 'google'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   const lastAccount = getLastUsedAccount()
-  const emailRedirectTo = `${window.location.origin}/`
+  const emailRedirectTo = `${window.location.origin}${window.location.pathname}${window.location.search}`
 
   const signInWithLastAccount = () => {
     setBusy('last')
@@ -105,6 +105,12 @@ export function SignInSheet() {
         <p className="welcome-signin-lead">
           Save plans, sync taste, and see what your crew is doing — one account across the app.
         </p>
+
+        {signInPromptMessage ? (
+          <p className="welcome-signin-note" role="status">
+            {signInPromptMessage}
+          </p>
+        ) : null}
 
         {signInRedirectError ? (
           <p className="welcome-signin-error" role="alert">

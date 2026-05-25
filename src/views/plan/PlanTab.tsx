@@ -222,7 +222,11 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
         <div className="favorites-empty">
           <p className="favorites-empty-title">Sign in to start planning</p>
           <p className="favorites-empty-copy">Your Plan syncs upcoming and past events across devices.</p>
-          <button type="button" className="plan-segment plan-segment--on" onClick={openSignIn}>
+          <button
+            type="button"
+            className="plan-segment plan-segment--on"
+            onClick={() => openSignIn('Sign in to view and manage your event plan.')}
+          >
             Sign in
           </button>
         </div>

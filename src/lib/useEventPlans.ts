@@ -43,7 +43,7 @@ export function useEventPlans() {
       const id = eventId.trim()
       if (!id) return
       if (!isAuthenticated) {
-        openSignIn()
+        openSignIn('Sign in to mark yourself as going.')
         return
       }
 

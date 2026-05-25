@@ -47,7 +47,7 @@ export function AuthSync({ children }: { children: ReactNode }) {
     const onHashError = (ev: Event) => {
       const msg = (ev as CustomEvent<{ message: string }>).detail?.message
       if (msg) {
-        useAppState.setState({ showSignIn: true, signInRedirectError: msg })
+        useAppState.setState({ showSignIn: true, signInRedirectError: msg, signInPromptMessage: null })
       }
     }
     window.addEventListener('buzo-auth-hash-error', onHashError)
@@ -117,7 +117,8 @@ export function AuthSync({ children }: { children: ReactNode }) {
             setTimeout(() => {
               useAppState.setState({ 
                 showSignIn: true, 
-                signInRedirectError: 'Your session has expired. Please sign in again.' 
+                signInRedirectError: 'Your session has expired. Please sign in again.',
+                signInPromptMessage: null,
               })
             }, 300)
           } else {

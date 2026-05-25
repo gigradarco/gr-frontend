@@ -410,6 +410,8 @@ export function MapView({
   const theme = useAppState((s) => s.theme)
   const isDiscoverExpanded = useAppState((s) => s.isDiscoverExpanded)
   const toggleDiscoverExpanded = useAppState((s) => s.toggleDiscoverExpanded)
+  const isAuthenticated = useAppState((s) => s.isAuthenticated)
+  const openSignIn = useAppState((s) => s.openSignIn)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
   const { isEventPlanned, toggleEventPlan } = useEventPlans()
@@ -876,6 +878,10 @@ export function MapView({
                             aria-label="Save event"
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (!isAuthenticated) {
+                                openSignIn('Sign in to save this event.')
+                                return
+                              }
                               toggleFavoriteEvent(toFavoriteEvent(event))
                             }}
                           >

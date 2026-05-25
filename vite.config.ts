@@ -30,6 +30,7 @@ export default defineConfig({
       '/trpc': toBackend,
       '/api/admin': toBackend,
       '/api/discover': toBackend,
+      '/api/image-proxy': toBackend,
       '/api/source-preview': toBackend,
       '/api/auth': toBackend,
       '/api/profile/taste': toBackend,

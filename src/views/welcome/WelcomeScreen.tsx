@@ -129,7 +129,7 @@ export function WelcomeScreen({ onEnterApp, onStashPrefill }: WelcomeScreenProps
           <button
             type="button"
             className="welcome-text-btn"
-            onClick={openSignIn}
+            onClick={() => openSignIn()}
           >
             Log in
           </button>

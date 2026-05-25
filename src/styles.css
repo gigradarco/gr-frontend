@@ -13464,6 +13464,17 @@ button.taste-tag:focus-visible {
   border-radius: 12px;
 }
 
+.welcome-signin-note {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text);
+  background: color-mix(in oklab, var(--primary) 12%, var(--card));
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--stroke));
+  border-radius: 12px;
+}
+
 .welcome-signin-success {
   margin: 0 0 12px;
   padding: 10px 12px;

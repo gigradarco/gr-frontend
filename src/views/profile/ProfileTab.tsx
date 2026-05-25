@@ -177,6 +177,7 @@ export function ProfileTab() {
       useAppState.setState({
         showSignIn: true,
         signInRedirectError: 'Please sign in to view your profile.',
+        signInPromptMessage: null,
       })
     }, 300)
     return () => window.clearTimeout(t)

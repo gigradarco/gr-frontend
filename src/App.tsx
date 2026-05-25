@@ -155,9 +155,11 @@ function MainApp() {
     showSubscription,
     showOnboarding,
     onboardingMountKey,
+    isAuthenticated,
     dismissWelcome,
     setTab,
     setTheme,
+    openSignIn,
     openEvent,
     closeEvent,
     requestPlanDetail,
@@ -177,6 +179,7 @@ function MainApp() {
     () => discoverEventIdFromPath(location.pathname),
     [location.pathname],
   )
+  const shouldShowWelcome = !welcomeDismissed && !discoverRouteEventId
 
   useLayoutEffect(() => {
     setShellNavigate(navigate)
@@ -184,7 +187,7 @@ function MainApp() {
   }, [navigate])
 
   useLayoutEffect(() => {
-    if (!welcomeDismissed) return
+    if (!welcomeDismissed && !discoverRouteEventId) return
     const { pathname } = location
     if (pathname === '/' || pathname === '') {
       navigate('/discover', { replace: true })
@@ -198,7 +201,7 @@ function MainApp() {
     if (pathTab !== tab) {
       setTab(pathTab)
     }
-  }, [welcomeDismissed, location.pathname, navigate, tab, setTab])
+  }, [welcomeDismissed, discoverRouteEventId, location.pathname, navigate, tab, setTab])
 
   const [discoverPrefill, setDiscoverPrefill] = useState<string>(() => {
     if (typeof window === 'undefined') return ''
@@ -324,6 +327,40 @@ function MainApp() {
     navigate('/discover')
   }, [navigate])
 
+  const requireAuth = useCallback(
+    (message: string, action: () => void) => {
+      if (!isAuthenticated) {
+        openSignIn(message)
+        return
+      }
+      action()
+    },
+    [isAuthenticated, openSignIn],
+  )
+
+  const navigateProtectedTab = useCallback(
+    (targetTab: Tab) => {
+      switch (targetTab) {
+        case 'ask':
+          requireAuth('Sign in to ask Buzo for personalized event picks.', () => navigateShellToTab(targetTab))
+          return
+        case 'favorites':
+          requireAuth('Sign in to view your saved events.', () => navigateShellToTab(targetTab))
+          return
+        case 'plan':
+          requireAuth('Sign in to view and manage your event plan.', () => navigateShellToTab(targetTab))
+          return
+        case 'profile':
+          requireAuth('Sign in to manage your profile.', () => navigateShellToTab(targetTab))
+          return
+        case 'discover':
+          navigateShellToTab(targetTab)
+          return
+      }
+    },
+    [requireAuth],
+  )
+
   useEffect(() => {
     if (tab !== 'discover' || !discoverRouteEventId) {
       setDiscoverDetailEventId(null)
@@ -401,10 +438,14 @@ function MainApp() {
         onOpenEvent={openEvent}
         isFavorited={isEventFavorited(data.eventId)}
         onToggleFavorite={() =>
-          toggleFavoriteEvent(toFavoriteEvent(data.eventId, sheetPlanOverlay.kind, data))
+          requireAuth('Sign in to save this event.', () =>
+            toggleFavoriteEvent(toFavoriteEvent(data.eventId, sheetPlanOverlay.kind, data)),
+          )
         }
         isPlanned={isEventPlanned(data.eventId)}
-        onTogglePlan={() => toggleEventPlan(data.eventId)}
+        onTogglePlan={() =>
+          requireAuth('Sign in to mark yourself as going.', () => toggleEventPlan(data.eventId))
+        }
       />
     )
   }, [
@@ -414,6 +455,7 @@ function MainApp() {
     openEvent,
     isEventFavorited,
     isEventPlanned,
+    requireAuth,
     toggleFavoriteEvent,
     toggleEventPlan,
     toFavoriteEvent,
@@ -428,7 +470,7 @@ function MainApp() {
         onDismiss={clearFavoriteNotice}
       />
 
-      {!welcomeDismissed ? (
+      {shouldShowWelcome ? (
         <WelcomeScreen
           onEnterApp={(prefill, initialTab = 'discover') => {
             stashDiscoverPrefill(prefill)
@@ -484,7 +526,7 @@ function MainApp() {
                     <button
                       className={`icon-btn${tab === 'favorites' ? ' icon-btn--active' : ''}`}
                       type="button"
-                      onClick={() => navigateShellToTab('favorites')}
+                      onClick={() => navigateProtectedTab('favorites')}
                       aria-label="Saved events"
                       aria-current={tab === 'favorites' ? 'page' : undefined}
                     >
@@ -493,7 +535,7 @@ function MainApp() {
                     <button
                       className={`icon-btn${tab === 'profile' ? ' icon-btn--active' : ''}`}
                       type="button"
-                      onClick={() => navigateShellToTab('profile')}
+                      onClick={() => navigateProtectedTab('profile')}
                       aria-label="Profile"
                       aria-current={tab === 'profile' ? 'page' : undefined}
                     >
@@ -517,9 +559,15 @@ function MainApp() {
                       onBack={closeDiscoverDetail}
                       onOpenEvent={() => undefined}
                       isFavorited={isEventFavorited(discoverDetailEvent.id)}
-                      onToggleFavorite={() => toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent))}
+                      onToggleFavorite={() =>
+                        requireAuth('Sign in to save this event.', () =>
+                          toggleFavoriteEvent(favoriteFromDiscoverEvent(discoverDetailEvent)),
+                        )
+                      }
                       isPlanned={isEventPlanned(discoverDetailEvent.id)}
-                      onTogglePlan={() => toggleEventPlan(discoverDetailEvent.id)}
+                      onTogglePlan={() =>
+                        requireAuth('Sign in to mark yourself as going.', () => toggleEventPlan(discoverDetailEvent.id))
+                      }
                     />
                   ) : (
                     <div className="plan-detail-overlay-fallback screen-content plan-home">
@@ -635,7 +683,7 @@ function MainApp() {
                         className={isActive ? 'nav-item active' : 'nav-item'}
                         key={item.key}
                         type="button"
-                        onClick={() => navigateShellToTab(item.key)}
+                        onClick={() => navigateProtectedTab(item.key)}
                         aria-current={isActive ? 'page' : undefined}
                       >
                         <span className={item.iconDot ? 'nav-item-icon nav-item-icon--plan' : 'nav-item-icon'}>
@@ -712,7 +760,9 @@ function MainApp() {
                 <button
                   type="button"
                   className="event-sheet-cta-primary"
-                  onClick={() => toggleEventPlan(activeEvent.id)}
+                  onClick={() =>
+                    requireAuth('Sign in to mark yourself as going.', () => toggleEventPlan(activeEvent.id))
+                  }
                 >
                   {isEventPlanned(activeEvent.id) ? 'Planned' : 'I\'m Going'}
                 </button>

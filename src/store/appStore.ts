@@ -257,6 +257,7 @@ type AppState = {
   showSignIn: boolean
   /** Set when magic link / OAuth redirect returns #error (shown in the sign-in sheet). */
   signInRedirectError: string | null
+  signInPromptMessage: string | null
   showEditProfile: boolean
   showSubscription: boolean
   /** True when the subscription screen should open directly on the success view (post-Stripe redirect). */
@@ -268,7 +269,7 @@ type AppState = {
   onboardingMountKey: number
   dismissWelcome: () => void
   dismissWelcomeBack: () => void
-  openSignIn: () => void
+  openSignIn: (message?: string) => void
   closeSignIn: () => void
   /** Demo only — call after OAuth / email auth succeeds. */
   completeSignInDemo: () => void
@@ -378,6 +379,7 @@ export const useAppState = create<AppState>((set, get) => ({
   showEmailLogin: false,
   showSignIn: false,
   signInRedirectError: null,
+  signInPromptMessage: null,
   showEditProfile: false,
   showSubscription: false,
   stripeSuccessOverlay: false,
@@ -387,11 +389,14 @@ export const useAppState = create<AppState>((set, get) => ({
   isDiscoverExpanded: false,
   dismissWelcome: () => {
     persistWelcomeDismissed()
-    set({ welcomeDismissed: true, showSignIn: false, signInRedirectError: null })
+    set({ welcomeDismissed: true, showSignIn: false, signInRedirectError: null, signInPromptMessage: null })
   },
   dismissWelcomeBack: () => set({ showWelcomeBack: false }),
-  openSignIn: () => set({ showSignIn: true, signInRedirectError: null }),
-  closeSignIn: () => set({ showSignIn: false, signInRedirectError: null }),
+  openSignIn: (message) => {
+    const signInPromptMessage = message?.trim() || null
+    set({ showSignIn: true, signInRedirectError: null, signInPromptMessage })
+  },
+  closeSignIn: () => set({ showSignIn: false, signInRedirectError: null, signInPromptMessage: null }),
   completeSignInDemo: () => {
     persistWelcomeDismissed()
     set({
@@ -399,6 +404,7 @@ export const useAppState = create<AppState>((set, get) => ({
       isAuthenticated: true,
       showSignIn: false,
       signInRedirectError: null,
+      signInPromptMessage: null,
       tab: 'discover',
     })
     queueMicrotask(() => navigateShellToPath('/discover', { replace: true }))
@@ -492,6 +498,7 @@ export const useAppState = create<AppState>((set, get) => ({
         ? {
             showSignIn: false,
             signInRedirectError: null,
+            signInPromptMessage: null,
             welcomeDismissed: true,
             // Fresh sign-in: signup onboarding OR welcome-back (mutually exclusive). Do not set on session poll.
             ...(freshSignIn
@@ -519,6 +526,7 @@ export const useAppState = create<AppState>((set, get) => ({
       authEmail: null,
       showSignIn: false,
       signInRedirectError: null,
+      signInPromptMessage: null,
       tab: 'discover',
       activeEventId: null,
       pendingPlanDetail: null,
