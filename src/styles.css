@@ -7793,12 +7793,23 @@ button.taste-tag:focus-visible {
   background: color-mix(in oklab, var(--bg) 92%, black);
 }
 
-.plan-toolbar > .plan-toolbar-btn:first-of-type {
+.plan-toolbar-back {
   justify-self: start;
 }
 
-.plan-toolbar > .plan-toolbar-btn:last-of-type:not(:only-of-type) {
+.plan-toolbar-actions {
   justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.plan-toolbar-actions .plan-toolbar-btn {
+  width: 34px;
+  height: 34px;
+  padding: 7px;
 }
 
 .plan-toolbar-status {
@@ -8297,17 +8308,21 @@ button.taste-tag:focus-visible {
 
 .plan-hero {
   position: relative;
-  min-height: 280px;
-  max-height: 48vh;
+  min-height: 308px;
+  max-height: 53vh;
 }
 
 .plan-hero-img {
   width: 100%;
   height: 100%;
-  min-height: 280px;
-  max-height: 48vh;
+  min-height: 308px;
+  max-height: 53vh;
   object-fit: cover;
   display: block;
+}
+
+.theme-dark .plan-hero-img {
+  filter: brightness(1.38) saturate(1.14) contrast(1.03);
 }
 
 .plan-hero-scrim {
@@ -8315,9 +8330,9 @@ button.taste-tag:focus-visible {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.1) 0%,
-    rgba(0, 0, 0, 0.35) 45%,
-    rgba(0, 0, 0, 0.88) 100%
+    rgba(0, 0, 0, 0.02) 0%,
+    rgba(0, 0, 0, 0.14) 45%,
+    rgba(0, 0, 0, 0.58) 100%
   );
   pointer-events: none;
 }
@@ -8359,6 +8374,7 @@ button.taste-tag:focus-visible {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.88);
 }
 
 .plan-hero-artist {
@@ -8368,6 +8384,7 @@ button.taste-tag:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--primary-soft);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.86);
 }
 
 .plan-hero-meta {
@@ -8388,22 +8405,29 @@ button.taste-tag:focus-visible {
 .plan-body {
   padding: 18px 20px 20px;
   display: grid;
-  gap: 20px;
+  gap: 16px;
   background: var(--bg);
 }
 
 /* ── Info pill strip ── */
 .plan-info-strip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  padding: 6px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklab, var(--stroke) 86%, var(--text) 8%);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--card) 86%, transparent), color-mix(in oklab, var(--bg) 92%, transparent)),
+    color-mix(in oklab, var(--card) 78%, black);
 }
 
 .plan-info-pills {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  gap: 8px;
+  gap: 0;
   flex: 1;
   min-width: 0;
 }
@@ -8411,18 +8435,26 @@ button.taste-tag:focus-visible {
 .plan-info-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: color-mix(in oklab, var(--card) 80%, transparent);
-  border: 1px solid var(--stroke);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text);
   letter-spacing: 0.02em;
   min-width: 0;
+  width: 100%;
+  min-height: 42px;
   box-sizing: border-box;
-  height: 100%;
+}
+
+.plan-info-pill--time,
+.plan-info-pill--price {
+  border-top-color: color-mix(in oklab, var(--stroke) 82%, transparent);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .plan-info-pill svg {
@@ -8431,11 +8463,14 @@ button.taste-tag:focus-visible {
 }
 
 .plan-info-pill--location {
+  grid-column: 1 / -1;
   width: 100%;
 }
 
 .plan-info-pill-text {
   min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .plan-info-pill--location .plan-info-pill-text {
@@ -8443,13 +8478,10 @@ button.taste-tag:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.plan-info-pill--time .plan-info-pill-text,
-.plan-info-pill--price .plan-info-pill-text {
-  white-space: nowrap;
-}
-
 .plan-info-pill--price {
-  border-color: color-mix(in oklab, var(--primary) 50%, var(--stroke));
+  border-color: color-mix(in oklab, var(--primary) 42%, transparent);
+  border-left-color: color-mix(in oklab, var(--primary) 32%, transparent);
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
   color: var(--primary-soft);
 }
 
@@ -8457,10 +8489,18 @@ button.taste-tag:focus-visible {
   color: var(--primary-soft);
 }
 
+@media (max-width: 360px) {
+  .plan-info-pills {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-info-pill--price {
+    border-left-color: transparent;
+  }
+}
 
 .plan-vibe-arc {
-  flex-shrink: 0;
-  margin-left: auto;
+  justify-self: end;
 }
 
 .plan-arc-score {
@@ -8884,24 +8924,41 @@ button.taste-tag:focus-visible {
 }
 
 .plan-cta-rail--inline {
-  margin-top: 14px;
+  margin-top: 10px;
   padding: 0;
   background: transparent;
   border-top: 0;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .plan-cta-rail--inline .plan-cta-primary {
   grid-column: 1 / -1;
+}
+
+.plan-cta-rail--inline .plan-cta-primary {
   min-height: 50px;
 }
 
-.plan-cta-rail--inline .plan-cta-review,
+.plan-cta-rail--inline .plan-cta-event-info {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+
+.plan-cta-rail--inline .plan-cta-review {
+  grid-column: 1 / -1;
+  min-height: 42px;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+}
+
 .plan-cta-rail--inline .plan-cta-secondary {
-  min-height: 46px;
-  font-size: 0.74rem;
-  letter-spacing: 0.09em;
+  min-height: 42px;
+  border-radius: 12px;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  padding: 0 8px;
+  gap: 7px;
 }
 
 .plan-cta-rail--inline .plan-cta-review {
@@ -8909,6 +8966,35 @@ button.taste-tag:focus-visible {
   background: transparent;
   color: var(--text);
   box-shadow: none;
+}
+
+.plan-cta-event-info {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--primary) 42%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  color: var(--primary-soft);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.1s;
+}
+
+.plan-cta-event-info:hover {
+  border-color: color-mix(in oklab, var(--primary) 68%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
+}
+
+.plan-cta-event-info:active {
+  transform: scale(0.99);
 }
 
 .plan-cta-rail--inline .plan-cta-review:hover {
@@ -8940,8 +9026,8 @@ button.taste-tag:focus-visible {
   letter-spacing: 0.12em;
   cursor: pointer;
   box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.28),
-    0 10px 28px rgba(255, 75, 43, 0.38);
+    0 1px 0 rgba(0, 0, 0, 0.24),
+    0 6px 14px rgba(255, 75, 43, 0.18);
   transition:
     filter 0.15s,
     transform 0.1s;
@@ -8958,8 +9044,8 @@ button.taste-tag:focus-visible {
 .plan-cta-primary--active {
   background: linear-gradient(180deg, #2fba75 0%, #229a60 100%);
   box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.28),
-    0 10px 28px rgba(47, 186, 117, 0.28);
+    0 1px 0 rgba(0, 0, 0, 0.24),
+    0 6px 14px rgba(47, 186, 117, 0.16);
 }
 
 .plan-cta-secondary {
@@ -13913,12 +13999,23 @@ button.taste-tag:focus-visible {
 }
 
 .ecf-bg-img--loaded {
-  opacity: 0.35;
+  opacity: 0.62;
+  filter: brightness(1.12) saturate(1.1) contrast(1.04);
 }
 
 .ecf-overlay {
   position: absolute;
   inset: 0;
+  opacity: 0.68;
+}
+
+.ecf-genre,
+.ecf-title,
+.ecf-lede-primary,
+.ecf-lede-secondary,
+.ecf-meta-label,
+.ecf-meta-value {
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.82);
 }
 
 /* Scroll progress indicator — vertical dots on the right edge */

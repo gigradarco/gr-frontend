@@ -54,6 +54,30 @@ function googleMapsSearchUrl(query: string): string {
   return `https://www.google.com/maps/search/?${params.toString()}`
 }
 
+function compactTicketPriceLabel(ticketPrice: string): string {
+  const text = ticketPrice.trim()
+  if (!text) return text
+
+  const currency = text.match(/\b(SGD|USD|MYR)\b/i)?.[1].toUpperCase()
+  const symbol = currency === 'SGD' ? 'S$' : currency === 'USD' ? 'US$' : currency === 'MYR' ? 'RM' : ''
+  if (!symbol) return text
+
+  const amounts = [...text.matchAll(/\d+(?:\.\d+)?/g)]
+    .map((match) => Number(match[0]))
+    .filter((value) => Number.isFinite(value))
+
+  if (amounts.length === 0) return text
+
+  const formatAmount = (value: number) =>
+    Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '')
+
+  if (amounts.length >= 2) {
+    return `${symbol}${formatAmount(amounts[0])} - ${symbol}${formatAmount(amounts[1])}`
+  }
+
+  return `${symbol}${formatAmount(amounts[0])}`
+}
+
 export function PlanEventDetail({
   data,
   variant,
@@ -124,7 +148,7 @@ export function PlanEventDetail({
       <header className="plan-toolbar">
         <button
           type="button"
-          className="plan-toolbar-btn"
+          className="plan-toolbar-btn plan-toolbar-back"
           aria-label={backAriaLabel}
           onClick={onBack}
         >
@@ -136,20 +160,30 @@ export function PlanEventDetail({
         >
           {variant === 'upcoming' ? 'Upcoming' : 'Past'}
         </p>
-        <button
-          type="button"
-          className="plan-toolbar-btn"
-          aria-label={isFavorited ? 'Remove favorite' : 'Save event'}
-          aria-pressed={isFavorited}
-          onClick={onToggleFavorite}
-        >
-          <Heart
-            size={20}
-            strokeWidth={2}
-            className={isFavorited ? 'plan-heart--on' : undefined}
-            fill={isFavorited ? 'currentColor' : 'none'}
-          />
-        </button>
+        <div className="plan-toolbar-actions" aria-label="Event actions">
+          <button
+            type="button"
+            className="plan-toolbar-btn"
+            aria-label="Share event"
+            onClick={() => setShareOpen(true)}
+          >
+            <Share2 size={19} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="plan-toolbar-btn"
+            aria-label={isFavorited ? 'Remove favorite' : 'Save event'}
+            aria-pressed={isFavorited}
+            onClick={onToggleFavorite}
+          >
+            <Heart
+              size={20}
+              strokeWidth={2}
+              className={isFavorited ? 'plan-heart--on' : undefined}
+              fill={isFavorited ? 'currentColor' : 'none'}
+            />
+          </button>
+        </div>
       </header>
 
       <div className="plan-main">
@@ -187,7 +221,9 @@ export function PlanEventDetail({
               {data.ticketPrice ? (
                 <div className="plan-info-pill plan-info-pill--price">
                   <Ticket size={13} strokeWidth={2.2} aria-hidden />
-                  <span className="plan-info-pill-text">{data.ticketPrice}</span>
+                  <span className="plan-info-pill-text" title={data.ticketPrice}>
+                    {compactTicketPriceLabel(data.ticketPrice)}
+                  </span>
                 </div>
               ) : null}
             </div>
@@ -235,6 +271,14 @@ export function PlanEventDetail({
             )}
             <button
               type="button"
+              className="plan-cta-event-info"
+              onClick={openEventSourceInNewTab}
+            >
+              <ExternalLink size={17} strokeWidth={2} aria-hidden />
+              VIEW EVENT INFO
+            </button>
+            <button
+              type="button"
               className="plan-cta-review"
               disabled={variant === 'upcoming'}
               aria-label={
@@ -246,16 +290,6 @@ export function PlanEventDetail({
             >
               EVENT REVIEW
             </button>
-            <button type="button" className="plan-cta-secondary" onClick={() => setShareOpen(true)}>
-              <Share2 size={18} strokeWidth={2} aria-hidden />
-              SHARE WITH FRIENDS
-            </button>
-            {variant === 'upcoming' ? (
-              <button type="button" className="plan-cta-secondary" onClick={openEventSourceInNewTab}>
-                <ExternalLink size={18} strokeWidth={2} aria-hidden />
-                OPEN SOURCE
-              </button>
-            ) : null}
           </div>
 
           {/* Experience quote */}
