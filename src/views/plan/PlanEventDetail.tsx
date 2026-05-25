@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   ArrowLeft,
   Clock,
   ExternalLink,
   Heart,
   MapPin,
-  Play,
   Share2,
   Ticket,
 } from 'lucide-react'
@@ -26,10 +25,6 @@ type PlanEventDetailProps = {
   /** Past events only: opens post-event review flow. */
   onOpenReview?: () => void
 }
-
-const waveformHeights = [
-  14, 32, 22, 40, 18, 36, 26, 44, 20, 38, 16, 42, 24, 34, 30, 48, 12, 28, 36, 22, 40, 18,
-]
 
 const googleMapsEmbedKey = import.meta.env.GOOGLE_MAPS_EMBED_KEY?.trim() ?? ''
 
@@ -90,31 +85,11 @@ export function PlanEventDetail({
   onTogglePlan,
   onOpenReview,
 }: PlanEventDetailProps) {
-  const [playing, setPlaying] = useState(false)
-  const [vibeAnimated, setVibeAnimated] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const vibeRef = useRef<HTMLDivElement>(null)
-  const hasVibeScore = typeof data.aiVibeScore === 'number' && Number.isFinite(data.aiVibeScore)
-  const hasAudioPreview = Boolean(data.audioPreviewLabel)
   const mapQuery = mapsQueryFromData(data)
   const mapEmbedSrc = googleMapsEmbedSrc(mapQuery)
   const mapSearchUrl = googleMapsSearchUrl(mapQuery)
 
-  useEffect(() => {
-    const el = vibeRef.current
-    if (!el || !hasVibeScore) return
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVibeAnimated(true); obs.disconnect() } },
-      { threshold: 0.4 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [hasVibeScore])
-
-  const radius = 36
-  const circumference = 2 * Math.PI * radius
-  const scoreFraction = hasVibeScore ? data.aiVibeScore! / 10 : 0
-  const dashOffset = circumference * (1 - (vibeAnimated ? scoreFraction : 0))
   const openEventSourceInNewTab = async () => {
     const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
     const openTarget = (target: string) => {
@@ -207,8 +182,7 @@ export function PlanEventDetail({
 
         <div className="plan-body">
 
-          {/* Quick-info strip + vibe arc */}
-          <div className="plan-info-strip" ref={vibeRef}>
+          <div className="plan-info-strip">
             <div className="plan-info-pills">
               <div className="plan-info-pill plan-info-pill--location">
                 <MapPin size={13} strokeWidth={2.2} aria-hidden />
@@ -227,43 +201,29 @@ export function PlanEventDetail({
                 </div>
               ) : null}
             </div>
-            {hasVibeScore ? (
-              <div className="plan-vibe-arc" aria-label={`AI Vibe Score ${data.aiVibeScore!.toFixed(1)} out of 10`}>
-                <svg viewBox="0 0 96 96" width="72" height="72">
-                  <circle cx="48" cy="48" r={radius} fill="none" stroke="var(--stroke)" strokeWidth="7" strokeLinecap="round" />
-                  <circle
-                    cx="48" cy="48" r={radius}
-                    fill="none"
-                    stroke="url(#vibeGrad)"
-                    strokeWidth="7"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={dashOffset}
-                    style={{ transition: vibeAnimated ? 'stroke-dashoffset 1.1s cubic-bezier(0.34,1.2,0.64,1)' : 'none' }}
-                    transform="rotate(-90 48 48)"
-                  />
-                  <defs>
-                    <linearGradient id="vibeGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="var(--primary-soft)" />
-                      <stop offset="100%" stopColor="var(--primary)" />
-                    </linearGradient>
-                  </defs>
-                  <text x="48" y="46" textAnchor="middle" className="plan-arc-score">{data.aiVibeScore!.toFixed(1)}</text>
-                  <text x="48" y="59" textAnchor="middle" className="plan-arc-label">VIBE</text>
-                </svg>
-              </div>
-            ) : null}
           </div>
 
           <div className="plan-cta-rail plan-cta-rail--inline">
             {variant === 'upcoming' ? (
-              <button
-                type="button"
-                className={`plan-cta-primary${isPlanned ? ' plan-cta-primary--active' : ''}`}
-                onClick={onTogglePlan}
-              >
-                {isPlanned ? 'PLANNED' : 'I\'M GOING'}
-              </button>
+              isPlanned ? (
+                <button
+                  type="button"
+                  className="plan-cta-primary plan-cta-primary--cancel"
+                  onClick={onTogglePlan}
+                  aria-label="Cancel plan for this event"
+                >
+                  CANCEL PLAN
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="plan-cta-primary"
+                  onClick={onTogglePlan}
+                  aria-label="Mark yourself as going to this event"
+                >
+                  I&apos;M GOING
+                </button>
+              )
             ) : (
               <button type="button" className="plan-cta-primary plan-cta-primary--disabled" disabled>
                 EVENT ENDED
@@ -345,38 +305,6 @@ export function PlanEventDetail({
                 )}
               </div>
             </section>
-          ) : null}
-
-          {hasAudioPreview ? (
-            <div className="plan-audio">
-              <button
-                type="button"
-                className="plan-audio-play"
-                aria-pressed={playing}
-                aria-label={playing ? 'Pause preview' : 'Play preview'}
-                onClick={() => setPlaying((p) => !p)}
-                disabled={variant === 'past'}
-              >
-                <Play size={22} fill="currentColor" aria-hidden />
-              </button>
-              <div className="plan-audio-mid">
-                <div className="plan-wave" aria-hidden>
-                  {waveformHeights.map((h, i) => (
-                    <span
-                      key={i}
-                      className={`plan-wave-bar${playing && i < 9 ? ' plan-wave-bar--hot' : ''}`}
-                      style={{ height: `${h}%` }}
-                    />
-                  ))}
-                </div>
-                <div className="plan-audio-labels">
-                  <span className="plan-audio-track">{data.audioPreviewLabel}</span>
-                  <span className="plan-audio-time">
-                    {data.audioCurrent ?? '0:00'} / {data.audioTotal ?? '0:00'}
-                  </span>
-                </div>
-              </div>
-            </div>
           ) : null}
 
         </div>

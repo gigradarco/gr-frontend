@@ -1,26 +1,59 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, MapPin } from 'lucide-react'
+import { Clock, MapPin, RefreshCw, X } from 'lucide-react'
 import {
   planDetailFromEventItem,
 } from '../../data/demoData'
 import { PLAN_CONFIG } from '../../config/plan'
 import { navigateShellToTab } from '../../lib/tabRoutes'
+import {
+  prunePlanDetailCache,
+  readFreshPlanDetails,
+  upsertPlanDetailCache,
+  type PlanCachedRow,
+  type PlanSegment,
+} from '../../lib/plan-detail-cache'
 import { api } from '../../lib/trpc'
 import { useEventPlans } from '../../lib/useEventPlans'
-import { mapDiscoverEventListItemToEventItem } from '../../lib/useDiscoverEvents'
+import { isPastPlanEventDateTime, planSegmentForEventDateTime } from '../../lib/plan-event-date'
+import { fetchDiscoverEventById, mapDiscoverEventListItemToEventItem } from '../../lib/useDiscoverEvents'
 import { useAppState, type FavoriteEvent } from '../../store/appStore'
 import type { EventItem, PlanPageEvent, Tab } from '../../types'
+import { PlanCancelConfirmDialog } from './PlanCancelConfirmDialog'
 import { PlanEventDetail } from './PlanEventDetail'
 import { PlanEventReview } from './PlanEventReview'
 
+type PendingCancelPlan = {
+  eventId: string
+  title: string
+}
+
 type PlanTabProps = {
+  events: EventItem[]
   onOpenEvent: (eventId: string) => void
 }
 
 type DetailRoute =
   | { kind: 'upcoming'; id: string }
   | { kind: 'past'; id: string }
+
+async function fetchPlanEventDetails(ids: string[], signal: AbortSignal): Promise<PlanCachedRow[]> {
+  const out: PlanCachedRow[] = []
+  for (let i = 0; i < ids.length; i += PLAN_CONFIG.refreshBatchSize) {
+    if (signal.aborted) break
+    const batch = ids.slice(i, i + PLAN_CONFIG.refreshBatchSize)
+    const results = await Promise.allSettled(batch.map((id) => fetchDiscoverEventById(id, signal)))
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        out.push({
+          event: result.value,
+          segment: planSegmentForEventDateTime(result.value.eventDateTime),
+        })
+      }
+    }
+  }
+  return out
+}
 
 function tabReturnAriaLabel(t: Tab): string {
   switch (t) {
@@ -37,18 +70,25 @@ function tabReturnAriaLabel(t: Tab): string {
   }
 }
 
-export function PlanTab({ onOpenEvent }: PlanTabProps) {
+export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
   const isAuthenticated = useAppState((s) => s.isAuthenticated)
   const openSignIn = useAppState((s) => s.openSignIn)
   const pendingPlanDetail = useAppState((s) => s.pendingPlanDetail)
   const clearPendingPlanDetail = useAppState((s) => s.clearPendingPlanDetail)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
-  const { isEventPlanned, toggleEventPlan } = useEventPlans()
+  const { isEventPlanned, toggleEventPlan, plannedEventIds, isUpdating } = useEventPlans()
+  const utils = api.useUtils()
+  const [cachedPlan, setCachedPlan] = useState<Record<string, PlanCachedRow>>({})
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null)
+  const requestedIdsRef = useRef(new Set<string>())
 
   const upcomingQuery = api.plan.upcoming.useQuery(undefined, {
     enabled: isAuthenticated,
     retry: false,
+    staleTime: PLAN_CONFIG.cacheFreshMs,
   })
   const [pastOffset, setPastOffset] = useState(0)
   const [pastEvents, setPastEvents] = useState<EventItem[]>([])
@@ -61,19 +101,211 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
   }, {
     enabled: isAuthenticated,
     retry: false,
+    staleTime: PLAN_CONFIG.cacheFreshMs,
   })
 
   const [segment, setSegment] = useState<'upcoming' | 'past'>('upcoming')
   const [detail, setDetail] = useState<DetailRoute | null>(null)
   const [detailReturnTab, setDetailReturnTab] = useState<Tab | null>(null)
   const [reviewPastId, setReviewPastId] = useState<string | null>(null)
+  const [pendingCancelPlan, setPendingCancelPlan] = useState<PendingCancelPlan | null>(null)
 
   const upcomingEvents = useMemo(
     () => (upcomingQuery.data ?? []).map(mapDiscoverEventListItemToEventItem),
     [upcomingQuery.data],
   )
-  const detailEvents = detail?.kind === 'past' ? pastEvents : upcomingEvents
+
+  const upcomingDisplayEvents = useMemo(() => {
+    const fromServer = upcomingEvents.filter((event) => !isPastPlanEventDateTime(event.eventDateTime))
+    if (fromServer.length > 0) return fromServer
+
+    const live = events
+      .filter((event) => plannedEventIds.includes(event.id))
+      .filter((event) => !isPastPlanEventDateTime(event.eventDateTime))
+    if (live.length > 0) return live
+
+    return Object.values(cachedPlan)
+      .filter((row) => !isPastPlanEventDateTime(row.event.eventDateTime))
+      .map((row) => row.event)
+  }, [cachedPlan, events, plannedEventIds, upcomingEvents])
+
+  const pastDisplayEvents = useMemo(() => {
+    const fromServer = pastEvents.filter((event) => isPastPlanEventDateTime(event.eventDateTime))
+    if (fromServer.length > 0) return fromServer
+
+    return Object.values(cachedPlan)
+      .filter((row) => isPastPlanEventDateTime(row.event.eventDateTime))
+      .map((row) => row.event)
+  }, [cachedPlan, pastEvents])
+
+  const detailEvents = detail?.kind === 'past' ? pastDisplayEvents : upcomingDisplayEvents
   const detailEvent = detail ? detailEvents.find((event) => event.id === detail.id) ?? null : null
+
+  const exitEventDetail = useCallback(() => {
+    setReviewPastId(null)
+    setDetail(null)
+    const go = detailReturnTab
+    setDetailReturnTab(null)
+    if (go) navigateShellToTab(go)
+  }, [detailReturnTab])
+
+  const handleCancelPlanFromList = useCallback((eventId: string) => {
+    if (!isEventPlanned(eventId)) return
+    toggleEventPlan(eventId)
+    if (detail?.id === eventId) {
+      exitEventDetail()
+    }
+  }, [detail, exitEventDetail, isEventPlanned, toggleEventPlan])
+
+  const requestCancelPlan = useCallback((eventId: string, title: string) => {
+    setPendingCancelPlan({
+      eventId,
+      title: title.trim() || 'This event',
+    })
+  }, [])
+
+  const dismissCancelPlan = useCallback(() => {
+    setPendingCancelPlan(null)
+  }, [])
+
+  const confirmCancelPlan = useCallback(() => {
+    if (!pendingCancelPlan) return
+    handleCancelPlanFromList(pendingCancelPlan.eventId)
+    setPendingCancelPlan(null)
+  }, [handleCancelPlanFromList, pendingCancelPlan])
+
+  useEffect(() => {
+    if (!pendingCancelPlan) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismissCancelPlan()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dismissCancelPlan, pendingCancelPlan])
+
+  useEffect(() => {
+    if (!detail) return
+    if (isEventPlanned(detail.id)) return
+    const loading =
+      detail.kind === 'upcoming'
+        ? upcomingQuery.isLoading && upcomingDisplayEvents.length === 0
+        : pastQuery.isLoading && pastDisplayEvents.length === 0
+    if (loading || detailEvent) return
+    exitEventDetail()
+  }, [
+    detail,
+    detailEvent,
+    exitEventDetail,
+    isEventPlanned,
+    pastDisplayEvents.length,
+    pastQuery.isLoading,
+    upcomingDisplayEvents.length,
+    upcomingQuery.isLoading,
+  ])
+
+  useEffect(() => {
+    prunePlanDetailCache(plannedEventIds)
+    setCachedPlan(readFreshPlanDetails(plannedEventIds))
+  }, [plannedEventIds])
+
+  useEffect(() => {
+    if (upcomingEvents.length === 0) return
+    const rows = upcomingEvents.map((event) => ({
+      event,
+      segment: planSegmentForEventDateTime(event.eventDateTime) as PlanSegment,
+    }))
+    upsertPlanDetailCache(rows)
+    setCachedPlan((current) => ({
+      ...current,
+      ...Object.fromEntries(rows.map((row) => [row.event.id, row])),
+    }))
+  }, [upcomingEvents])
+
+  useEffect(() => {
+    if (pastEvents.length === 0) return
+    const rows = pastEvents.map((event) => ({
+      event,
+      segment: planSegmentForEventDateTime(event.eventDateTime) as PlanSegment,
+    }))
+    upsertPlanDetailCache(rows)
+    setCachedPlan((current) => ({
+      ...current,
+      ...Object.fromEntries(rows.map((row) => [row.event.id, row])),
+    }))
+  }, [pastEvents])
+
+  useEffect(() => {
+    const live = events
+      .filter((event) => plannedEventIds.includes(event.id))
+      .map((event) => ({
+        event,
+        segment: planSegmentForEventDateTime(event.eventDateTime) as PlanSegment,
+      }))
+    if (live.length === 0) return
+    upsertPlanDetailCache(live)
+    setCachedPlan((current) => ({
+      ...current,
+      ...Object.fromEntries(live.map((row) => [row.event.id, row])),
+    }))
+  }, [events, plannedEventIds])
+
+  useEffect(() => {
+    const serverIds = new Set([
+      ...upcomingEvents.map((event) => event.id),
+      ...pastEvents.map((event) => event.id),
+    ])
+    const liveIds = new Set(events.map((event) => event.id))
+    const missing = plannedEventIds
+      .filter((id) => (
+        !serverIds.has(id) &&
+        !cachedPlan[id] &&
+        !liveIds.has(id) &&
+        !requestedIdsRef.current.has(id)
+      ))
+      .slice(0, 20)
+    if (missing.length === 0) return
+
+    const controller = new AbortController()
+    missing.forEach((id) => requestedIdsRef.current.add(id))
+    fetchPlanEventDetails(missing, controller.signal).then((rows) => {
+      if (controller.signal.aborted) return
+      upsertPlanDetailCache(rows)
+      setCachedPlan((current) => ({
+        ...current,
+        ...Object.fromEntries(rows.map((row) => [row.event.id, row])),
+      }))
+    })
+
+    return () => controller.abort()
+  }, [cachedPlan, events, pastEvents, plannedEventIds, upcomingEvents])
+
+  const refreshPlan = async () => {
+    if (!isAuthenticated || refreshing) return
+    const controller = new AbortController()
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      await Promise.all([
+        utils.plan.upcoming.invalidate(),
+        utils.plan.past.invalidate(),
+      ])
+      if (plannedEventIds.length > 0) {
+        const rows = await fetchPlanEventDetails(plannedEventIds, controller.signal)
+        upsertPlanDetailCache(rows)
+        setCachedPlan((current) => ({
+          ...current,
+          ...Object.fromEntries(rows.map((row) => [row.event.id, row])),
+        }))
+      }
+      setRefreshedAt(Date.now())
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        setRefreshError(e instanceof Error ? e.message : 'Could not refresh plan')
+      }
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -117,14 +349,6 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
     return () => observer.disconnect()
   }, [loadMorePast, pastNextOffset, pastQuery.isFetching, segment])
 
-  const exitEventDetail = () => {
-    setReviewPastId(null)
-    setDetail(null)
-    const go = detailReturnTab
-    setDetailReturnTab(null)
-    if (go) navigateShellToTab(go)
-  }
-
   const toFavoriteEvent = (
     id: string,
     kind: 'upcoming' | 'past',
@@ -149,7 +373,7 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
   }, [pendingPlanDetail, clearPendingPlanDetail])
 
   if (reviewPastId) {
-    const reviewEvent = pastEvents.find((event) => event.id === reviewPastId) ?? null
+    const reviewEvent = pastDisplayEvents.find((event) => event.id === reviewPastId) ?? null
     const reviewData = reviewEvent ? planDetailFromEventItem(reviewEvent) : null
     if (!reviewData) {
       return (
@@ -188,22 +412,37 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
     }
 
     return (
-      <PlanEventDetail
-        data={data}
-        variant={detail.kind}
-        backAriaLabel={
-          detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to plan list'
-        }
-        onBack={exitEventDetail}
-        onOpenEvent={onOpenEvent}
-        isFavorited={isEventFavorited(data.eventId)}
-        onToggleFavorite={() =>
-          toggleFavoriteEvent(toFavoriteEvent(data.eventId, detail.kind, data))
-        }
-        isPlanned={isEventPlanned(data.eventId)}
-        onTogglePlan={() => toggleEventPlan(data.eventId)}
-        onOpenReview={detail.kind === 'past' ? () => setReviewPastId(detail.id) : undefined}
-      />
+      <>
+        <PlanEventDetail
+          data={data}
+          variant={detail.kind}
+          backAriaLabel={
+            detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to plan list'
+          }
+          onBack={exitEventDetail}
+          onOpenEvent={onOpenEvent}
+          isFavorited={isEventFavorited(data.eventId)}
+          onToggleFavorite={() =>
+            toggleFavoriteEvent(toFavoriteEvent(data.eventId, detail.kind, data))
+          }
+          isPlanned={isEventPlanned(data.eventId)}
+          onTogglePlan={() => {
+            if (isEventPlanned(data.eventId)) {
+              requestCancelPlan(data.eventId, data.displayTitle)
+              return
+            }
+            toggleEventPlan(data.eventId)
+          }}
+          onOpenReview={detail.kind === 'past' ? () => setReviewPastId(detail.id) : undefined}
+        />
+        {pendingCancelPlan ? (
+          <PlanCancelConfirmDialog
+            eventTitle={pendingCancelPlan.title}
+            onConfirm={confirmCancelPlan}
+            onDismiss={dismissCancelPlan}
+          />
+        ) : null}
+      </>
     )
   }
 
@@ -234,13 +473,16 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
     )
   }
 
-  const visibleEvents = segment === 'upcoming' ? upcomingEvents : pastEvents
+  const visibleEvents = segment === 'upcoming' ? upcomingDisplayEvents : pastDisplayEvents
+  const upcomingCount = upcomingDisplayEvents.length
+  const pastCount = pastTotal > 0 ? pastTotal : pastDisplayEvents.length
   const loading = segment === 'upcoming'
-    ? upcomingQuery.isLoading
-    : pastEvents.length === 0 && pastQuery.isLoading
+    ? upcomingQuery.isLoading && upcomingDisplayEvents.length === 0
+    : pastEvents.length === 0 && pastQuery.isLoading && pastDisplayEvents.length === 0
   const error = segment === 'upcoming' ? upcomingQuery.error : pastQuery.error
 
   return (
+    <>
     <motion.div
       className="screen-content plan-home"
       initial={{ opacity: 0, y: 10 }}
@@ -248,8 +490,32 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
       transition={{ duration: 0.2 }}
     >
       <header className="plan-home-header">
-        <h1 className="plan-home-title">Plan</h1>
+        <div className="plan-home-header-row">
+          <h1 className="plan-home-title">Plan</h1>
+          <div className="plan-home-header-actions">
+            {refreshedAt ? (
+              <span
+                className="favorites-limit-bubble"
+                aria-label={`Plan updated at ${new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`}
+              >
+                Updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="favorites-refresh"
+              onClick={() => {
+                void refreshPlan()
+              }}
+              disabled={refreshing || !isAuthenticated}
+            >
+              <RefreshCw size={15} className={refreshing ? 'favorites-refresh-icon is-spinning' : 'favorites-refresh-icon'} aria-hidden />
+              <span>{refreshing ? 'Refreshing' : 'Refresh'}</span>
+            </button>
+          </div>
+        </div>
         <p className="plan-home-sub">Upcoming nights and where you&apos;ve been.</p>
+        {refreshError ? <p className="favorites-refresh-error" role="alert">{refreshError}</p> : null}
       </header>
 
       <div className="plan-segments" role="tablist" aria-label="Plan lists">
@@ -261,7 +527,7 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
           onClick={() => setSegment('upcoming')}
         >
           Upcoming
-          <span className="plan-seg-count">{upcomingEvents.length}</span>
+          <span className="plan-seg-count">{upcomingCount}</span>
         </button>
         <button
           type="button"
@@ -271,7 +537,7 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
           onClick={() => setSegment('past')}
         >
           Past
-          <span className="plan-seg-count">{pastTotal}</span>
+          <span className="plan-seg-count">{pastCount}</span>
         </button>
       </div>
 
@@ -301,30 +567,40 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
           <>
             {segment === 'upcoming'
               ? visibleEvents.map((ev) => (
-              <button
-                type="button"
-                key={ev.id}
-                className="plan-list-card"
-                onClick={() => {
-                  setDetailReturnTab(null)
-                  setDetail({ kind: 'upcoming', id: ev.id })
-                }}
-              >
-                <img src={ev.image} alt="" className="plan-list-card-img" decoding="async" />
-                <div className="plan-list-card-body">
-                  <span className="plan-list-card-label">{ev.genre}</span>
-                  <h2 className="plan-list-card-title">{ev.title}</h2>
-                  <p className="plan-list-card-meta">
-                    <MapPin size={13} aria-hidden />
-                    {ev.venue}, {ev.district}
-                  </p>
-                  <p className="plan-list-card-meta">
-                    <Clock size={13} aria-hidden />
-                    {ev.time}
-                    {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
-                  </p>
-                </div>
-              </button>
+              <div key={ev.id} className="plan-list-item-wrap" role="listitem">
+                <button
+                  type="button"
+                  className="plan-list-card"
+                  onClick={() => {
+                    setDetailReturnTab(null)
+                    setDetail({ kind: 'upcoming', id: ev.id })
+                  }}
+                >
+                  <img src={ev.image} alt="" className="plan-list-card-img" decoding="async" />
+                  <div className="plan-list-card-body plan-list-card-body--with-cancel">
+                    <span className="plan-list-card-label">{ev.genre}</span>
+                    <h2 className="plan-list-card-title">{ev.title}</h2>
+                    <p className="plan-list-card-meta">
+                      <MapPin size={13} aria-hidden />
+                      {ev.venue}, {ev.district}
+                    </p>
+                    <p className="plan-list-card-meta">
+                      <Clock size={13} aria-hidden />
+                      {ev.time}
+                      {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="plan-list-cancel"
+                  aria-label={`Cancel plan for ${ev.title}`}
+                  disabled={isUpdating}
+                  onClick={() => requestCancelPlan(ev.id, ev.title)}
+                >
+                  <X size={14} strokeWidth={2.25} aria-hidden />
+                </button>
+              </div>
             ))
               : visibleEvents.map((p: EventItem) => (
               <button
@@ -356,5 +632,13 @@ export function PlanTab({ onOpenEvent }: PlanTabProps) {
         )}
       </div>
     </motion.div>
+    {pendingCancelPlan ? (
+      <PlanCancelConfirmDialog
+        eventTitle={pendingCancelPlan.title}
+        onConfirm={confirmCancelPlan}
+        onDismiss={dismissCancelPlan}
+      />
+    ) : null}
+    </>
   )
 }

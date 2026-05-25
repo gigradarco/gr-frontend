@@ -9048,6 +9048,23 @@ button.taste-tag:focus-visible {
     0 6px 14px rgba(47, 186, 117, 0.16);
 }
 
+.plan-cta-primary--cancel {
+  background: transparent;
+  border: 1px solid color-mix(in oklab, #ff5f3a 42%, var(--stroke));
+  color: color-mix(in oklab, #ff8a6b 88%, var(--text));
+  box-shadow: none;
+}
+
+.plan-cta-primary--cancel:hover {
+  filter: none;
+  background: color-mix(in oklab, #ff5f3a 10%, var(--card));
+  border-color: color-mix(in oklab, #ff5f3a 58%, var(--stroke));
+}
+
+.plan-cta-primary--cancel:active {
+  transform: scale(0.99);
+}
+
 .plan-cta-secondary {
   min-height: 50px;
   border-radius: 14px;
@@ -9156,8 +9173,13 @@ button.taste-tag:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
+}
+
+.plan-home-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .plan-home-title {
@@ -9381,6 +9403,52 @@ button.taste-tag:focus-visible {
 
 .favorites-list-remove:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--primary) 72%, #ffffff 28%);
+  outline-offset: 2px;
+}
+
+.plan-list-item-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.plan-list-item-wrap .plan-list-card {
+  width: 100%;
+}
+
+.plan-list-card-body--with-cancel {
+  padding-right: 36px;
+}
+
+.plan-list-cancel {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, #ff5f3a 38%, var(--stroke));
+  background: color-mix(in oklab, var(--bg-elev) 92%, transparent);
+  color: color-mix(in oklab, #ff8a6b 90%, var(--text));
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.plan-list-cancel:hover:not(:disabled) {
+  background: color-mix(in oklab, #ff5f3a 12%, var(--bg-elev));
+  border-color: color-mix(in oklab, #ff5f3a 58%, var(--stroke));
+}
+
+.plan-list-cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.plan-list-cancel:focus-visible {
+  outline: 2px solid color-mix(in oklab, #ff5f3a 72%, #ffffff 28%);
   outline-offset: 2px;
 }
 

@@ -444,7 +444,11 @@ function MainApp() {
         }
         isPlanned={isEventPlanned(data.eventId)}
         onTogglePlan={() =>
-          requireAuth('Sign in to mark yourself as going.', () => toggleEventPlan(data.eventId))
+          requireAuth('Sign in to mark yourself as going.', () => {
+            const wasPlanned = isEventPlanned(data.eventId)
+            toggleEventPlan(data.eventId)
+            if (wasPlanned) closeSheetPlanOverlay()
+          })
         }
       />
     )
@@ -633,7 +637,12 @@ function MainApp() {
                   }}
                 />
               )}
-              {tab === 'plan' && <PlanTab onOpenEvent={openEvent} />}
+              {tab === 'plan' && (
+                <PlanTab
+                  events={discoverEvents}
+                  onOpenEvent={openEvent}
+                />
+              )}
               {tab === 'profile' && <ProfileTab />}
             </Suspense>
           </section>

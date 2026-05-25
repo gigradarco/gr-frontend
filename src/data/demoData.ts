@@ -97,7 +97,7 @@ export const planPageEvent: PlanPageEvent = {
   venueLine: 'THE VAULT, BERLIN',
   timeRange: '23:00 – 06:00',
   ticketPrice: '52.00 SGD',
-  aiVibeScore: 9.8,
+  aiVibeScore: null,
   eliteVerifiedCount: 42,
   eliteStackExtra: 39,
   experienceParts: {
@@ -107,9 +107,9 @@ export const planPageEvent: PlanPageEvent = {
     after:
       ' into the mechanical heartbeat of the underground. Expect hypnotic loops and raw analogue textures until sunrise.',
   },
-  audioPreviewLabel: 'PREVIEW: KØRE — DARK MATTER',
-  audioCurrent: '0:14',
-  audioTotal: '0:30',
+  audioPreviewLabel: null,
+  audioCurrent: '0:00',
+  audioTotal: '0:00',
   friendsAttendingCount: 125,
   friends: [
     {
@@ -560,7 +560,7 @@ export function planDetailFromEventItem(ev: EventItem): PlanPageEvent {
     venueLine: `${ev.venue.toUpperCase()}, ${ev.district.toUpperCase()}`,
     timeRange: ev.time,
     ticketPrice: ev.ticketPrice || undefined,
-    aiVibeScore: Math.min(9.9, 7.4 + (ev.verified % 25) / 10),
+    aiVibeScore: null,
     eliteVerifiedCount: ev.verified,
     eliteStackExtra: Math.max(8, ev.friendsGoing * 9),
     experienceParts: {
@@ -568,9 +568,9 @@ export function planDetailFromEventItem(ev: EventItem): PlanPageEvent {
       emphasis: ev.vibeTags[0] ?? 'All night',
       after: ` ${ev.hostPrompt}`,
     },
-    audioPreviewLabel: `PREVIEW: ${ev.title.slice(0, 28).toUpperCase()}`,
+    audioPreviewLabel: null,
     audioCurrent: '0:00',
-    audioTotal: '0:45',
+    audioTotal: '0:00',
     friendsAttendingCount: ev.friendsGoing * 14 + 32,
     friends: planDetailFallbackFriends.slice(0, Math.max(3, Math.min(5, ev.friendsGoing + 2))),
   }
@@ -585,7 +585,7 @@ export function planDetailFromPast(p: PlanPastEvent): PlanPageEvent {
     genreTags: ['ARCHIVE', 'WAS THERE'],
     venueLine: p.venue.toUpperCase(),
     timeRange: p.whenLabel,
-    aiVibeScore: 8.6,
+    aiVibeScore: null,
     eliteVerifiedCount: 56,
     eliteStackExtra: 24,
     experienceParts: {
@@ -593,7 +593,7 @@ export function planDetailFromPast(p: PlanPastEvent): PlanPageEvent {
       emphasis: 'Memory',
       after: ' — open any night here for recap-style details.',
     },
-    audioPreviewLabel: 'RECAP',
+    audioPreviewLabel: null,
     audioCurrent: '0:00',
     audioTotal: '0:00',
     friendsAttendingCount: 0,
