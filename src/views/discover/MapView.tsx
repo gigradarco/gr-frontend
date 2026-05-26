@@ -14,7 +14,8 @@ import {
 } from './EventCardFeed'
 import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
-import { LOCATION_REGIONS, getLocationCityCentroid } from '../../data/locationRegions'
+import { LOCATION_REGIONS } from '../../data/locationRegions'
+import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { useEventPlans } from '../../lib/useEventPlans'
@@ -143,16 +144,6 @@ function spreadOverlappingPositions(
     })
   }
   return result
-}
-
-function getCityCenter(cityId: string): [number, number] {
-  if (cityId === 'singapore') return [1.316, 103.8198]
-  return getLocationCityCentroid(cityId) ?? [1.3521, 103.8198]
-}
-
-function getCityDefaultZoom(cityId: string): number {
-  if (cityId === 'singapore') return 11.5
-  return 14
 }
 
 function getCityName(cityId: string): string {
@@ -452,8 +443,8 @@ export function MapView({
     return spreadOverlappingPositions(raw)
   }, [events, localFilters, locationCityId])
 
-  const cityCenter = getCityCenter(locationCityId)
-  const cityDefaultZoom = getCityDefaultZoom(locationCityId)
+  const cityCenter = getDiscoverMapCityCenter(locationCityId)
+  const cityDefaultZoom = getDiscoverMapCityDefaultZoom(locationCityId)
   const cityName = getCityName(locationCityId)
   const selected = cityEvents.find((r) => r.event.id === selectedId) ?? null
   const clusterThresholdKm = useMemo(() => clusterThresholdKmForZoom(mapZoom), [mapZoom])

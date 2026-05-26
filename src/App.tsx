@@ -42,6 +42,7 @@ import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePag
 import { AdminHomePage } from './views/admin-home/AdminHomePage'
 import { AdminRouteGuard } from './views/admin-home/AdminRouteGuard'
 import { AdminUsersPage } from './views/admin-users/AdminUsersPage'
+import { AdminWeatherMapPage } from './views/admin-weather-map/AdminWeatherMapPage'
 import { UserAnalyticsPage } from './views/user-analytics/UserAnalyticsPage'
 import { EventListPage } from './views/event-list/EventListPage'
 import { NotFound404Page } from './views/not-found/NotFound404Page'
@@ -809,6 +810,7 @@ export default function App() {
         <Route path="admin-users" element={<AdminUsersPage />} />
         <Route path="user-analytics" element={<UserAnalyticsPage />} />
         <Route path="event-list" element={<EventListPage />} />
+        <Route path="weather-map" element={<AdminWeatherMapPage />} />
         <Route path="design-theme" element={<Navigate to="/admin/design-theme/orange" replace />} />
         <Route path="design-theme/orange" element={<DesignThemeOrangePage />} />
         <Route path="design-theme/purple" element={<DesignThemePurplePage />} />

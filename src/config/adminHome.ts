@@ -25,6 +25,12 @@ export const adminTools = [
     path: '/admin/user-analytics',
     status: 'Users',
   },
+  {
+    title: 'Weather Map',
+    description: 'Inspect cached weather metadata and Singapore map overlays from data.gov.sg.',
+    path: '/admin/weather-map',
+    status: 'Weather',
+  },
 ] as const
 
 export const themePages = [
