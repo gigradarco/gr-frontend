@@ -9,6 +9,8 @@ import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/d
 
 export type DiscoverEventsSource = 'live' | 'demo' | 'auto'
 
+export type DiscoverImageLoadStatus = 'ok' | 'failed' | 'unknown'
+
 export type DiscoverEventListItem = {
   id: string
   title: string
@@ -20,6 +22,10 @@ export type DiscoverEventListItem = {
   eventDateTime: string | null
   displayDateTimeLabel: string
   imageUrl: string
+  imageStatus?: {
+    eventImg: DiscoverImageLoadStatus
+    fallbackImg: DiscoverImageLoadStatus
+  }
   host: string
   summary: string
   tags: string[]
@@ -87,12 +93,13 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem 
     sourceUrl: 'sourceUrl' in item ? item.sourceUrl ?? null : null,
   }
 
+  const skipPrimaryImage = item.imageStatus?.eventImg === 'failed'
   const resolvedImage = resolveListImage(
     {
       event_id: item.id,
       title: item.title,
       category: item.category,
-      event_img: item.imageUrl,
+      event_img: skipPrimaryImage ? '' : item.imageUrl,
     },
     event,
   )
@@ -151,6 +158,38 @@ export async function fetchDiscoverEventById(eventId: string, signal?: AbortSign
   }
   const item = (await res.json()) as DiscoverEventDetail
   return mapDiscoverEventListItemToEventItem(item)
+}
+
+export async function openDiscoverEventSource(
+  eventId: string,
+  sourceUrl?: string | null,
+  onFallback?: () => void,
+) {
+  const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
+  const openTarget = (target: string) => {
+    if (popup) popup.location.replace(target)
+    else window.open(target, '_blank', 'noopener,noreferrer')
+  }
+
+  const directUrl = sourceUrl?.trim()
+  if (directUrl) {
+    openTarget(directUrl)
+    return
+  }
+
+  try {
+    const detail = await fetchDiscoverEventById(eventId)
+    const resolvedUrl = detail.sourceUrl?.trim()
+    if (resolvedUrl) {
+      openTarget(resolvedUrl)
+      return
+    }
+  } catch {
+    // Fall back below.
+  }
+
+  if (popup) popup.close()
+  onFallback?.()
 }
 
 export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters): DiscoverEventsState {

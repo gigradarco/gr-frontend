@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { createPortal } from 'react-dom'
 
 type PlanCancelConfirmDialogProps = {
   eventTitle: string
@@ -11,11 +12,13 @@ export function PlanCancelConfirmDialog({
   onConfirm,
   onDismiss,
 }: PlanCancelConfirmDialogProps) {
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <AnimatePresence>
       <motion.div
         key="plan-cancel-confirm"
-        className="discover-confirm-overlay"
+        className="discover-confirm-overlay plan-cancel-confirm-overlay"
         role="dialog"
         aria-modal="true"
         aria-labelledby="plan-cancel-confirm-title"
@@ -59,6 +62,7 @@ export function PlanCancelConfirmDialog({
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

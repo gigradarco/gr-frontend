@@ -427,21 +427,12 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
           }
           isPlanned={isEventPlanned(data.eventId)}
           onTogglePlan={() => {
-            if (isEventPlanned(data.eventId)) {
-              requestCancelPlan(data.eventId, data.displayTitle)
-              return
-            }
+            const wasPlanned = isEventPlanned(data.eventId)
             toggleEventPlan(data.eventId)
+            if (wasPlanned) exitEventDetail()
           }}
           onOpenReview={detail.kind === 'past' ? () => setReviewPastId(detail.id) : undefined}
         />
-        {pendingCancelPlan ? (
-          <PlanCancelConfirmDialog
-            eventTitle={pendingCancelPlan.title}
-            onConfirm={confirmCancelPlan}
-            onDismiss={dismissCancelPlan}
-          />
-        ) : null}
       </>
     )
   }

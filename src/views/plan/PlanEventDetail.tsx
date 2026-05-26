@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   Clock,
@@ -8,9 +8,13 @@ import {
   Share2,
   Ticket,
 } from 'lucide-react'
+import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
+import { fallbackImageForEvent, handleEventImageError } from '../../lib/event-image-fallback'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
+import type { EventItem } from '../../types'
 import { EventShareSheet } from '../../components/EventShareSheet'
 import type { PlanPageEvent } from '../../types'
+import { PlanCancelConfirmDialog } from './PlanCancelConfirmDialog'
 
 type PlanEventDetailProps = {
   data: PlanPageEvent
@@ -47,6 +51,31 @@ function googleMapsSearchUrl(query: string): string {
     query,
   })
   return `https://www.google.com/maps/search/?${params.toString()}`
+}
+
+function heroEventItem(data: PlanPageEvent): EventItem {
+  return {
+    id: data.eventId,
+    title: data.displayTitle,
+    venue: data.venueLine,
+    district: '',
+    time: data.timeRange,
+    displayDateTimeLabel: data.timeRange,
+    genre: data.genreTags[0] ?? 'EVENT',
+    exploreCategoryId: 'live-music',
+    locationCityId: 'singapore',
+    verified: 0,
+    image: data.heroImage,
+    host: data.artistLine,
+    hostPrompt: [
+      data.experienceParts.before,
+      data.experienceParts.emphasis,
+      data.experienceParts.after,
+    ].join(''),
+    friendsGoing: 0,
+    vibeTags: [...data.genreTags],
+    ticketPrice: data.ticketPrice ?? '',
+  }
 }
 
 function compactTicketPriceLabel(ticketPrice: string): string {
@@ -86,6 +115,18 @@ export function PlanEventDetail({
   onOpenReview,
 }: PlanEventDetailProps) {
   const [shareOpen, setShareOpen] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const heroEvent = heroEventItem(data)
+  const heroImageSrc = data.heroImage.trim() || fallbackImageForEvent(heroEvent)
+
+  useEffect(() => {
+    if (!cancelConfirmOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCancelConfirmOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [cancelConfirmOpen])
   const mapQuery = mapsQueryFromData(data)
   const mapEmbedSrc = googleMapsEmbedSrc(mapQuery)
   const mapSearchUrl = googleMapsSearchUrl(mapQuery)
@@ -165,9 +206,10 @@ export function PlanEventDetail({
         <div className="plan-hero">
           <img
             className="plan-hero-img"
-            src={data.heroImage}
+            src={heroImageSrc}
             alt=""
             decoding="async"
+            onError={(e) => handleEventImageError(heroEvent, e)}
           />
           <div className="plan-hero-scrim" aria-hidden />
           <div className="plan-hero-content">
@@ -209,7 +251,7 @@ export function PlanEventDetail({
                 <button
                   type="button"
                   className="plan-cta-primary plan-cta-primary--cancel"
-                  onClick={onTogglePlan}
+                  onClick={() => setCancelConfirmOpen(true)}
                   aria-label="Cancel plan for this event"
                 >
                   CANCEL PLAN
@@ -218,7 +260,10 @@ export function PlanEventDetail({
                 <button
                   type="button"
                   className="plan-cta-primary"
-                  onClick={onTogglePlan}
+                  onClick={(e) => {
+                    fireGoingCelebration(e.currentTarget)
+                    onTogglePlan?.()
+                  }}
                   aria-label="Mark yourself as going to this event"
                 >
                   I&apos;M GOING
@@ -317,6 +362,16 @@ export function PlanEventDetail({
           url={data.sourceUrl}
           fallbackPath={`/discover/${data.eventId}`}
           onClose={() => setShareOpen(false)}
+        />
+      ) : null}
+      {cancelConfirmOpen ? (
+        <PlanCancelConfirmDialog
+          eventTitle={data.displayTitle}
+          onDismiss={() => setCancelConfirmOpen(false)}
+          onConfirm={() => {
+            setCancelConfirmOpen(false)
+            onTogglePlan?.()
+          }}
         />
       ) : null}
     </div>

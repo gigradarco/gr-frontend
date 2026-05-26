@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle, Funnel, Heart, Info, Map, Maximize2, Minimize2, RefreshCw, Share2, X } from 'lucide-react'
+import { CheckCircle, ExternalLink, Funnel, Heart, Info, Map, Maximize2, Minimize2, RefreshCw, Share2, X } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import { DISCOVER_FEED_CATEGORY_FILTER_OPTIONS } from '../../data/exploreCategories'
 import { useAppState } from '../../store/appStore'
@@ -20,6 +20,7 @@ import {
   readInitialDiscoverFilters,
   type DiscoverEventFilters,
 } from '../../lib/discover-filters'
+import { openDiscoverEventSource } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 
 // ─── Category → visual accent mapping (keyed by exploreCategoryId) ───────────
@@ -235,11 +236,12 @@ type EventCardProps = {
   isGoing: boolean
   isSaved: boolean
   onSave: () => void
+  onOpenSource: () => void
   onShare: () => void
   onMoreDetails: () => void
 }
 
-function EventCard({ event, isGoing, isSaved, onSave, onShare, onMoreDetails }: EventCardProps) {
+function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onMoreDetails }: EventCardProps) {
   const [loaded, setLoaded] = useState(false)
   const accent = getAccent(event.genre)
   const bgColor = getBg(event.genre)
@@ -337,30 +339,41 @@ function EventCard({ event, isGoing, isSaved, onSave, onShare, onMoreDetails }: 
             <Info size={16} strokeWidth={2} aria-hidden />
             <span className="ecf-details-btn-label">View event info</span>
           </button>
-          <button
-            type="button"
-            className="ecf-icon-btn"
-            aria-label="Save event"
-            title={isSaved ? 'Remove from saved' : 'Save event'}
-            onClick={onSave}
-            style={isSaved ? { color: accent, borderColor: accent } : undefined}
-          >
-            <Heart
-              size={18}
-              strokeWidth={isSaved ? 2.5 : 2}
-              fill={isSaved ? accent : 'none'}
-              aria-hidden
-            />
-          </button>
-          <button
-            type="button"
-            className="ecf-icon-btn"
-            aria-label="Share event"
-            title="Share this event"
-            onClick={onShare}
-          >
-            <Share2 size={18} strokeWidth={2} aria-hidden />
-          </button>
+          <div className="ecf-actions-icons">
+            <button
+              type="button"
+              className="ecf-icon-btn"
+              aria-label="Save event"
+              title={isSaved ? 'Remove from saved' : 'Save event'}
+              onClick={onSave}
+              style={isSaved ? { color: accent, borderColor: accent } : undefined}
+            >
+              <Heart
+                size={18}
+                strokeWidth={isSaved ? 2.5 : 2}
+                fill={isSaved ? accent : 'none'}
+                aria-hidden
+              />
+            </button>
+            <button
+              type="button"
+              className="ecf-icon-btn"
+              aria-label={`View event source for ${event.title}`}
+              title="View event source"
+              onClick={onOpenSource}
+            >
+              <ExternalLink size={18} strokeWidth={2} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="ecf-icon-btn"
+              aria-label="Share event"
+              title="Share this event"
+              onClick={onShare}
+            >
+              <Share2 size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1042,6 +1055,9 @@ export function EventCardFeed({
                 isGoing={isEventPlanned(ev.id)}
                 isSaved={isEventFavorited(ev.id)}
                 onSave={() => saveEvent(ev)}
+                onOpenSource={() => {
+                  void openDiscoverEventSource(ev.id, ev.sourceUrl, () => onMoreDetails(ev.id))
+                }}
                 onShare={() => setShareEventTarget(ev)}
                 onMoreDetails={() => onMoreDetails(ev.id)}
               />

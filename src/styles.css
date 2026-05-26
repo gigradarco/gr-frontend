@@ -12313,6 +12313,10 @@ button.taste-tag:focus-visible {
   z-index: 200;
 }
 
+.plan-cancel-confirm-overlay {
+  z-index: 12100;
+}
+
 .discover-confirm-dialog {
   width: 100%;
   max-width: 360px;
@@ -14366,17 +14370,31 @@ button.taste-tag:focus-visible {
   color: rgba(255, 255, 255, 0.92);
 }
 
-/* Action buttons — event info remains primary; save/share stay compact */
+/* Action buttons — one row: event info grows, icons stay fixed on the right */
 .ecf-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   flex-shrink: 0;
 }
 
+.ecf-actions-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
 .ecf-details-btn {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -14409,9 +14427,10 @@ button.taste-tag:focus-visible {
 .ecf-details-btn-label {
   line-height: 1.25;
   text-align: center;
-  hyphens: none;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .ecf-icon-btn {
@@ -16325,4 +16344,69 @@ vite-error-overlay::part(window) {
     display: none;
   }
 
+}
+
+/* ── I'm Going celebration burst ─────────────────────────────────────────── */
+.going-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.going-celebration-flash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 55%, rgba(255, 140, 70, 0.18) 0%, transparent 48%),
+    linear-gradient(180deg, rgba(255, 95, 58, 0.07) 0%, transparent 38%, rgba(255, 200, 120, 0.05) 100%);
+}
+
+.going-celebration-wave {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, #ff8a4c 70%, #ffffff 30%);
+  box-shadow:
+    0 0 24px rgba(255, 120, 70, 0.45),
+    inset 0 0 20px rgba(255, 200, 140, 0.2);
+}
+
+.going-celebration-wave--delayed {
+  border-color: color-mix(in oklab, #ffd08a 55%, #ff5f3a 45%);
+}
+
+.going-celebration-particle,
+.going-celebration-spark {
+  position: absolute;
+  line-height: 1;
+  will-change: transform, opacity;
+  user-select: none;
+}
+
+.going-celebration-particle {
+  font-size: 1.35rem;
+  filter: drop-shadow(0 0 10px rgba(255, 120, 70, 0.32));
+}
+
+.going-celebration-particle--large {
+  font-size: 1.65rem;
+  filter: drop-shadow(0 0 12px rgba(255, 140, 90, 0.42));
+}
+
+.going-celebration-spark {
+  font-size: 1.15rem;
+  color: #ffd08a;
+  text-shadow:
+    0 0 10px rgba(255, 170, 90, 0.9),
+    0 0 22px rgba(255, 95, 58, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .going-celebration {
+    display: none;
+  }
 }

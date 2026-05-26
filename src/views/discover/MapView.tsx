@@ -16,6 +16,7 @@ import type { EventFeedFilters } from './EventCardFeed'
 import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS, getLocationCityCentroid } from '../../data/locationRegions'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { useEventPlans } from '../../lib/useEventPlans'
 import type { EventItem } from '../../types'
 
@@ -855,6 +856,7 @@ export function MapView({
                             className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (!isGoing) fireGoingCelebration(e.currentTarget)
                               toggleEventPlan(event.id)
                             }}
                           >

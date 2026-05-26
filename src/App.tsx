@@ -21,6 +21,7 @@ import { tabNavItems } from './config/tabNavigation'
 import { EventCardFeed } from './views/discover/EventCardFeed'
 import { MapView } from './views/discover/MapView'
 import { FavoritesTab } from './views/favorites/FavoritesTab'
+import { GoingCelebrationHost } from './components/GoingCelebrationBurst'
 import { UploadToast } from './components/UploadToast'
 import { BuzzPointsScreen } from './views/profile/BuzzPointsScreen'
 import { ProfileReputationScreen } from './views/profile/ProfileReputationScreen'
@@ -469,6 +470,7 @@ function MainApp() {
     <div className={`app theme-${theme}`}>
       <div className="glow glow-1" />
       <div className="glow glow-2" />
+      <GoingCelebrationHost />
       <UploadToast
         toast={favoriteNotice ? { id: favoriteNotice.id, variant: 'error', message: favoriteNotice.message } : null}
         onDismiss={clearFavoriteNotice}
