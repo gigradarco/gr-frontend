@@ -1,5 +1,5 @@
 const DATA_GOV_REALTIME_BASE = 'https://api-open.data.gov.sg/v2/real-time/api'
-const SINGAPORE_CACHE_KEY = 'buzo:weather-map:country:sg:v3'
+const SINGAPORE_CACHE_KEY = 'buzo:weather-map:country:sg:v4'
 const SINGAPORE_CACHE_TTL_MS = 10 * 60 * 1000
 
 export const weatherMapCountries = [
@@ -97,6 +97,44 @@ type FloodAlertsResponse = {
   }
 }
 
+type FourDayOutlookResponse = {
+  code: number
+  errorMsg: string
+  data: {
+    records: Array<{
+      date: string
+      timestamp: string
+      updatedTimestamp: string
+      forecasts: Array<{
+        relativeHumidity?: {
+          unit: string
+          high?: number
+          low?: number
+        }
+        wind?: {
+          direction?: string
+          speed?: {
+            high?: number
+            low?: number
+          }
+        }
+        temperature?: {
+          low?: number
+          high?: number
+          unit: string
+        }
+        day: string
+        timestamp: string
+        forecast: {
+          code?: string
+          text: string
+          summary: string
+        }
+      }>
+    }>
+  }
+}
+
 export type ForecastAreaWeather = {
   name: string
   lat: number
@@ -117,6 +155,18 @@ export type FloodAlertEvent = {
   detail: string
 }
 
+export type FourDayOutlookDay = {
+  day: string
+  timestamp: string
+  forecastCode: string
+  forecastText: string
+  forecastSummary: string
+  tempLowC: number | null
+  tempHighC: number | null
+  humidityLowPct: number | null
+  humidityHighPct: number | null
+}
+
 export type SingaporeWeatherMapData = {
   countryCode: 'SG'
   countryLabel: 'Singapore'
@@ -133,6 +183,14 @@ export type SingaporeWeatherMapData = {
     validText: string
     areaCount: number
     areas: ForecastAreaWeather[]
+  }
+  fourDayOutlook: {
+    status: 'ready' | 'unavailable'
+    updatedAt: string
+    timestamp: string
+    dayCount: number
+    days: FourDayOutlookDay[]
+    note: string
   }
   temperature: {
     timestamp: string
@@ -190,6 +248,10 @@ function withCacheState(
   cacheState: WeatherMapCacheState,
 ): SingaporeWeatherMapData {
   return { ...entry, cacheState }
+}
+
+function hasReadyFourDayOutlook(entry: StoredSingaporeWeather): boolean {
+  return entry.fourDayOutlook.status === 'ready' && entry.fourDayOutlook.days.length > 0
 }
 
 function readSessionCache(): StoredSingaporeWeather | null {
@@ -352,12 +414,75 @@ function normalizeFloodAlerts(response: FloodAlertsResponse | null): StoredSinga
   }
 }
 
+function maybeNumber(value: number | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function normalizeFourDayOutlook(response: FourDayOutlookResponse | null): StoredSingaporeWeather['fourDayOutlook'] {
+  if (!response) {
+    return {
+      status: 'unavailable',
+      updatedAt: '',
+      timestamp: '',
+      dayCount: 0,
+      days: [],
+      note: '4-day outlook feed unavailable',
+    }
+  }
+
+  const latest = response.data.records[0]
+  const days = (latest?.forecasts ?? []).map((forecast) => ({
+    day: forecast.day,
+    timestamp: forecast.timestamp,
+    forecastCode: forecast.forecast.code ?? '',
+    forecastText: forecast.forecast.text,
+    forecastSummary: forecast.forecast.summary,
+    tempLowC: maybeNumber(forecast.temperature?.low),
+    tempHighC: maybeNumber(forecast.temperature?.high),
+    humidityLowPct: maybeNumber(forecast.relativeHumidity?.low),
+    humidityHighPct: maybeNumber(forecast.relativeHumidity?.high),
+  }))
+
+  return {
+    status: 'ready',
+    updatedAt: latest?.updatedTimestamp ?? '',
+    timestamp: latest?.timestamp ?? '',
+    dayCount: days.length,
+    days,
+    note: 'Islandwide 4-day outlook from data.gov.sg.',
+  }
+}
+
+async function hydrateCachedFourDayOutlook(
+  entry: StoredSingaporeWeather,
+  cacheState: WeatherMapCacheState,
+  signal?: AbortSignal,
+): Promise<SingaporeWeatherMapData> {
+  if (hasReadyFourDayOutlook(entry)) {
+    return withCacheState(entry, cacheState)
+  }
+
+  const fourDayOutlook = await fetchRealtimeOptional<FourDayOutlookResponse>('four-day-outlook', signal)
+  if (!fourDayOutlook) {
+    return withCacheState(entry, cacheState)
+  }
+
+  const hydrated: StoredSingaporeWeather = {
+    ...entry,
+    fourDayOutlook: normalizeFourDayOutlook(fourDayOutlook),
+  }
+  memoryCache = hydrated
+  writeSessionCache(hydrated)
+  return withCacheState(hydrated, cacheState)
+}
+
 function normalizeWeatherData(
   forecast: TwoHourForecastResponse,
   temperature: StationReadingResponse,
   rainfall: StationReadingResponse,
   humidity: StationReadingResponse,
   uvIndex: UvIndexResponse,
+  fourDayOutlook: FourDayOutlookResponse | null,
   floodAlerts: FloodAlertsResponse | null,
 ): StoredSingaporeWeather {
   const fetchedAt = new Date().toISOString()
@@ -394,6 +519,7 @@ function normalizeWeatherData(
       areaCount: areas.length,
       areas,
     },
+    fourDayOutlook: normalizeFourDayOutlook(fourDayOutlook),
     temperature: {
       timestamp: temperatureReading.timestamp,
       unit: 'deg C',
@@ -431,26 +557,27 @@ export async function getSingaporeWeatherMapData({
   signal?: AbortSignal
 } = {}): Promise<SingaporeWeatherMapData> {
   if (!forceRefresh && memoryCache && isFresh(memoryCache)) {
-    return withCacheState(memoryCache, 'memory-cache')
+    return hydrateCachedFourDayOutlook(memoryCache, 'memory-cache', signal)
   }
 
   if (!forceRefresh) {
     const stored = readSessionCache()
     if (stored && isFresh(stored)) {
       memoryCache = stored
-      return withCacheState(stored, 'session-cache')
+      return hydrateCachedFourDayOutlook(stored, 'session-cache', signal)
     }
   }
 
-  const [forecast, temperature, rainfall, humidity, uvIndex, floodAlerts] = await Promise.all([
+  const [forecast, temperature, rainfall, humidity, uvIndex, fourDayOutlook, floodAlerts] = await Promise.all([
     fetchRealtime<TwoHourForecastResponse>('two-hr-forecast', signal),
     fetchRealtime<StationReadingResponse>('air-temperature', signal),
     fetchRealtime<StationReadingResponse>('rainfall', signal),
     fetchRealtime<StationReadingResponse>('relative-humidity', signal),
     fetchRealtime<UvIndexResponse>('uv', signal),
+    fetchRealtimeOptional<FourDayOutlookResponse>('four-day-outlook', signal),
     fetchRealtimeOptional<FloodAlertsResponse>('weather/flood-alerts', signal),
   ])
-  const normalized = normalizeWeatherData(forecast, temperature, rainfall, humidity, uvIndex, floodAlerts)
+  const normalized = normalizeWeatherData(forecast, temperature, rainfall, humidity, uvIndex, fourDayOutlook, floodAlerts)
   memoryCache = normalized
   writeSessionCache(normalized)
   return withCacheState(normalized, 'network')

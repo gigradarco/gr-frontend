@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { Link } from 'react-router-dom'
-import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { divIcon, type DivIcon } from 'leaflet'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   ArrowLeft,
   Check,
   ChevronDown,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudMoon,
   CloudRain,
   CloudSun,
   Database,
   Globe2,
   MapPin,
+  Moon,
   RefreshCw,
   Sun,
   ThermometerSun,
+  Wind,
   Waves,
 } from 'lucide-react'
 import {
@@ -21,6 +30,7 @@ import {
   isWeatherCountryAvailable,
   weatherMapCountries,
   type ForecastAreaWeather,
+  type FourDayOutlookDay,
   type SingaporeWeatherMapData,
   type WeatherMapCountryCode,
   type WeatherStationValue,
@@ -58,6 +68,19 @@ type AdvisoryRowProps = {
 
 type WeatherConditionLevel = 1 | 2 | 3 | 4 | 5
 type WeatherAdvisoryCategory = 'flood' | 'rain' | 'thunder' | 'heat' | 'uv'
+type ForecastMarkerKind =
+  | 'fair'
+  | 'fair-night'
+  | 'partly-cloudy'
+  | 'partly-cloudy-night'
+  | 'cloudy'
+  | 'drizzle'
+  | 'rain'
+  | 'heavy-rain'
+  | 'thunder'
+  | 'heavy-thunder'
+  | 'wind'
+  | 'haze'
 
 type WeatherAdvisorySignal = {
   category: WeatherAdvisoryCategory
@@ -68,6 +91,7 @@ type WeatherAdvisorySignal = {
 }
 
 const WEATHER_CONDITION_LEVELS: WeatherConditionLevel[] = [1, 2, 3, 4, 5]
+const forecastIconCache = new Map<ForecastMarkerKind, DivIcon>()
 
 function getWeatherCountryMapDefaults(country: WeatherMapCountryCode): {
   center: [number, number]
@@ -89,6 +113,17 @@ function formatTime(value: string): string {
   }).format(new Date(value))
 }
 
+function formatOutlookDate(value: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-SG', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Asia/Singapore',
+  }).format(date)
+}
+
 function formatTemperature(value: number | null): string {
   return value == null ? 'N/A' : `${value.toFixed(1)}°C`
 }
@@ -97,6 +132,22 @@ function formatTemperatureRange(min: number | null, max: number | null): string 
   if (min == null && max == null) return 'N/A'
   if (min == null || max == null) return formatTemperature(min ?? max)
   return `${min.toFixed(1)} - ${max.toFixed(1)}°C`
+}
+
+function formatOutlookTemperatureRange(day: FourDayOutlookDay): string {
+  if (day.tempLowC == null && day.tempHighC == null) return 'N/A'
+  if (day.tempLowC == null || day.tempHighC == null) {
+    return `${day.tempLowC ?? day.tempHighC}°C`
+  }
+  return `${day.tempLowC} - ${day.tempHighC}°C`
+}
+
+function formatOutlookHumidityRange(day: FourDayOutlookDay): string {
+  if (day.humidityLowPct == null && day.humidityHighPct == null) return 'N/A'
+  if (day.humidityLowPct == null || day.humidityHighPct == null) {
+    return `${day.humidityLowPct ?? day.humidityHighPct}%`
+  }
+  return `${day.humidityLowPct} - ${day.humidityHighPct}%`
 }
 
 function formatPercent(value: number | null): string {
@@ -348,13 +399,53 @@ function buildUvSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySignal 
   }
 }
 
-function forecastColor(forecast: string): string {
+function forecastMarkerKind(forecast: string): ForecastMarkerKind {
   const lower = forecast.toLowerCase()
-  if (lower.includes('thunder')) return '#f97316'
-  if (lower.includes('showers') || lower.includes('rain')) return '#38bdf8'
-  if (lower.includes('cloud')) return '#94a3b8'
-  if (lower.includes('fair')) return '#facc15'
-  return '#aeb4bf'
+  if (lower.includes('heavy') && lower.includes('thunder')) return 'heavy-thunder'
+  if (lower.includes('thunder')) return 'thunder'
+  if (lower.includes('heavy') && (lower.includes('rain') || lower.includes('showers'))) return 'heavy-rain'
+  if (lower.includes('drizzle') || lower.includes('light')) return 'drizzle'
+  if (lower.includes('rain') || lower.includes('showers')) return 'rain'
+  if (lower.includes('wind')) return 'wind'
+  if (lower.includes('haze') || lower.includes('mist') || lower.includes('fog')) return 'haze'
+  if (lower.includes('fair') && lower.includes('night')) return 'fair-night'
+  if (lower.includes('partly') && lower.includes('night')) return 'partly-cloudy-night'
+  if (lower.includes('partly')) return 'partly-cloudy'
+  if (lower.includes('cloud')) return 'cloudy'
+  if (lower.includes('fair') || lower.includes('sun')) return 'fair'
+  return 'cloudy'
+}
+
+function ForecastMarkerGlyph({ kind, size = 13 }: { kind: ForecastMarkerKind; size?: number }) {
+  const props = { size, strokeWidth: 2.7, 'aria-hidden': true }
+  if (kind === 'fair') return <Sun {...props} />
+  if (kind === 'fair-night') return <Moon {...props} />
+  if (kind === 'partly-cloudy-night') return <CloudMoon {...props} />
+  if (kind === 'cloudy') return <Cloud {...props} />
+  if (kind === 'drizzle') return <CloudDrizzle {...props} />
+  if (kind === 'rain' || kind === 'heavy-rain') return <CloudRain {...props} />
+  if (kind === 'thunder' || kind === 'heavy-thunder') return <CloudLightning {...props} />
+  if (kind === 'wind') return <Wind {...props} />
+  if (kind === 'haze') return <CloudFog {...props} />
+  return <CloudSun {...props} />
+}
+
+function forecastMarkerIcon(kind: ForecastMarkerKind): DivIcon {
+  const cached = forecastIconCache.get(kind)
+  if (cached) return cached
+
+  const icon = divIcon({
+    className: `admin-weather-forecast-div-icon is-${kind}`,
+    html: `<span class="admin-weather-forecast-marker">${renderToStaticMarkup(
+      <ForecastMarkerGlyph kind={kind} />,
+    )}</span>`,
+    iconAnchor: [12, 12],
+    iconSize: [24, 24],
+    popupAnchor: [0, -13],
+    tooltipAnchor: [0, -13],
+  })
+  forecastIconCache.set(kind, icon)
+  return icon
 }
 
 function temperatureColor(value: number): string {
@@ -415,6 +506,60 @@ function WeatherContextRow({ icon, title, primary, secondary }: WeatherContextRo
         <span>{secondary}</span>
       </div>
     </div>
+  )
+}
+
+function FourDayOutlookPanel({ weather }: { weather: SingaporeWeatherMapData }) {
+  return (
+    <article className="admin-weather-nea-panel admin-weather-outlook-panel">
+      <div className="admin-weather-outlook-head">
+        <div>
+          <h2>Next few days outlook</h2>
+          <p>
+            {weather.fourDayOutlook.status === 'ready'
+              ? `Islandwide 4-day forecast · updated ${formatRelativeTime(weather.fourDayOutlook.updatedAt)}`
+              : weather.fourDayOutlook.note}
+          </p>
+        </div>
+        <span>{weather.fourDayOutlook.dayCount || 'N/A'} days</span>
+      </div>
+
+      {weather.fourDayOutlook.days.length > 0 ? (
+        <div className="admin-weather-outlook-grid">
+          {weather.fourDayOutlook.days.map((day) => (
+            <article className="admin-weather-outlook-day" key={day.timestamp || day.day}>
+              <div className="admin-weather-outlook-day-head">
+                <span className={`admin-weather-outlook-icon is-${forecastMarkerKind(day.forecastText)}`} aria-hidden>
+                  <ForecastMarkerGlyph kind={forecastMarkerKind(day.forecastText)} size={30} />
+                </span>
+                <div>
+                  <p>{day.day}</p>
+                  <span>{formatOutlookDate(day.timestamp)}</span>
+                </div>
+              </div>
+
+              <strong>{day.forecastText}</strong>
+              <small>{day.forecastSummary}</small>
+
+              <div className="admin-weather-outlook-meta">
+                <span>
+                  <b>Temp</b>
+                  {formatOutlookTemperatureRange(day)}
+                </span>
+                <span>
+                  <b>Humidity</b>
+                  {formatOutlookHumidityRange(day)}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="admin-weather-outlook-empty">
+          4-day outlook is not available for this refresh.
+        </div>
+      )}
+    </article>
   )
 }
 
@@ -497,11 +642,12 @@ function ScoreMetricRuler({
 }
 
 function AdvisoryIcon({ category }: { category: WeatherAdvisoryCategory }) {
-  if (category === 'flood') return <Waves size={22} strokeWidth={2.35} aria-hidden />
-  if (category === 'rain') return <CloudRain size={22} strokeWidth={2.35} aria-hidden />
-  if (category === 'heat') return <ThermometerSun size={22} strokeWidth={2.35} aria-hidden />
-  if (category === 'uv') return <Sun size={22} strokeWidth={2.35} aria-hidden />
-  return <CloudSun size={22} strokeWidth={2.35} aria-hidden />
+  if (category === 'flood') return <Waves size={28} strokeWidth={2.3} aria-hidden />
+  if (category === 'rain') return <CloudRain size={28} strokeWidth={2.3} aria-hidden />
+  if (category === 'thunder') return <CloudLightning size={28} strokeWidth={2.3} aria-hidden />
+  if (category === 'heat') return <ThermometerSun size={28} strokeWidth={2.3} aria-hidden />
+  if (category === 'uv') return <Sun size={28} strokeWidth={2.3} aria-hidden />
+  return <CloudSun size={28} strokeWidth={2.3} aria-hidden />
 }
 
 function AdvisoryRow({ category, title, message, kind = 'derived', level }: AdvisoryRowProps) {
@@ -510,7 +656,7 @@ function AdvisoryRow({ category, title, message, kind = 'derived', level }: Advi
     <article className={`admin-weather-advisory-row is-${tone} is-level-${level}`}>
       <div className="admin-weather-advisory-row-head">
         <div className="admin-weather-advisory-title">
-          <span className="admin-weather-advisory-icon" aria-hidden>
+          <span className={`admin-weather-advisory-icon is-${category}`} aria-hidden>
             <AdvisoryIcon category={category} />
           </span>
           <div>
@@ -533,25 +679,23 @@ function AdvisoryRow({ category, title, message, kind = 'derived', level }: Advi
 }
 
 function ForecastAreaMarker({ area }: { area: ForecastAreaWeather }) {
-  const color = forecastColor(area.forecast)
+  const kind = forecastMarkerKind(area.forecast)
   return (
-    <CircleMarker
-      center={[area.lat, area.lng]}
-      radius={5}
-      pathOptions={{
-        color,
-        fillColor: color,
-        fillOpacity: 0.32,
-        opacity: 0.88,
-        weight: 1.5,
-      }}
-    >
+    <Marker position={[area.lat, area.lng]} icon={forecastMarkerIcon(kind)}>
       <Tooltip direction="top" opacity={0.94}>
         <strong>{area.name}</strong>
         <br />
         {area.forecast}
       </Tooltip>
-    </CircleMarker>
+    </Marker>
+  )
+}
+
+function MapLegendForecastIcon({ kind }: { kind: ForecastMarkerKind }) {
+  return (
+    <span className={`admin-weather-map-legend-icon is-${kind}`} aria-hidden>
+      <ForecastMarkerGlyph kind={kind} size={11} />
+    </span>
   )
 }
 
@@ -560,7 +704,7 @@ function TemperatureMarker({ station }: { station: WeatherStationValue }) {
   return (
     <CircleMarker
       center={[station.lat, station.lng]}
-      radius={8}
+      radius={7}
       pathOptions={{
         color,
         fillColor: color,
@@ -850,7 +994,7 @@ export function AdminWeatherMapPage() {
                   )}
                 </span>
                 <div>
-                  <h2>2-hour weather nowcast</h2>
+                  <h2>2-hour weather nowcast (Islandwide)</h2>
                   <p>{forecastSummary?.primary ?? weather.twoHourForecast.validText}</p>
                 </div>
               </div>
@@ -865,6 +1009,8 @@ export function AdminWeatherMapPage() {
                 <span>{weather.twoHourForecast.areaCount} forecast areas</span>
               </div>
             </article>
+
+            <FourDayOutlookPanel weather={weather} />
 
             <article className="admin-weather-nea-panel admin-weather-context-panel">
               <h2>Event weather context</h2>
@@ -945,9 +1091,12 @@ export function AdminWeatherMapPage() {
             ) : null}
             {weather ? (
               <>
-                <div className="admin-weather-map-legend">
+                <div className="admin-weather-map-legend" aria-label="Weather map legend">
                   <span><i className="is-temp" /> Temperature station</span>
-                  <span><i className="is-forecast" /> Forecast area</span>
+                  <span><MapLegendForecastIcon kind="partly-cloudy" /> Fair / cloudy</span>
+                  <span><MapLegendForecastIcon kind="rain" /> Rain</span>
+                  <span><MapLegendForecastIcon kind="thunder" /> Thunder</span>
+                  <span><MapLegendForecastIcon kind="haze" /> Haze / wind</span>
                 </div>
                 <MapContainer
                   center={mapDefaults.center}
