@@ -49,21 +49,22 @@ type WeatherContextRowProps = {
 }
 
 type AdvisoryRowProps = {
+  category: WeatherAdvisoryCategory
   title: string
   message: string
   kind?: 'official' | 'derived' | 'source'
   level: WeatherConditionLevel
-  calculation: string
 }
 
 type WeatherConditionLevel = 1 | 2 | 3 | 4 | 5
+type WeatherAdvisoryCategory = 'flood' | 'rain' | 'thunder' | 'heat' | 'uv'
 
 type WeatherAdvisorySignal = {
+  category: WeatherAdvisoryCategory
   title: string
   message: string
   kind: 'official' | 'derived' | 'source'
   level: WeatherConditionLevel
-  calculation: string
 }
 
 const WEATHER_CONDITION_LEVELS: WeatherConditionLevel[] = [1, 2, 3, 4, 5]
@@ -211,11 +212,11 @@ function countForecastAreas(areas: ForecastAreaWeather[], pattern: RegExp): numb
 function buildFloodSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySignal {
   if (weather.floodAlerts.status === 'unavailable') {
     return {
+      category: 'flood',
       title: 'Flood alerts',
       kind: 'official',
       level: 3,
       message: 'PUB flood alert feed unavailable. Treat as watch until the official feed recovers.',
-      calculation: 'Score 3 because the official flood feed could not be read. Flood status should be verified before event guidance is sent.',
     }
   }
 
@@ -223,20 +224,20 @@ function buildFloodSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySign
     const labels = weather.floodAlerts.alerts.slice(0, 2).map((alert) => alert.label)
     const suffix = labels.length > 0 ? `: ${labels.join(', ')}` : ''
     return {
+      category: 'flood',
       title: 'Flood alerts',
       kind: 'official',
       level: 5,
       message: `${pluralize(weather.floodAlerts.activeAlertCount, 'active PUB flood alert event')}${suffix}.`,
-      calculation: `Score 5 because active PUB flood alert count is ${weather.floodAlerts.activeAlertCount}. Any active official flood alert is treated as bad for event movement.`,
     }
   }
 
   return {
+    category: 'flood',
     title: 'Flood alerts',
     kind: 'official',
     level: 1,
     message: `No active PUB flood alert events · updated ${formatRelativeTime(weather.floodAlerts.updatedAt)}.`,
-    calculation: 'Score 1 because the official PUB flood alert count is 0.',
   }
 }
 
@@ -258,6 +259,7 @@ function buildRainSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySigna
             : 1
 
   return {
+    category: 'rain',
     title: 'Heavy rain signal',
     kind: 'derived',
     level,
@@ -265,16 +267,6 @@ function buildRainSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySigna
       level === 1
         ? `No rain signal · ${formatMillimetres(maxRain)} max across ${weather.rainfall.stationCount} stations.`
         : `${formatMillimetres(maxRain)} max · ${pluralize(activeStations, 'station')} reporting rain · ${pluralize(rainForecastAreas, 'forecast area')} mention rain/showers.`,
-    calculation:
-      level === 5
-        ? `Score 5 because max rain is at least 20.0mm or 40%+ of stations report rain. Current: ${formatMillimetres(maxRain)}, ${activeStations}/${weather.rainfall.stationCount} stations (${Math.round(stationPct * 100)}%).`
-        : level === 4
-          ? `Score 4 because max rain is at least 10.0mm, 20%+ of stations report rain, or 8+ forecast areas mention heavy/thundery weather. Current: ${formatMillimetres(maxRain)}, ${activeStations}/${weather.rainfall.stationCount} stations, ${heavyForecastAreas} heavy/thundery areas.`
-          : level === 3
-            ? `Score 3 because rain is visible enough to monitor: 2.0mm+ max, 3+ active stations, or 8+ rain forecast areas. Current: ${formatMillimetres(maxRain)}, ${activeStations} active stations, ${rainForecastAreas} rain areas.`
-            : level === 2
-              ? `Score 2 because light rain is present in either station readings or the 2-hour forecast. Current: ${formatMillimetres(maxRain)}, ${activeStations} active stations, ${rainForecastAreas} rain areas.`
-              : `Score 1 because no station reports measurable rain and no forecast area mentions rain/showers. Current max: ${formatMillimetres(maxRain)}.`,
   }
 }
 
@@ -292,6 +284,7 @@ function buildThunderSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySi
             ? 3
             : 2
   return {
+    category: 'thunder',
     title: 'Thunderstorm signal',
     kind: 'derived',
     level,
@@ -299,10 +292,6 @@ function buildThunderSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySi
       thunderAreas > 0
         ? `${pluralize(thunderAreas, 'forecast area')} mention thunder in the 2-hour nowcast.`
         : 'No thunder wording in current 2-hour nowcast.',
-    calculation:
-      thunderAreas === 0
-        ? `Score 1 because 0/${weather.twoHourForecast.areas.length} forecast areas mention thunder.`
-        : `Score ${level} because ${thunderAreas}/${weather.twoHourForecast.areas.length} forecast areas mention thunder. Thresholds: 15% = watch, 35% = poor, 65% = bad.`,
   }
 }
 
@@ -325,6 +314,7 @@ function buildHeatSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySigna
             : 1
 
   return {
+    category: 'heat',
     title: 'Heat signal',
     kind: 'derived',
     level,
@@ -332,16 +322,6 @@ function buildHeatSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySigna
       level <= 2
         ? `${formatTemperature(avgC)} avg · ${formatPercent(humidity)} humidity.`
         : `${temperatureLabel(avgC)} · ${formatTemperature(avgC)} avg · ${formatPercent(humidity)} humidity · ${comfortAdvice(avgC, humidity)}.`,
-    calculation:
-      level === 5
-        ? `Score 5 because avg temperature is 34.0°C+ or max temperature is 35.0°C+. Current: ${formatTemperature(avgC)} avg, ${formatTemperature(maxC)} max.`
-        : level === 4
-          ? `Score 4 because avg temperature is 32.0°C+ or max temperature is 34.0°C+. Current: ${formatTemperature(avgC)} avg, ${formatTemperature(maxC)} max.`
-          : level === 3
-            ? `Score 3 because avg temperature is 30.0°C+ or 28.5°C+ with 80%+ humidity. Current: ${formatTemperature(avgC)} avg, ${formatPercent(humidity)} humidity.`
-            : level === 2
-              ? `Score 2 because avg temperature is 27.0°C+ or humidity is 75%+. Current: ${formatTemperature(avgC)} avg, ${formatPercent(humidity)} humidity.`
-              : `Score 1 because avg temperature is below 27.0°C and humidity is below 75%. Current: ${formatTemperature(avgC)} avg, ${formatPercent(humidity)} humidity.`,
   }
 }
 
@@ -360,14 +340,11 @@ function buildUvSignal(weather: SingaporeWeatherMapData): WeatherAdvisorySignal 
               ? 4
               : 5
   return {
+    category: 'uv',
     title: 'UV exposure signal',
     kind: 'derived',
     level,
     message: latest == null ? 'No UV reading available.' : `${latest} · ${uvLevel(latest)} · ${uvAdvice(latest)}.`,
-    calculation:
-      latest == null
-        ? 'Score 3 because UV data is unavailable, so outdoor exposure risk should be treated as watch.'
-        : `Score ${level} from latest UV index ${latest}. Scale: 0-2 excellent, 3-5 good, 6-7 watch, 8-10 poor, 11+ bad.`,
   }
 }
 
@@ -461,26 +438,97 @@ function ScoreBar({ level }: { level: WeatherConditionLevel }) {
   )
 }
 
-function AdvisoryRow({ title, message, kind = 'derived', level, calculation }: AdvisoryRowProps) {
+function ScoreRuler() {
+  return (
+    <div className="admin-weather-score-ruler" aria-hidden>
+      {WEATHER_CONDITION_LEVELS.map((level) => (
+        <span key={level} className={`is-level-${level}`}>
+          <i />
+          <b>{level}</b>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function scoreMetricLabels(category: WeatherAdvisoryCategory): string[] {
+  if (category === 'heat') {
+    return [
+      '<27°C & humidity <75%',
+      '27-29.9°C or humidity ≥75%',
+      '30-31.9°C or 28.5°C + humidity ≥80%',
+      '32-33.9°C or max ≥34°C',
+      'avg ≥34°C or max ≥35°C',
+    ]
+  }
+
+  if (category === 'uv') {
+    return ['UV ≤2', 'UV 3-5', 'UV 6-7', 'UV 8-10', 'UV 11+']
+  }
+
+  if (category === 'thunder') {
+    return ['0 thunder areas', '<15% areas', '15-34% areas', '35-64% areas', '≥65% areas']
+  }
+
+  if (category === 'rain') {
+    return ['No rain signal', 'Light scattered rain', 'Rain watch', 'Heavy rain risk', 'Severe rain risk']
+  }
+
+  return ['No active alerts', 'Monitoring', 'Source unavailable watch', 'Alert watch', 'Active flood alert']
+}
+
+function ScoreMetricRuler({
+  category,
+  level,
+}: {
+  category: WeatherAdvisoryCategory
+  level: WeatherConditionLevel
+}) {
+  const labels = scoreMetricLabels(category)
+  return (
+    <div className="admin-weather-score-metric-ruler" aria-label="Score metric thresholds">
+      {WEATHER_CONDITION_LEVELS.map((segment, index) => (
+        <span key={segment} className={`${segment === level ? 'is-active ' : ''}is-level-${segment}`}>
+          {labels[index] ?? ''}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function AdvisoryIcon({ category }: { category: WeatherAdvisoryCategory }) {
+  if (category === 'flood') return <Waves size={22} strokeWidth={2.35} aria-hidden />
+  if (category === 'rain') return <CloudRain size={22} strokeWidth={2.35} aria-hidden />
+  if (category === 'heat') return <ThermometerSun size={22} strokeWidth={2.35} aria-hidden />
+  if (category === 'uv') return <Sun size={22} strokeWidth={2.35} aria-hidden />
+  return <CloudSun size={22} strokeWidth={2.35} aria-hidden />
+}
+
+function AdvisoryRow({ category, title, message, kind = 'derived', level }: AdvisoryRowProps) {
   const tone = conditionTone(level)
   return (
-    <div className={`admin-weather-advisory-row is-${tone}`}>
+    <article className={`admin-weather-advisory-row is-${tone} is-level-${level}`}>
       <div className="admin-weather-advisory-row-head">
-        <strong>{title}</strong>
+        <div className="admin-weather-advisory-title">
+          <span className="admin-weather-advisory-icon" aria-hidden>
+            <AdvisoryIcon category={category} />
+          </span>
+          <div>
+            <strong>{title}</strong>
+            <span>{level}/5 {conditionLabel(level)}</span>
+          </div>
+        </div>
         <span className={`admin-weather-advisory-badge is-${kind}`}>
           {kind === 'official' ? 'Official' : kind === 'source' ? 'Source' : 'Derived'}
         </span>
       </div>
       <ScoreBar level={level} />
-      <p className="admin-weather-score-caption">
-        <strong>{level}/5 {conditionLabel(level)}</strong>
-        <span>{message}</span>
-      </p>
-      <p className="admin-weather-score-computation">
-        <strong>How scored</strong>
-        <span>{calculation}</span>
-      </p>
-    </div>
+      <ScoreMetricRuler category={category} level={level} />
+      <ScoreRuler />
+      <div className="admin-weather-advisory-body">
+        <p className="admin-weather-alert-message">{message}</p>
+      </div>
+    </article>
   )
 }
 
@@ -858,18 +906,23 @@ export function AdminWeatherMapPage() {
 
             <article className="admin-weather-nea-panel admin-weather-advisory-panel">
               <h2>Alerts & derived signals</h2>
-              <p className="admin-weather-advisory-scale">
-                1 Excellent · 2 Good · 3 Watch · 4 Poor · 5 Bad
-              </p>
+              <div className="admin-weather-advisory-scale" aria-label="Weather condition scale">
+                {WEATHER_CONDITION_LEVELS.map((level) => (
+                  <span key={level} className={`is-level-${level}`}>
+                    <i aria-hidden />
+                    {level} {conditionLabel(level)}
+                  </span>
+                ))}
+              </div>
               <div className="admin-weather-advisory-list">
                 {advisorySignals.map((signal) => (
                   <AdvisoryRow
                     key={signal.title}
+                    category={signal.category}
                     title={signal.title}
                     message={signal.message}
                     kind={signal.kind}
                     level={signal.level}
-                    calculation={signal.calculation}
                   />
                 ))}
               </div>
