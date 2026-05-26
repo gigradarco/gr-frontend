@@ -14060,6 +14060,7 @@ button.taste-tag:focus-visible {
 
 /* Individual slide — height: 100% + 100cqh in @supports (see above) for exact snap alignment */
 .ecf-slide {
+  --ecf-badge-top: max(112px, calc(78px + env(safe-area-inset-top, 0px)));
   scroll-snap-align: start;
   scroll-snap-stop: always;
   position: relative;
@@ -14139,7 +14140,7 @@ button.taste-tag:focus-visible {
 /* Tag badges — sits just under the overlay filter strip */
 .ecf-tags {
   position: absolute;
-  top: max(112px, calc(78px + env(safe-area-inset-top, 0px)));
+  top: var(--ecf-badge-top);
   left: 18px;
   display: flex;
   gap: 8px;
@@ -14156,7 +14157,7 @@ button.taste-tag:focus-visible {
 
 .ecf-going-badge {
   position: absolute;
-  top: max(112px, calc(78px + env(safe-area-inset-top, 0px)));
+  top: var(--ecf-badge-top);
   right: 34px;
   z-index: 12;
   display: inline-flex;
@@ -14499,8 +14500,8 @@ button.taste-tag:focus-visible {
     --ecf-body-bottom: 52px;
   }
 
-  .ecf-tags {
-    top: max(96px, calc(70px + env(safe-area-inset-top, 0px)));
+  .ecf-slide {
+    --ecf-badge-top: max(96px, calc(70px + env(safe-area-inset-top, 0px)));
   }
 
   .ecf-body {
@@ -16050,7 +16051,7 @@ vite-error-overlay::part(window) {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: linear-gradient(180deg, rgba(18, 19, 26, 0.98) 0%, rgba(10, 11, 16, 0.98) 100%);
   box-shadow: 0 30px 55px rgba(0, 0, 0, 0.5);
-  padding: 14px;
+  padding: 16px;
 }
 
 .event-share-head {
@@ -16176,26 +16177,102 @@ vite-error-overlay::part(window) {
   font-size: 0.8rem;
 }
 
-.event-share-mode-row {
+.event-share-step {
+  display: grid;
+  gap: 10px;
+}
+
+.event-share-step-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.event-share-step-number {
+  width: 25px;
+  height: 25px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, rgba(255, 255, 255, 0.2));
+  background: color-mix(in oklab, var(--primary) 18%, rgba(255, 255, 255, 0.06));
+  color: var(--primary-soft);
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.event-share-step-kicker {
+  margin: 0 0 2px;
+  color: var(--primary-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.event-share-step h4 {
+  margin: 0;
+  color: rgba(245, 246, 247, 0.94);
+  font-size: 0.91rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.event-share-step-divider {
+  height: 1px;
+  margin: 14px 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.16) 18%, rgba(255, 255, 255, 0.16) 82%, transparent 100%);
+}
+
+.event-share-mode-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin: 0 0 12px;
 }
 
 .event-share-mode {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(245, 246, 247, 0.86);
-  border-radius: 999px;
-  height: 32px;
-  padding: 0 11px;
-  display: inline-flex;
+  border-radius: 14px;
+  min-height: 58px;
+  padding: 9px 11px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  column-gap: 8px;
+  row-gap: 2px;
   font-size: 0.76rem;
   font-weight: 650;
+  text-align: left;
   cursor: pointer;
+}
+
+.event-share-mode svg {
+  grid-row: 1 / span 2;
+  color: currentColor;
+}
+
+.event-share-mode span,
+.event-share-mode small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-share-mode span {
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.event-share-mode small {
+  color: rgba(245, 246, 247, 0.52);
+  font-size: 0.68rem;
+  font-weight: 650;
 }
 
 .event-share-mode.is-active {
@@ -16204,10 +16281,20 @@ vite-error-overlay::part(window) {
   color: #fff;
 }
 
+.event-share-mode.is-active small {
+  color: rgba(255, 221, 210, 0.72);
+}
+
+.event-share-mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .event-share-link-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+  margin-top: 12px;
   padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -16256,8 +16343,25 @@ vite-error-overlay::part(window) {
 }
 
 @media (max-width: 560px) {
+  .event-share-mode-row {
+    grid-template-columns: 1fr;
+  }
+
   .event-share-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .event-share-link-row {
+    grid-template-columns: 1fr;
+  }
+
+  .event-share-link-actions {
+    width: 100%;
+  }
+
+  .event-share-open,
+  .event-share-copy {
+    flex: 1;
   }
 }
 

@@ -356,6 +356,7 @@ export function PlanEventDetail({
       </div>
       {shareOpen ? (
         <EventShareSheet
+          eventId={data.eventId}
           title={data.displayTitle}
           venue={data.venueLine}
           when={data.timeRange}

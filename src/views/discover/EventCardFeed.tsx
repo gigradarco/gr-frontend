@@ -1142,6 +1142,7 @@ export function EventCardFeed({
       {shareEventTarget
         ? createPortal(
             <EventShareSheet
+              eventId={shareEventTarget.id}
               title={shareEventTarget.title}
               venue={`${shareEventTarget.venue}, ${shareEventTarget.district}`}
               when={shareEventTarget.displayDateTimeLabel ?? shareEventTarget.time}
