@@ -116,130 +116,132 @@ export function EventShareSheet({
           </button>
         </div>
 
-        <div className="event-share-preview">
-          <p className="event-share-preview-title">{title}</p>
-          <p className="event-share-preview-meta">{when || 'Time TBA'} · {venue || 'Venue TBA'}</p>
-        </div>
+        <div className="event-share-body">
+          <div className="event-share-preview">
+            <p className="event-share-preview-title">{title}</p>
+            <p className="event-share-preview-meta">{when || 'Time TBA'} · {venue || 'Venue TBA'}</p>
+          </div>
 
-        <section className="event-share-step" aria-labelledby="event-share-link-type-title">
-          <div className="event-share-step-head">
-            <span className="event-share-step-number">1</span>
-            <div>
-              <p className="event-share-step-kicker">Select link type</p>
-              <h4 id="event-share-link-type-title">Choose which page opens</h4>
+          <section className="event-share-step" aria-labelledby="event-share-link-type-title">
+            <div className="event-share-step-head">
+              <span className="event-share-step-number">1</span>
+              <div>
+                <p className="event-share-step-kicker">Select link type</p>
+                <h4 id="event-share-link-type-title">Choose which page opens</h4>
+              </div>
             </div>
-          </div>
 
-          <div className="event-share-mode-row" role="radiogroup" aria-label="Link type">
-            <button
-              type="button"
-              className={`event-share-mode${linkMode === 'buzo' ? ' is-active' : ''}`}
-              onClick={() => setLinkMode('buzo')}
-              aria-pressed={linkMode === 'buzo'}
-            >
-              <Link2 size={15} strokeWidth={2.2} />
-              <span>Buzo page</span>
-              <small>Best for app context</small>
-            </button>
-            <button
-              type="button"
-              className={`event-share-mode${linkMode === 'source' ? ' is-active' : ''}`}
-              onClick={() => setLinkMode('source')}
-              disabled={!resolvedSourceUrl}
-              aria-pressed={linkMode === 'source'}
-            >
-              <Radio size={15} strokeWidth={2.2} />
-              <span>{sourceHost ? `Event source` : sourceLoading ? 'Finding source' : 'Event source'}</span>
-              <small>{sourceHost || (sourceLoading ? 'Checking event page' : 'Not available yet')}</small>
-            </button>
-          </div>
-        </section>
-
-        <div className="event-share-step-divider" aria-hidden />
-
-        <section className="event-share-step" aria-labelledby="event-share-target-title">
-          <div className="event-share-step-head">
-            <span className="event-share-step-number">2</span>
-            <div>
-              <p className="event-share-step-kicker">Choose share method</p>
-              <h4 id="event-share-target-title">Send it your way</h4>
+            <div className="event-share-mode-row" role="radiogroup" aria-label="Link type">
+              <button
+                type="button"
+                className={`event-share-mode${linkMode === 'buzo' ? ' is-active' : ''}`}
+                onClick={() => setLinkMode('buzo')}
+                aria-pressed={linkMode === 'buzo'}
+              >
+                <Link2 size={15} strokeWidth={2.2} />
+                <span>Buzo page</span>
+                <small>Best for app context</small>
+              </button>
+              <button
+                type="button"
+                className={`event-share-mode${linkMode === 'source' ? ' is-active' : ''}`}
+                onClick={() => setLinkMode('source')}
+                disabled={!resolvedSourceUrl}
+                aria-pressed={linkMode === 'source'}
+              >
+                <Radio size={15} strokeWidth={2.2} />
+                <span>{sourceHost ? `Event source` : sourceLoading ? 'Finding source' : 'Event source'}</span>
+                <small>{sourceHost || (sourceLoading ? 'Checking event page' : 'Not available yet')}</small>
+              </button>
             </div>
-          </div>
+          </section>
 
-          <div className="event-share-grid" role="group" aria-label="Share targets">
-            <button
-              type="button"
-              className="event-share-target"
-              aria-label="Share to WhatsApp"
-              title="WhatsApp"
-              onClick={() => openShareTarget(`https://wa.me/?text=${encodedText}%20${encodedUrl}`)}
-            >
-              <span className="event-share-target-dot event-share-target-dot--wa">
-                <WhatsAppIcon />
-              </span>
-              <span className="event-share-target-label">WhatsApp</span>
-            </button>
-            <button
-              type="button"
-              className="event-share-target"
-              aria-label="Share to Telegram"
-              title="Telegram"
-              onClick={() => openShareTarget(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`)}
-            >
-              <span className="event-share-target-dot event-share-target-dot--tg">
-                <Send size={24} strokeWidth={2.2} />
-              </span>
-              <span className="event-share-target-label">Telegram</span>
-            </button>
-            <button
-              type="button"
-              className="event-share-target"
-              aria-label="Share to Facebook"
-              title="Facebook"
-              onClick={() => openShareTarget(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`)}
-            >
-              <span className="event-share-target-dot event-share-target-dot--fb">
-                <Facebook size={22} strokeWidth={2.3} />
-              </span>
-              <span className="event-share-target-label">Facebook</span>
-            </button>
-            <button
-              type="button"
-              className="event-share-target"
-              aria-label="Share to X"
-              title="X"
-              onClick={() => openShareTarget(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`)}
-            >
-              <span className="event-share-target-dot event-share-target-dot--x">X</span>
-              <span className="event-share-target-label">X</span>
-            </button>
-            <button
-              type="button"
-              className="event-share-target"
-              aria-label="Share by Messages or SMS"
-              title="Messages / SMS"
-              onClick={() => {
-                window.location.href = `sms:?&body=${smsBody}`
-              }}
-            >
-              <span className="event-share-target-dot event-share-target-dot--sms">
-                <MessageCircle size={24} strokeWidth={2.2} />
-              </span>
-              <span className="event-share-target-label">Messages</span>
-            </button>
-          </div>
-        </section>
+          <div className="event-share-step-divider" aria-hidden />
 
-        <div className="event-share-link-row">
-          <input type="text" value={targetUrl} readOnly aria-label="Share link" />
-          <div className="event-share-link-actions">
-            <button type="button" className="event-share-open" onClick={onOpen}>
-              <ExternalLink size={14} strokeWidth={2.2} />
-              <span>Open</span>
-            </button>
-            <button type="button" className="event-share-copy" onClick={() => { void onCopy() }}>
-              Copy
-            </button>
+          <section className="event-share-step" aria-labelledby="event-share-target-title">
+            <div className="event-share-step-head">
+              <span className="event-share-step-number">2</span>
+              <div>
+                <p className="event-share-step-kicker">Choose share method</p>
+                <h4 id="event-share-target-title">Send it your way</h4>
+              </div>
+            </div>
+
+            <div className="event-share-grid" role="group" aria-label="Share targets">
+              <button
+                type="button"
+                className="event-share-target"
+                aria-label="Share to WhatsApp"
+                title="WhatsApp"
+                onClick={() => openShareTarget(`https://wa.me/?text=${encodedText}%20${encodedUrl}`)}
+              >
+                <span className="event-share-target-dot event-share-target-dot--wa">
+                  <WhatsAppIcon />
+                </span>
+                <span className="event-share-target-label">WhatsApp</span>
+              </button>
+              <button
+                type="button"
+                className="event-share-target"
+                aria-label="Share to Telegram"
+                title="Telegram"
+                onClick={() => openShareTarget(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`)}
+              >
+                <span className="event-share-target-dot event-share-target-dot--tg">
+                  <Send size={24} strokeWidth={2.2} />
+                </span>
+                <span className="event-share-target-label">Telegram</span>
+              </button>
+              <button
+                type="button"
+                className="event-share-target"
+                aria-label="Share to Facebook"
+                title="Facebook"
+                onClick={() => openShareTarget(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`)}
+              >
+                <span className="event-share-target-dot event-share-target-dot--fb">
+                  <Facebook size={22} strokeWidth={2.3} />
+                </span>
+                <span className="event-share-target-label">Facebook</span>
+              </button>
+              <button
+                type="button"
+                className="event-share-target"
+                aria-label="Share to X"
+                title="X"
+                onClick={() => openShareTarget(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`)}
+              >
+                <span className="event-share-target-dot event-share-target-dot--x">X</span>
+                <span className="event-share-target-label">X</span>
+              </button>
+              <button
+                type="button"
+                className="event-share-target"
+                aria-label="Share by Messages or SMS"
+                title="Messages / SMS"
+                onClick={() => {
+                  window.location.href = `sms:?&body=${smsBody}`
+                }}
+              >
+                <span className="event-share-target-dot event-share-target-dot--sms">
+                  <MessageCircle size={24} strokeWidth={2.2} />
+                </span>
+                <span className="event-share-target-label">Messages</span>
+              </button>
+            </div>
+          </section>
+
+          <div className="event-share-link-row">
+            <input type="text" value={targetUrl} readOnly aria-label="Share link" />
+            <div className="event-share-link-actions">
+              <button type="button" className="event-share-open" onClick={onOpen}>
+                <ExternalLink size={14} strokeWidth={2.2} />
+                <span>Open</span>
+              </button>
+              <button type="button" className="event-share-copy" onClick={() => { void onCopy() }}>
+                Copy
+              </button>
+            </div>
           </div>
         </div>
       </div>
