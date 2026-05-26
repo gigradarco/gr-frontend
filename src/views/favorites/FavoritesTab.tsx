@@ -157,7 +157,7 @@ export function FavoritesTab({ events, onOpenFavorite }: FavoritesTabProps) {
           <span className="favorites-limit-bubble">{favoriteEventIds.length} / {favoriteLimit} favourites</span>
           {refreshedAt ? (
             <span className="favorites-limit-bubble">
-              Updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
+              Last updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
             </span>
           ) : null}
         </div>

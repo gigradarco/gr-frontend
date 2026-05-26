@@ -487,9 +487,9 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
             {refreshedAt ? (
               <span
                 className="favorites-limit-bubble"
-                aria-label={`Plan updated at ${new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`}
+                aria-label={`Plan last updated at ${new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`}
               >
-                Updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
+                Last updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
               </span>
             ) : null}
             <button
