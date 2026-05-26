@@ -14326,9 +14326,10 @@ button.taste-tag:focus-visible {
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Meta: three columns, label above value */
+/* Meta: three columns, labels top-aligned, values bottom-aligned across cols */
 .ecf-meta-row {
   display: flex;
+  align-items: stretch;
   gap: 0;
   margin-bottom: 14px;
   padding-top: 10px;
@@ -14337,6 +14338,7 @@ button.taste-tag:focus-visible {
 
 .ecf-meta-col {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -14352,9 +14354,11 @@ button.taste-tag:focus-visible {
 
 .ecf-meta-value {
   display: -webkit-box;
+  margin-top: auto;
   overflow: hidden;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.35;
   letter-spacing: 0.01em;
   color: #d0d0d0;
   overflow-wrap: anywhere;
@@ -14380,6 +14384,8 @@ button.taste-tag:focus-visible {
   width: 100%;
   min-width: 0;
   flex-shrink: 0;
+  margin-top: 16px;
+  margin-bottom: 12px;
 }
 
 .ecf-actions-icons {
