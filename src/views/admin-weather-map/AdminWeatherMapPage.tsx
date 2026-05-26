@@ -905,7 +905,7 @@ export function AdminWeatherMapPage() {
             </article>
 
             <article className="admin-weather-nea-panel admin-weather-advisory-panel">
-              <h2>Alerts & derived signals</h2>
+              <h2>Alerts & derived signals (Islandwide)</h2>
               <div className="admin-weather-advisory-scale" aria-label="Weather condition scale">
                 {WEATHER_CONDITION_LEVELS.map((level) => (
                   <span key={level} className={`is-level-${level}`}>
