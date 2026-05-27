@@ -73,6 +73,9 @@ const LanguageScreen = lazy(() =>
 const PrivacySafetyScreen = lazy(() =>
   import('./views/profile/settings/PrivacySafetyScreen').then((m) => ({ default: m.PrivacySafetyScreen })),
 )
+const ReleaseNotesScreen = lazy(() =>
+  import('./views/profile/settings/ReleaseNotesScreen').then((m) => ({ default: m.ReleaseNotesScreen })),
+)
 const FeedbackScreen = lazy(() =>
   import('./views/profile/settings/FeedbackScreen').then((m) => ({ default: m.FeedbackScreen })),
 )
@@ -212,6 +215,7 @@ function MainApp() {
     showSettings,
     showLanguage,
     showPrivacySafety,
+    showReleaseNotes,
     showFeedback,
     showEmailLogin,
     showEditProfile,
@@ -734,6 +738,7 @@ function MainApp() {
               {showEditProfile && <EditProfileScreen key="edit-profile" />}
               {showLanguage && <LanguageScreen key="language" />}
               {showPrivacySafety && <PrivacySafetyScreen key="privacy-safety" />}
+              {showReleaseNotes && <ReleaseNotesScreen key="release-notes" />}
               {showFeedback && <FeedbackScreen key="feedback" />}
               {showEmailLogin && <EmailLoginScreen key="email-login" />}
               {showSubscription && <SubscriptionScreen key="subscription" />}

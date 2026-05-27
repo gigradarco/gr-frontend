@@ -66,6 +66,26 @@ const SOURCE_TTL = {
   fourDayOutlook: 'Source TTL 12h',
 } as const
 
+const WEATHER_AUTO_REFRESH_STORAGE_KEY = 'buzo:admin-weather-map:auto-refresh'
+
+function readWeatherAutoRefreshPreference(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(WEATHER_AUTO_REFRESH_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeWeatherAutoRefreshPreference(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(WEATHER_AUTO_REFRESH_STORAGE_KEY, enabled ? '1' : '0')
+  } catch {
+    // Preference is optional; default stays off.
+  }
+}
+
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
 type ForecastTableCard = 'nowcast' | 'twentyFour' | null
 type StatFact = {
@@ -771,10 +791,14 @@ function BackendCacheStatus({
   weather,
   onForceRefresh,
   isRefreshing,
+  autoRefresh,
+  onAutoRefreshChange,
 }: {
   weather: SingaporeWeatherMapData | null
   onForceRefresh: () => void
   isRefreshing: boolean
+  autoRefresh: boolean
+  onAutoRefreshChange: (enabled: boolean) => void
 }) {
   if (!weather) return null
 
@@ -788,6 +812,18 @@ function BackendCacheStatus({
         <small>Cache</small>
         <strong>{formatCacheTtl(weather.cacheExpiresAt)}</strong>
       </div>
+      <label
+        className="admin-weather-backend-cache-auto-refresh"
+        title="When enabled, refetch weather after the backend cache expires"
+      >
+        <input
+          type="checkbox"
+          checked={autoRefresh}
+          onChange={(event) => onAutoRefreshChange(event.target.checked)}
+          disabled={isRefreshing}
+        />
+        <span>Auto-refresh</span>
+      </label>
       <button
         type="button"
         className="admin-weather-backend-cache-refresh"
@@ -1618,6 +1654,7 @@ export function AdminWeatherMapPage() {
   const [showMapForecast, setShowMapForecast] = useState(true)
   const [showMapTemperature, setShowMapTemperature] = useState(true)
   const [showMapFlood, setShowMapFlood] = useState(true)
+  const [autoRefresh, setAutoRefresh] = useState(readWeatherAutoRefreshPreference)
   const countryPickerRef = useRef<HTMLDivElement>(null)
 
   const countryAvailable = isWeatherCountryAvailable(country)
@@ -1641,6 +1678,11 @@ export function AdminWeatherMapPage() {
     }
   }, [])
 
+  const handleAutoRefreshChange = useCallback((enabled: boolean) => {
+    setAutoRefresh(enabled)
+    writeWeatherAutoRefreshPreference(enabled)
+  }, [])
+
   useEffect(() => {
     if (!countryAvailable) {
       setLoadState('idle')
@@ -1651,6 +1693,20 @@ export function AdminWeatherMapPage() {
     void loadSingaporeWeather(false, controller.signal)
     return () => controller.abort()
   }, [countryAvailable, loadSingaporeWeather])
+
+  useEffect(() => {
+    if (!autoRefresh || !countryAvailable || !weather?.cacheExpiresAt) return
+
+    const expiresAt = new Date(weather.cacheExpiresAt).getTime()
+    if (Number.isNaN(expiresAt)) return
+
+    const delayMs = Math.max(0, expiresAt - Date.now())
+    const timer = window.setTimeout(() => {
+      void loadSingaporeWeather(false)
+    }, delayMs)
+
+    return () => window.clearTimeout(timer)
+  }, [autoRefresh, countryAvailable, weather?.cacheExpiresAt, weather?.cachedAt, loadSingaporeWeather])
 
   useEffect(() => {
     if (!countryMenuOpen) return
@@ -1834,6 +1890,8 @@ export function AdminWeatherMapPage() {
                 weather={weather}
                 onForceRefresh={() => void loadSingaporeWeather(true)}
                 isRefreshing={loadState === 'loading'}
+                autoRefresh={autoRefresh}
+                onAutoRefreshChange={handleAutoRefreshChange}
               />
             </div>
           </div>
@@ -1842,128 +1900,142 @@ export function AdminWeatherMapPage() {
         {countryAvailable && weather ? (
           <section className="admin-weather-dashboard" aria-label="Singapore weather overview">
             <section className="admin-weather-forecast-comparison" aria-label="2-hour and 24-hour forecast comparison">
-              <article className={`admin-weather-nea-panel admin-weather-forecast-panel${forecastTableCard === 'nowcast' ? ' is-table-view' : ''}`}>
-                {forecastTableCard === 'nowcast' ? (
-                  <NowcastAreaTableFace
-                    areas={weather.twoHourForecast.areas}
-                    validText={weather.twoHourForecast.validText}
-                    onBack={() => setForecastTableCard(null)}
-                  />
-                ) : (
-                  <>
-                    <div className="admin-weather-forecast-head">
-                      <div className="admin-weather-forecast-copy">
-                        <h2>2-hour weather nowcast</h2>
-                        <p className="admin-weather-forecast-condition">{nowcastCondition}</p>
-                        <p className="admin-weather-forecast-cache">
-                          {SOURCE_TTL.twoHourForecast}
-                        </p>
-                      </div>
-                      <div className="admin-weather-forecast-side">
-                        <span
-                          className={`admin-weather-outlook-icon admin-weather-forecast-icon is-${nowcastIconKind}`}
-                          aria-hidden
-                        >
-                          <ForecastMarkerGlyph kind={nowcastIconKind} size={42} />
-                        </span>
-                        <WeatherAdviceSection adviceItems={nowcastAdvice} ariaLabel="2-hour weather recommendations" />
-                      </div>
+              <article
+                className={`admin-weather-nea-panel admin-weather-forecast-panel${forecastTableCard === 'nowcast' ? ' is-table-view' : ''}`}
+              >
+                <div
+                  className="admin-weather-forecast-surface"
+                  aria-hidden={forecastTableCard === 'nowcast' ? true : undefined}
+                >
+                  <div className="admin-weather-forecast-head">
+                    <div className="admin-weather-forecast-copy">
+                      <h2>2-hour weather nowcast</h2>
+                      <p className="admin-weather-forecast-condition">{nowcastCondition}</p>
+                      <p className="admin-weather-forecast-cache">
+                        {SOURCE_TTL.twoHourForecast}
+                      </p>
                     </div>
-
-                    <div className="admin-weather-forecast-meta" aria-label="2-hour nowcast metrics">
-                      <div className="admin-weather-outlook-stat">
-                        <b>Temp</b>
-                        <span>{formatTemperatureRange(weather.temperature.minC, weather.temperature.maxC)}</span>
-                      </div>
-                      <div className="admin-weather-outlook-stat">
-                        <b>Humidity</b>
-                        <span>{formatPercent(weather.humidity.avgPct)}</span>
-                      </div>
-                    </div>
-
-                    <div className="admin-weather-forecast-foot">
-                      <span className="admin-weather-forecast-period">
-                        <small>Valid</small>
-                        <strong>{formatForecastTimeRange(weather.twoHourForecast.validStart, weather.twoHourForecast.validEnd)}</strong>
+                    <div className="admin-weather-forecast-side">
+                      <span
+                        className={`admin-weather-outlook-icon admin-weather-forecast-icon is-${nowcastIconKind}`}
+                        aria-hidden
+                      >
+                        <ForecastMarkerGlyph kind={nowcastIconKind} size={42} />
                       </span>
-                      <ForecastCountButton
-                        count={weather.twoHourForecast.areaCount}
-                        label={weather.twoHourForecast.areaCount === 1 ? 'area' : 'areas'}
-                        onClick={() => setForecastTableCard('nowcast')}
-                      />
+                      <WeatherAdviceSection adviceItems={nowcastAdvice} ariaLabel="2-hour weather recommendations" />
                     </div>
-                  </>
-                )}
+                  </div>
+
+                  <div className="admin-weather-forecast-meta" aria-label="2-hour nowcast metrics">
+                    <div className="admin-weather-outlook-stat">
+                      <b>Temp</b>
+                      <span>{formatTemperatureRange(weather.temperature.minC, weather.temperature.maxC)}</span>
+                    </div>
+                    <div className="admin-weather-outlook-stat">
+                      <b>Humidity</b>
+                      <span>{formatPercent(weather.humidity.avgPct)}</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-weather-forecast-foot">
+                    <span className="admin-weather-forecast-period">
+                      <small>Valid</small>
+                      <strong>{formatForecastTimeRange(weather.twoHourForecast.validStart, weather.twoHourForecast.validEnd)}</strong>
+                    </span>
+                    <ForecastCountButton
+                      count={weather.twoHourForecast.areaCount}
+                      label={weather.twoHourForecast.areaCount === 1 ? 'area' : 'areas'}
+                      onClick={() => setForecastTableCard('nowcast')}
+                    />
+                  </div>
+                </div>
+
+                {forecastTableCard === 'nowcast' ? (
+                  <div className="admin-weather-forecast-table-overlay">
+                    <NowcastAreaTableFace
+                      areas={weather.twoHourForecast.areas}
+                      validText={weather.twoHourForecast.validText}
+                      onBack={() => setForecastTableCard(null)}
+                    />
+                  </div>
+                ) : null}
               </article>
 
-              <article className={`admin-weather-nea-panel admin-weather-forecast-panel${forecastTableCard === 'twentyFour' ? ' is-table-view' : ''}`}>
-                {forecastTableCard === 'twentyFour' ? (
-                  <TwentyFourHourPeriodTableFace
-                    periods={weather.twentyFourHourForecast.periods}
-                    onBack={() => setForecastTableCard(null)}
-                  />
-                ) : (
-                  <>
-                    <div className="admin-weather-forecast-head">
-                      <div className="admin-weather-forecast-copy">
-                        <h2>24-hour weather forecast</h2>
-                        <p className="admin-weather-forecast-condition">
-                          {weather.twentyFourHourForecast.forecastText}
-                        </p>
-                        <p className="admin-weather-forecast-cache">
-                          {SOURCE_TTL.twentyFourHourForecast}
-                        </p>
-                      </div>
-                      <div className="admin-weather-forecast-side">
-                        <span
-                          className={`admin-weather-outlook-icon admin-weather-forecast-icon is-${twentyFourHourIconKind}`}
-                          aria-hidden
-                        >
-                          <ForecastMarkerGlyph kind={twentyFourHourIconKind} size={42} />
-                        </span>
-                        <WeatherAdviceSection adviceItems={twentyFourHourAdvice} ariaLabel="24-hour weather recommendations" />
-                      </div>
+              <article
+                className={`admin-weather-nea-panel admin-weather-forecast-panel${forecastTableCard === 'twentyFour' ? ' is-table-view' : ''}`}
+              >
+                <div
+                  className="admin-weather-forecast-surface"
+                  aria-hidden={forecastTableCard === 'twentyFour' ? true : undefined}
+                >
+                  <div className="admin-weather-forecast-head">
+                    <div className="admin-weather-forecast-copy">
+                      <h2>24-hour weather forecast</h2>
+                      <p className="admin-weather-forecast-condition">
+                        {weather.twentyFourHourForecast.forecastText}
+                      </p>
+                      <p className="admin-weather-forecast-cache">
+                        {SOURCE_TTL.twentyFourHourForecast}
+                      </p>
                     </div>
-
-                    <div className="admin-weather-forecast-meta" aria-label="24-hour forecast metrics">
-                      <div className="admin-weather-outlook-stat">
-                        <b>Temp</b>
-                        <span>
-                          {formatForecastTemperatureRange(
-                            weather.twentyFourHourForecast.tempLowC,
-                            weather.twentyFourHourForecast.tempHighC,
-                          )}
-                        </span>
-                      </div>
-                      <div className="admin-weather-outlook-stat">
-                        <b>Humidity</b>
-                        <span>
-                          {formatForecastHumidityRange(
-                            weather.twentyFourHourForecast.humidityLowPct,
-                            weather.twentyFourHourForecast.humidityHighPct,
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="admin-weather-forecast-foot">
-                      <span className="admin-weather-forecast-period">
-                        <small>Valid</small>
-                        <strong>
-                          {formatForecastDateRange(
-                            weather.twentyFourHourForecast.validStart,
-                            weather.twentyFourHourForecast.validEnd,
-                          )}
-                        </strong>
+                    <div className="admin-weather-forecast-side">
+                      <span
+                        className={`admin-weather-outlook-icon admin-weather-forecast-icon is-${twentyFourHourIconKind}`}
+                        aria-hidden
+                      >
+                        <ForecastMarkerGlyph kind={twentyFourHourIconKind} size={42} />
                       </span>
-                      <ForecastCountButton
-                        count={weather.twentyFourHourForecast.periodCount}
-                        label={weather.twentyFourHourForecast.periodCount === 1 ? 'period' : 'periods'}
-                        onClick={() => setForecastTableCard('twentyFour')}
-                      />
+                      <WeatherAdviceSection adviceItems={twentyFourHourAdvice} ariaLabel="24-hour weather recommendations" />
                     </div>
-                  </>
-                )}
+                  </div>
+
+                  <div className="admin-weather-forecast-meta" aria-label="24-hour forecast metrics">
+                    <div className="admin-weather-outlook-stat">
+                      <b>Temp</b>
+                      <span>
+                        {formatForecastTemperatureRange(
+                          weather.twentyFourHourForecast.tempLowC,
+                          weather.twentyFourHourForecast.tempHighC,
+                        )}
+                      </span>
+                    </div>
+                    <div className="admin-weather-outlook-stat">
+                      <b>Humidity</b>
+                      <span>
+                        {formatForecastHumidityRange(
+                          weather.twentyFourHourForecast.humidityLowPct,
+                          weather.twentyFourHourForecast.humidityHighPct,
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="admin-weather-forecast-foot">
+                    <span className="admin-weather-forecast-period">
+                      <small>Valid</small>
+                      <strong>
+                        {formatForecastDateRange(
+                          weather.twentyFourHourForecast.validStart,
+                          weather.twentyFourHourForecast.validEnd,
+                        )}
+                      </strong>
+                    </span>
+                    <ForecastCountButton
+                      count={weather.twentyFourHourForecast.periodCount}
+                      label={weather.twentyFourHourForecast.periodCount === 1 ? 'period' : 'periods'}
+                      onClick={() => setForecastTableCard('twentyFour')}
+                    />
+                  </div>
+                </div>
+
+                {forecastTableCard === 'twentyFour' ? (
+                  <div className="admin-weather-forecast-table-overlay">
+                    <TwentyFourHourPeriodTableFace
+                      periods={weather.twentyFourHourForecast.periods}
+                      onBack={() => setForecastTableCard(null)}
+                    />
+                  </div>
+                ) : null}
               </article>
             </section>
 

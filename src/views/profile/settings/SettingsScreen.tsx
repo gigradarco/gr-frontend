@@ -8,7 +8,7 @@ import {
   ChevronRight,
   CreditCard,
   Globe,
-  Info,
+  Megaphone,
   MessageSquare,
   Moon,
   Shield,
@@ -17,6 +17,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react'
+import { APP_RELEASE_LABEL } from '../../../config/profileSettings'
 import { getLocationCityById } from '../../../data/locationRegions'
 import { postDeleteAccount } from '../../../lib/auth-api'
 import { clearLastUsedAccount } from '../../../lib/last-used-account'
@@ -160,10 +161,11 @@ export function SettingsScreen() {
   const [deleteState, setDeleteState] = useState<DeleteModalState>('idle')
   const [deleteError, setDeleteError] = useState('')
 
-   const {
+  const {
     closeSettings,
     openLanguage,
     openPrivacySafety,
+    openReleaseNotes,
     openFeedback,
     openEditProfile,
     openSubscription,
@@ -257,7 +259,12 @@ export function SettingsScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="About">
-          <SettingsRow icon={Info} label="App version" value="0.1.0 demo" />
+          <SettingsRow
+            icon={Megaphone}
+            label="What's new"
+            value={APP_RELEASE_LABEL}
+            onClick={openReleaseNotes}
+          />
         </SettingsGroup>
 
         <SettingsGroup title="Account">

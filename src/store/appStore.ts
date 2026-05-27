@@ -251,6 +251,7 @@ type AppState = {
   showSettings: boolean
   showLanguage: boolean
   showPrivacySafety: boolean
+  showReleaseNotes: boolean
   showFeedback: boolean
   showEmailLogin: boolean
   /** Pre-app sign-in sheet from the welcome screen. */
@@ -321,6 +322,8 @@ type AppState = {
   closeLanguage: () => void
   openPrivacySafety: () => void
   closePrivacySafety: () => void
+  openReleaseNotes: () => void
+  closeReleaseNotes: () => void
   openFeedback: () => void
   closeFeedback: () => void
   openEmailLogin: () => void
@@ -375,6 +378,7 @@ export const useAppState = create<AppState>((set, get) => ({
   showSettings: false,
   showLanguage: false,
   showPrivacySafety: false,
+  showReleaseNotes: false,
   showFeedback: false,
   showEmailLogin: false,
   showSignIn: false,
@@ -538,6 +542,7 @@ export const useAppState = create<AppState>((set, get) => ({
       showSettings: false,
       showLanguage: false,
       showPrivacySafety: false,
+      showReleaseNotes: false,
       showFeedback: false,
       showEmailLogin: false,
       showEditProfile: false,
@@ -607,6 +612,8 @@ export const useAppState = create<AppState>((set, get) => ({
   closeLanguage: () => set({ showLanguage: false }),
   openPrivacySafety: () => set({ showPrivacySafety: true }),
   closePrivacySafety: () => set({ showPrivacySafety: false }),
+  openReleaseNotes: () => set({ showReleaseNotes: true }),
+  closeReleaseNotes: () => set({ showReleaseNotes: false }),
   openFeedback: () => set({ showFeedback: true }),
   closeFeedback: () => set({ showFeedback: false }),
   openEmailLogin: () => set({ showEmailLogin: true }),

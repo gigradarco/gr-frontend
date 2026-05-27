@@ -205,6 +205,7 @@
   align-items: center;
   justify-content: flex-end;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 10px;
   margin-left: auto;
   border: 0;
@@ -236,6 +237,43 @@
   font-size: 0.8rem;
   font-weight: 900;
   line-height: 1;
+}
+
+.admin-weather-backend-cache-auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--stroke) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  color: #d1d5db;
+  padding: 6px 11px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-weather-backend-cache-auto-refresh input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.admin-weather-backend-cache-auto-refresh:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-weather-backend-cache-auto-refresh:has(input:disabled) input {
+  cursor: not-allowed;
 }
 
 .admin-weather-backend-cache-refresh {
@@ -325,7 +363,6 @@
 .admin-weather-forecast-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(300px, 1fr));
-  grid-template-rows: auto auto auto;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 2px;
@@ -363,30 +400,42 @@
 }
 
 .admin-weather-forecast-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  height: 380px;
   min-height: 380px;
-  max-height: 380px;
-  padding: 16px 18px;
+  height: 100%;
+  padding: 0;
   scroll-snap-align: start;
 }
 
-.admin-weather-forecast-panel:not(.is-table-view) {
-  display: grid;
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-  height: auto;
-  min-height: 380px;
-  max-height: none;
+.admin-weather-forecast-surface {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px 18px;
 }
 
-.admin-weather-forecast-panel.is-table-view {
-  grid-row: span 3;
-  height: auto;
-  min-height: 380px;
-  max-height: none;
+.admin-weather-forecast-panel.is-table-view .admin-weather-forecast-surface {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.admin-weather-forecast-table-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    color-mix(in oklab, var(--card) 88%, var(--bg));
 }
 
 .admin-weather-forecast-head {
@@ -457,7 +506,7 @@
 }
 
 .admin-weather-forecast-side .admin-weather-outlook-advice {
-  min-height: 68px;
+  min-height: 76px;
   margin-bottom: 10px;
   flex-direction: column;
   flex-wrap: nowrap;
@@ -483,18 +532,13 @@
   display: grid;
   gap: 10px;
   margin-top: 0;
-  align-self: start;
-}
-
-.admin-weather-forecast-panel.is-table-view .admin-weather-forecast-meta {
-  margin-top: auto;
 }
 
 .admin-weather-forecast-foot {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  align-self: end;
+  margin-top: auto;
   gap: 10px;
   border-top: 1px solid var(--stroke);
   padding-top: 10px;
