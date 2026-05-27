@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   discoverEventIdFromPath,
@@ -16,49 +17,109 @@ import {
 } from './data/demoData'
 import { useAppState, type FavoriteEvent } from './store/appStore'
 import type { EventItem, PlanPageEvent, Tab } from './types'
-import { PlanEventDetail } from './views/plan/PlanEventDetail'
 import { tabNavItems } from './config/tabNavigation'
-import { EventCardFeed } from './views/discover/EventCardFeed'
-import { MapView } from './views/discover/MapView'
-import { FavoritesTab } from './views/favorites/FavoritesTab'
 import { GoingCelebrationHost } from './components/GoingCelebrationBurst'
 import { UploadToast } from './components/UploadToast'
-import { BuzzPointsScreen } from './views/profile/BuzzPointsScreen'
-import { ProfileReputationScreen } from './views/profile/ProfileReputationScreen'
-import { ProfileTasteIdentityScreen } from './views/profile/ProfileTasteIdentityScreen'
-import {
-  SettingsScreen,
-  EditProfileScreen,
-  LanguageScreen,
-  PrivacySafetyScreen,
-  FeedbackScreen,
-  EmailLoginScreen,
-  SubscriptionScreen,
-} from './views/profile/settings'
-import { OnboardingScreen } from './views/onboarding'
-import { WelcomeScreen, SignInSheet, WelcomeBackScreen } from './views/welcome'
-import { DesignThemeOrangePage } from './views/design-theme/DesignThemeOrangePage'
-import { DesignThemePurplePage } from './views/design-theme/DesignThemePurplePage'
-import { AdminHomePage } from './views/admin-home/AdminHomePage'
-import { AdminRouteGuard } from './views/admin-home/AdminRouteGuard'
-import { AdminUsersPage } from './views/admin-users/AdminUsersPage'
-import { AdminWeatherMapPage } from './views/admin-weather-map/AdminWeatherMapPage'
-import { UserAnalyticsPage } from './views/user-analytics/UserAnalyticsPage'
-import { EventListPage } from './views/event-list/EventListPage'
-import { NotFound404Page } from './views/not-found/NotFound404Page'
 import { fetchDiscoverEventById, useDiscoverEvents } from './lib/useDiscoverEvents'
 import { useEventPlans } from './lib/useEventPlans'
 import { readInitialDiscoverFilters, type DiscoverEventFilters } from './lib/discover-filters'
 import { handleEventImageError } from './lib/event-image-fallback'
 
+const routeFallback = <div className="tab-suspense-fallback" aria-hidden />
+
+function lazyRoute(element: ReactNode) {
+  return <Suspense fallback={routeFallback}>{element}</Suspense>
+}
+
 const DiscoverTab = lazy(() =>
   import('./views/discover/DiscoverTab').then((m) => ({ default: m.DiscoverTab })),
+)
+const EventCardFeed = lazy(() =>
+  import('./views/discover/EventCardFeed').then((m) => ({ default: m.EventCardFeed })),
+)
+const MapView = lazy(() =>
+  import('./views/discover/MapView').then((m) => ({ default: m.MapView })),
 )
 const PlanTab = lazy(() =>
   import('./views/plan/PlanTab').then((m) => ({ default: m.PlanTab })),
 )
+const PlanEventDetail = lazy(() =>
+  import('./views/plan/PlanEventDetail').then((m) => ({ default: m.PlanEventDetail })),
+)
+const FavoritesTab = lazy(() =>
+  import('./views/favorites/FavoritesTab').then((m) => ({ default: m.FavoritesTab })),
+)
 const ProfileTab = lazy(() =>
   import('./views/profile/ProfileTab').then((m) => ({ default: m.ProfileTab })),
+)
+const BuzzPointsScreen = lazy(() =>
+  import('./views/profile/BuzzPointsScreen').then((m) => ({ default: m.BuzzPointsScreen })),
+)
+const ProfileReputationScreen = lazy(() =>
+  import('./views/profile/ProfileReputationScreen').then((m) => ({ default: m.ProfileReputationScreen })),
+)
+const ProfileTasteIdentityScreen = lazy(() =>
+  import('./views/profile/ProfileTasteIdentityScreen').then((m) => ({ default: m.ProfileTasteIdentityScreen })),
+)
+const SettingsScreen = lazy(() =>
+  import('./views/profile/settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
+)
+const EditProfileScreen = lazy(() =>
+  import('./views/profile/settings/EditProfileScreen').then((m) => ({ default: m.EditProfileScreen })),
+)
+const LanguageScreen = lazy(() =>
+  import('./views/profile/settings/LanguageScreen').then((m) => ({ default: m.LanguageScreen })),
+)
+const PrivacySafetyScreen = lazy(() =>
+  import('./views/profile/settings/PrivacySafetyScreen').then((m) => ({ default: m.PrivacySafetyScreen })),
+)
+const FeedbackScreen = lazy(() =>
+  import('./views/profile/settings/FeedbackScreen').then((m) => ({ default: m.FeedbackScreen })),
+)
+const EmailLoginScreen = lazy(() =>
+  import('./views/profile/settings/EmailLoginScreen').then((m) => ({ default: m.EmailLoginScreen })),
+)
+const SubscriptionScreen = lazy(() =>
+  import('./views/profile/settings/SubscriptionScreen').then((m) => ({ default: m.SubscriptionScreen })),
+)
+const OnboardingScreen = lazy(() =>
+  import('./views/onboarding/OnboardingScreen').then((m) => ({ default: m.OnboardingScreen })),
+)
+const WelcomeScreen = lazy(() =>
+  import('./views/welcome/WelcomeScreen').then((m) => ({ default: m.WelcomeScreen })),
+)
+const SignInSheet = lazy(() =>
+  import('./views/welcome/SignInSheet').then((m) => ({ default: m.SignInSheet })),
+)
+const WelcomeBackScreen = lazy(() =>
+  import('./views/welcome/WelcomeBackScreen').then((m) => ({ default: m.WelcomeBackScreen })),
+)
+const DesignThemeOrangePage = lazy(() =>
+  import('./views/design-theme/DesignThemeOrangePage').then((m) => ({ default: m.DesignThemeOrangePage })),
+)
+const DesignThemePurplePage = lazy(() =>
+  import('./views/design-theme/DesignThemePurplePage').then((m) => ({ default: m.DesignThemePurplePage })),
+)
+const AdminHomePage = lazy(() =>
+  import('./views/admin-home/AdminHomePage').then((m) => ({ default: m.AdminHomePage })),
+)
+const AdminRouteGuard = lazy(() =>
+  import('./views/admin-home/AdminRouteGuard').then((m) => ({ default: m.AdminRouteGuard })),
+)
+const AdminUsersPage = lazy(() =>
+  import('./views/admin-users/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })),
+)
+const AdminWeatherMapPage = lazy(() =>
+  import('./views/admin-weather-map/AdminWeatherMapPage').then((m) => ({ default: m.AdminWeatherMapPage })),
+)
+const UserAnalyticsPage = lazy(() =>
+  import('./views/user-analytics/UserAnalyticsPage').then((m) => ({ default: m.UserAnalyticsPage })),
+)
+const EventListPage = lazy(() =>
+  import('./views/event-list/EventListPage').then((m) => ({ default: m.EventListPage })),
+)
+const NotFound404Page = lazy(() =>
+  import('./views/not-found/NotFound404Page').then((m) => ({ default: m.NotFound404Page })),
 )
 
 type SheetPlanOverlay =
@@ -478,14 +539,16 @@ function MainApp() {
       />
 
       {shouldShowWelcome ? (
-        <WelcomeScreen
-          onEnterApp={(prefill, initialTab = 'discover') => {
-            stashDiscoverPrefill(prefill)
-            dismissWelcome()
-            queueMicrotask(() => navigateShellToTab(initialTab, { replace: true }))
-          }}
-          onStashPrefill={stashDiscoverPrefill}
-        />
+        <Suspense fallback={routeFallback}>
+          <WelcomeScreen
+            onEnterApp={(prefill, initialTab = 'discover') => {
+              stashDiscoverPrefill(prefill)
+              dismissWelcome()
+              queueMicrotask(() => navigateShellToTab(initialTab, { replace: true }))
+            }}
+            onStashPrefill={stashDiscoverPrefill}
+          />
+        </Suspense>
       ) : (
         <main
           className={[
@@ -650,31 +713,33 @@ function MainApp() {
             </Suspense>
           </section>
 
-          <AnimatePresence>
-            {sheetPlanOverlay ? (
-              <motion.div
-                key="sheet-plan-detail"
-                className="plan-detail-overlay"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 14 }}
-                transition={{ duration: 0.22 }}
-              >
-                {sheetPlanOverlayBody}
-              </motion.div>
-            ) : null}
-            {showBuzzPoints && <BuzzPointsScreen key="buzz-points" />}
-            {showProfileTasteAll && <ProfileTasteIdentityScreen key="profile-taste-all" />}
-            {showProfileReputationAll && <ProfileReputationScreen key="profile-reputation-all" />}
-            {showSettings && <SettingsScreen key="settings" />}
-            {showEditProfile && <EditProfileScreen key="edit-profile" />}
-            {showLanguage && <LanguageScreen key="language" />}
-            {showPrivacySafety && <PrivacySafetyScreen key="privacy-safety" />}
-            {showFeedback && <FeedbackScreen key="feedback" />}
-            {showEmailLogin && <EmailLoginScreen key="email-login" />}
-            {showSubscription && <SubscriptionScreen key="subscription" />}
-            {showOnboarding && <OnboardingScreen key={onboardingMountKey} />}
-          </AnimatePresence>
+          <Suspense fallback={null}>
+            <AnimatePresence>
+              {sheetPlanOverlay ? (
+                <motion.div
+                  key="sheet-plan-detail"
+                  className="plan-detail-overlay"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 14 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  {sheetPlanOverlayBody}
+                </motion.div>
+              ) : null}
+              {showBuzzPoints && <BuzzPointsScreen key="buzz-points" />}
+              {showProfileTasteAll && <ProfileTasteIdentityScreen key="profile-taste-all" />}
+              {showProfileReputationAll && <ProfileReputationScreen key="profile-reputation-all" />}
+              {showSettings && <SettingsScreen key="settings" />}
+              {showEditProfile && <EditProfileScreen key="edit-profile" />}
+              {showLanguage && <LanguageScreen key="language" />}
+              {showPrivacySafety && <PrivacySafetyScreen key="privacy-safety" />}
+              {showFeedback && <FeedbackScreen key="feedback" />}
+              {showEmailLogin && <EmailLoginScreen key="email-login" />}
+              {showSubscription && <SubscriptionScreen key="subscription" />}
+              {showOnboarding && <OnboardingScreen key={onboardingMountKey} />}
+            </AnimatePresence>
+          </Suspense>
 
           <AnimatePresence initial={false}>
             {!(isDiscoverExpanded && (tab === 'ask' || tab === 'discover')) && (
@@ -714,13 +779,17 @@ function MainApp() {
         </main>
       )}
 
-      <AnimatePresence>
-        {showSignIn ? <SignInSheet key="welcome-sign-in" /> : null}
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {showSignIn ? <SignInSheet key="welcome-sign-in" /> : null}
+        </AnimatePresence>
+      </Suspense>
 
-      <AnimatePresence>
-        {showWelcomeBack ? <WelcomeBackScreen key="welcome-back" /> : null}
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {showWelcomeBack ? <WelcomeBackScreen key="welcome-back" /> : null}
+        </AnimatePresence>
+      </Suspense>
 
       <AnimatePresence>
         {activeEvent && (
@@ -805,18 +874,18 @@ function MainApp() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/admin" element={<AdminRouteGuard />}>
-        <Route index element={<AdminHomePage />} />
-        <Route path="admin-users" element={<AdminUsersPage />} />
-        <Route path="user-analytics" element={<UserAnalyticsPage />} />
-        <Route path="event-list" element={<EventListPage />} />
-        <Route path="weather-map" element={<AdminWeatherMapPage />} />
+      <Route path="/admin" element={lazyRoute(<AdminRouteGuard />)}>
+        <Route index element={lazyRoute(<AdminHomePage />)} />
+        <Route path="admin-users" element={lazyRoute(<AdminUsersPage />)} />
+        <Route path="user-analytics" element={lazyRoute(<UserAnalyticsPage />)} />
+        <Route path="event-list" element={lazyRoute(<EventListPage />)} />
+        <Route path="weather-map" element={lazyRoute(<AdminWeatherMapPage />)} />
         <Route path="design-theme" element={<Navigate to="/admin/design-theme/orange" replace />} />
-        <Route path="design-theme/orange" element={<DesignThemeOrangePage />} />
-        <Route path="design-theme/purple" element={<DesignThemePurplePage />} />
+        <Route path="design-theme/orange" element={lazyRoute(<DesignThemeOrangePage />)} />
+        <Route path="design-theme/purple" element={lazyRoute(<DesignThemePurplePage />)} />
       </Route>
       <Route path="/event-list" element={<Navigate to="/admin/event-list" replace />} />
-      <Route path="/not-found-404" element={<NotFound404Page />} />
+      <Route path="/not-found-404" element={lazyRoute(<NotFound404Page />)} />
       <Route path="/design-theme" element={<Navigate to="/admin/design-theme/orange" replace />} />
       <Route path="/design-theme/orange" element={<Navigate to="/admin/design-theme/orange" replace />} />
       <Route path="/design-theme/purple" element={<Navigate to="/admin/design-theme/purple" replace />} />

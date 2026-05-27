@@ -22,6 +22,26 @@ const toBackend: ProxyOptions = {
 export default defineConfig({
   plugins: [react()],
   envPrefix: ['VITE_', 'GOOGLE_MAPS_EMBED_'],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router-dom/')
+          ) {
+            return 'vendor-react'
+          }
+          if (id.includes('/framer-motion/')) return 'vendor-motion'
+          if (id.includes('/@tanstack/') || id.includes('/@trpc/')) return 'vendor-api'
+          if (id.includes('/lucide-react/')) return 'vendor-icons'
+          if (id.includes('/leaflet/') || id.includes('/react-leaflet/')) return 'vendor-map'
+        },
+      },
+    },
+  },
   server: {
     host: true,
     port: 5173,
