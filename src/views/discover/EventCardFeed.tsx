@@ -60,6 +60,58 @@ const GENRE_TO_CATEGORY: Record<string, string> = {
 
 export type EventFeedFilters = DiscoverEventFilters
 const DEFAULT_FILTERS: EventFeedFilters = DEFAULT_DISCOVER_FILTERS
+const DISCOVER_TIME_ZONE = 'Asia/Singapore'
+
+type ZonedDateParts = {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+}
+
+function zonedDateParts(date: Date, timeZone = DISCOVER_TIME_ZONE): ZonedDateParts {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? '0')
+
+  return {
+    year: read('year'),
+    month: read('month'),
+    day: read('day'),
+    hour: read('hour'),
+    minute: read('minute'),
+  }
+}
+
+function dayNumber(parts: Pick<ZonedDateParts, 'year' | 'month' | 'day'>): number {
+  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / 86_400_000)
+}
+
+function parseIsoDateParts(value: string): Pick<ZonedDateParts, 'year' | 'month' | 'day'> | null {
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }
+}
+
+function timeToMinutes(value: string, fallback: number): number {
+  const m = value.trim().match(/^(\d{2}):(\d{2})$/)
+  if (!m) return fallback
+  const hours = Number(m[1])
+  const mins = Number(m[2])
+  if (!Number.isFinite(hours) || !Number.isFinite(mins)) return fallback
+  if (hours < 0 || hours > 23 || mins < 0 || mins > 59) return fallback
+  return hours * 60 + mins
+}
 
 function parseEventTimeMinutes(time: string): number | null {
   const m = time.trim().match(/(\d{1,2}):(\d{2})/)
@@ -87,18 +139,6 @@ function eventDate(event: EventItem): Date | null {
   return fallback
 }
 
-function startOfDay(date: Date): Date {
-  const next = new Date(date)
-  next.setHours(0, 0, 0, 0)
-  return next
-}
-
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
 export function eventMatchesFilters(event: EventItem, f: EventFeedFilters): boolean {
   if (f.categories !== 'All' && !f.categories.includes(event.exploreCategoryId)) return false
 
@@ -111,35 +151,43 @@ export function eventMatchesFilters(event: EventItem, f: EventFeedFilters): bool
   if (f.date !== 'All') {
     const date = eventDate(event)
     if (!date) return false
-    const today = startOfDay(new Date())
-    const eventDay = startOfDay(date)
-    const diffDays = Math.round((eventDay.getTime() - today.getTime()) / 86_400_000)
+    const nowParts = zonedDateParts(new Date())
+    const eventParts = zonedDateParts(date)
+    const todayDayNum = dayNumber(nowParts)
+    const eventDayNum = dayNumber(eventParts)
+    const diffDays = eventDayNum - todayDayNum
     if (f.date === 'Tonight' && diffDays !== 0) return false
     if (f.date === 'Tomorrow' && diffDays !== 1) return false
     if (f.date === 'Next 7 Days' && (diffDays < 0 || diffDays >= 7)) return false
     if (f.date === 'This Month') {
-      if (date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear()) return false
+      if (eventParts.month !== nowParts.month || eventParts.year !== nowParts.year) return false
     }
-    if (f.date === 'Next 90 Days' && (diffDays < 0 || eventDay >= addDays(today, 90))) return false
+    if (f.date === 'Next 90 Days' && (diffDays < 0 || diffDays >= 90)) return false
     if (f.date === 'Custom Range') {
       const hasStartDate = f.startDate.trim().length > 0
       const hasEndDate = f.endDate.trim().length > 0
       const hasStartTime = f.startTime.trim().length > 0
       const hasEndTime = f.endTime.trim().length > 0
       if (hasStartDate || hasEndDate || hasStartTime || hasEndTime) {
-        const eventMs = date.getTime()
-        let startMs: number | null = null
-        let endMs: number | null = null
+        const eventDayNumLocal = dayNumber(eventParts)
+        const eventMinutes = eventParts.hour * 60 + eventParts.minute
+        let startCmp: number | null = null
+        let endCmp: number | null = null
         if (hasStartDate) {
-          const start = new Date(`${f.startDate}T${hasStartTime ? f.startTime : '00:00'}:00`)
-          if (Number.isFinite(start.getTime())) startMs = start.getTime()
+          const startDate = parseIsoDateParts(f.startDate)
+          if (startDate) {
+            startCmp = dayNumber(startDate) * 1440 + timeToMinutes(hasStartTime ? f.startTime : '00:00', 0)
+          }
         }
         if (hasEndDate) {
-          const end = new Date(`${f.endDate}T${hasEndTime ? f.endTime : '23:59'}:59`)
-          if (Number.isFinite(end.getTime())) endMs = end.getTime()
+          const endDate = parseIsoDateParts(f.endDate)
+          if (endDate) {
+            endCmp = dayNumber(endDate) * 1440 + timeToMinutes(hasEndTime ? f.endTime : '23:59', 23 * 60 + 59)
+          }
         }
-        if (startMs != null && eventMs < startMs) return false
-        if (endMs != null && eventMs > endMs) return false
+        const eventCmp = eventDayNumLocal * 1440 + eventMinutes
+        if (startCmp != null && eventCmp < startCmp) return false
+        if (endCmp != null && eventCmp > endCmp) return false
       }
     }
   }
