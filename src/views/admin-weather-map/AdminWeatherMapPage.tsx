@@ -125,14 +125,23 @@ function formatForecastDateRange(start: string, end: string): string {
   const startDate = new Date(start)
   const endDate = new Date(end)
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 'Not available'
-  const formatter = new Intl.DateTimeFormat('en-SG', {
-    day: 'numeric',
-    month: 'short',
+  const dateFormatter = new Intl.DateTimeFormat('en-SG', {
+    weekday: 'short',
     hour: 'numeric',
     minute: '2-digit',
     timeZone: 'Asia/Singapore',
   })
-  return `${formatter.format(startDate)} - ${formatter.format(endDate)}`
+  const timeFormatter = new Intl.DateTimeFormat('en-SG', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Singapore',
+  })
+  const today = new Date()
+  const sameSingaporeDay =
+    startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' }) ===
+    today.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' })
+  const startLabel = sameSingaporeDay ? `Today ${timeFormatter.format(startDate)}` : dateFormatter.format(startDate)
+  return `${startLabel} - ${dateFormatter.format(endDate)}`
 }
 
 function formatOutlookDate(value: string): string {
