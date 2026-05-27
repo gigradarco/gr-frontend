@@ -325,10 +325,12 @@
 .admin-weather-forecast-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(300px, 1fr));
+  grid-template-rows: auto auto auto;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 2px;
   scroll-snap-type: x proximity;
+  align-items: stretch;
 }
 
 .admin-weather-nea-panel {
@@ -369,6 +371,22 @@
   max-height: 380px;
   padding: 16px 18px;
   scroll-snap-align: start;
+}
+
+.admin-weather-forecast-panel:not(.is-table-view) {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  height: auto;
+  min-height: 380px;
+  max-height: none;
+}
+
+.admin-weather-forecast-panel.is-table-view {
+  grid-row: span 3;
+  height: auto;
+  min-height: 380px;
+  max-height: none;
 }
 
 .admin-weather-forecast-head {
@@ -439,9 +457,11 @@
 }
 
 .admin-weather-forecast-side .admin-weather-outlook-advice {
-  min-height: 0;
+  min-height: 68px;
+  margin-bottom: 10px;
   flex-direction: column;
   flex-wrap: nowrap;
+  gap: 6px;
 }
 
 .admin-weather-forecast-side .admin-weather-outlook-advice-item {
@@ -462,6 +482,11 @@
 .admin-weather-forecast-meta {
   display: grid;
   gap: 10px;
+  margin-top: 0;
+  align-self: start;
+}
+
+.admin-weather-forecast-panel.is-table-view .admin-weather-forecast-meta {
   margin-top: auto;
 }
 
@@ -469,6 +494,7 @@
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
+  align-self: end;
   gap: 10px;
   border-top: 1px solid var(--stroke);
   padding-top: 10px;
