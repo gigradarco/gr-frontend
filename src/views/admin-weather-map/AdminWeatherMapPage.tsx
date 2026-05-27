@@ -1079,6 +1079,23 @@ function HeatAdvisoryGlyph({
   )
 }
 
+const UV_SUN_CENTER = 12
+const UV_SUN_INNER_RADIUS = 4.25
+const UV_SUN_OUTER_RADIUS = 10.25
+const UV_SUN_RAY_ANGLES = [-90, -45, 0, 45, 90, 135, 180, 225] as const
+
+function uvSunRayEndpoints(angleDeg: number) {
+  const rad = (angleDeg * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  return {
+    x1: UV_SUN_CENTER + UV_SUN_INNER_RADIUS * cos,
+    y1: UV_SUN_CENTER + UV_SUN_INNER_RADIUS * sin,
+    x2: UV_SUN_CENTER + UV_SUN_OUTER_RADIUS * cos,
+    y2: UV_SUN_CENTER + UV_SUN_OUTER_RADIUS * sin,
+  }
+}
+
 function UvAdvisoryGlyph({
   size = ADVISORY_GLYPH_SIZE,
   strokeWidth = ADVISORY_GLYPH_STROKE,
@@ -1087,7 +1104,6 @@ function UvAdvisoryGlyph({
   strokeWidth?: number
 }) {
   const stroke = {
-    fill: 'none',
     stroke: 'currentColor',
     strokeWidth,
     strokeLinecap: 'round' as const,
@@ -1096,17 +1112,32 @@ function UvAdvisoryGlyph({
   return (
     <AdvisoryGlyphFrame className="admin-weather-uv-glyph" size={size}>
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
-        <circle className="admin-weather-uv-disc" cx="12" cy="12" r="4" {...stroke} />
         <g className="admin-weather-uv-rays">
-          <line x1="12" y1="2" x2="12" y2="5" {...stroke} />
-          <line x1="12" y1="19" x2="12" y2="22" {...stroke} />
-          <line x1="4.22" y1="4.22" x2="6.34" y2="6.34" {...stroke} />
-          <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" {...stroke} />
-          <line x1="2" y1="12" x2="5" y2="12" {...stroke} />
-          <line x1="19" y1="12" x2="22" y2="12" {...stroke} />
-          <line x1="4.22" y1="19.78" x2="6.34" y2="17.66" {...stroke} />
-          <line x1="17.66" y1="6.34" x2="19.78" y2="4.22" {...stroke} />
+          {UV_SUN_RAY_ANGLES.map((angle, index) => {
+            const { x1, y1, x2, y2 } = uvSunRayEndpoints(angle)
+            return (
+              <line
+                key={angle}
+                className={`admin-weather-uv-ray admin-weather-uv-ray-${index + 1}`}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                fill="none"
+                {...stroke}
+              />
+            )
+          })}
         </g>
+        <circle
+          className="admin-weather-uv-disc"
+          cx={UV_SUN_CENTER}
+          cy={UV_SUN_CENTER}
+          r="4"
+          fill="currentColor"
+          fillOpacity={0.2}
+          {...stroke}
+        />
       </svg>
     </AdvisoryGlyphFrame>
   )
@@ -1608,7 +1639,7 @@ export function AdminWeatherMapPage() {
             <FourDayOutlookPanel weather={weather} />
 
             <article className="admin-weather-nea-panel admin-weather-advisory-panel">
-              <h2>Event weather signals (Islandwide)</h2>
+              <h2>Event Weather Context (Islandwide)</h2>
               <div className="admin-weather-advisory-scale" aria-label="Weather condition scale">
                 {WEATHER_CONDITION_LEVELS.map((level) => (
                   <span key={level} className={`is-level-${level}`}>

@@ -1260,14 +1260,48 @@
   animation: admin-weather-advisory-heat-glow 2.8s ease-in-out infinite;
 }
 
+.admin-weather-uv-glyph svg {
+  filter: drop-shadow(0 0 5px color-mix(in oklab, currentColor 28%, transparent));
+}
+
 .admin-weather-uv-disc {
   transform-origin: 12px 12px;
   animation: admin-weather-advisory-uv-core 3.2s ease-in-out infinite;
 }
 
-.admin-weather-uv-rays {
-  transform-origin: 12px 12px;
-  animation: admin-weather-advisory-uv-spin 10s linear infinite;
+.admin-weather-uv-ray {
+  --uv-ray-length: 6px;
+  stroke-dasharray: var(--uv-ray-length);
+  stroke-dashoffset: var(--uv-ray-length);
+  animation: admin-weather-advisory-uv-ray-emit 2.8s ease-out infinite;
+}
+
+.admin-weather-uv-ray-2 {
+  animation-delay: 0.12s;
+}
+
+.admin-weather-uv-ray-3 {
+  animation-delay: 0.24s;
+}
+
+.admin-weather-uv-ray-4 {
+  animation-delay: 0.36s;
+}
+
+.admin-weather-uv-ray-5 {
+  animation-delay: 0.48s;
+}
+
+.admin-weather-uv-ray-6 {
+  animation-delay: 0.6s;
+}
+
+.admin-weather-uv-ray-7 {
+  animation-delay: 0.72s;
+}
+
+.admin-weather-uv-ray-8 {
+  animation-delay: 0.84s;
 }
 
 .admin-weather-advisory-badge {
@@ -1858,9 +1892,21 @@
   }
 }
 
-@keyframes admin-weather-advisory-uv-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes admin-weather-advisory-uv-ray-emit {
+  0% {
+    stroke-dashoffset: var(--uv-ray-length);
+    opacity: 0.25;
+  }
+
+  38% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  72%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.7;
   }
 }
 
@@ -1919,7 +1965,7 @@
   .admin-weather-advisory-glyph .admin-weather-thunder-advisory-bolt,
   .admin-weather-advisory-glyph .admin-weather-heat-mercury,
   .admin-weather-advisory-glyph .admin-weather-heat-sun,
-  .admin-weather-advisory-glyph .admin-weather-uv-rays,
+  .admin-weather-advisory-glyph .admin-weather-uv-ray,
   .admin-weather-advisory-glyph .admin-weather-uv-disc {
     animation: none !important;
   }
