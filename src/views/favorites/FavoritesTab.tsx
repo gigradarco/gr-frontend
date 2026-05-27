@@ -16,6 +16,22 @@ type FavoritesTabProps = {
   onOpenFavorite: (eventId: string) => void
 }
 
+function singaporeDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+function favoriteVariantFromEventItem(event: EventItem): FavoriteEvent['variant'] {
+  if (!event.eventDateTime) return 'upcoming'
+  const eventDate = new Date(event.eventDateTime)
+  if (!Number.isFinite(eventDate.getTime())) return 'upcoming'
+  return singaporeDateKey(eventDate) < singaporeDateKey(new Date()) ? 'past' : 'upcoming'
+}
+
 function favoriteFromEventItem(event: EventItem): FavoriteEvent {
   return {
     id: event.id,
@@ -23,7 +39,7 @@ function favoriteFromEventItem(event: EventItem): FavoriteEvent {
     venueLine: [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', '),
     timeLabel: event.displayDateTimeLabel ?? event.time,
     image: event.image,
-    variant: 'upcoming',
+    variant: favoriteVariantFromEventItem(event),
   }
 }
 
