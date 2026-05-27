@@ -95,6 +95,8 @@
 .admin-weather-control-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 20px;
 }
@@ -194,6 +196,43 @@
   padding: 6px;
 }
 
+.admin-weather-backend-cache {
+  min-height: 46px;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  padding: 7px 12px;
+  text-align: right;
+}
+
+.admin-weather-backend-cache small {
+  color: #9ca3af;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-weather-backend-cache strong {
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.admin-weather-backend-cache span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
 .admin-weather-country-option {
   min-height: 48px;
   border: 0;
@@ -288,6 +327,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 460px;
+  min-height: 460px;
+  max-height: 460px;
   padding: 28px;
   scroll-snap-align: start;
 }
@@ -298,6 +340,13 @@
   align-items: flex-start;
   gap: 10px;
   text-align: left;
+}
+
+.admin-weather-forecast-copy {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .admin-weather-forecast-head h2 {
@@ -315,11 +364,46 @@
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-weight: 900;
   line-height: 1.1;
-  min-height: 2.2em;
+}
+
+.admin-weather-forecast-cache {
+  color: color-mix(in oklab, var(--muted) 82%, var(--primary-soft));
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .admin-weather-forecast-icon {
   margin-top: 2px;
+}
+
+.admin-weather-forecast-side {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  justify-content: start;
+  padding-top: 2px;
+}
+
+.admin-weather-forecast-side .admin-weather-outlook-recommendation {
+  min-height: 0;
+  padding-top: 0;
+}
+
+.admin-weather-forecast-side .admin-weather-outlook-advice {
+  min-height: 0;
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.admin-weather-forecast-side .admin-weather-outlook-advice-item {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .admin-weather-outlook-panel h2,
@@ -340,9 +424,9 @@
 
 .admin-weather-forecast-foot {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  align-items: end;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 14px;
   border-top: 1px solid var(--stroke);
   padding-top: 14px;
   color: var(--muted);
@@ -381,6 +465,175 @@
   white-space: nowrap;
 }
 
+.admin-weather-forecast-count-card {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+  border: 1px solid rgba(255, 91, 62, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 91, 62, 0.07);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.admin-weather-forecast-count-card:hover {
+  border-color: rgba(255, 91, 62, 0.5);
+  background: rgba(255, 91, 62, 0.12);
+  transform: translateY(-1px);
+}
+
+.admin-weather-forecast-count-card svg {
+  grid-row: span 2;
+  color: var(--primary-soft);
+}
+
+.admin-weather-forecast-count-card span {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-weather-forecast-count-card small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-weather-forecast-table-face {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
+  gap: 14px;
+  animation: admin-weather-forecast-face-in 180ms ease-out;
+}
+
+.admin-weather-forecast-table-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-weather-forecast-table-head h2 {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.admin-weather-forecast-table-head p {
+  margin-top: 6px;
+  color: var(--primary-soft);
+  font-size: 0.98rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.admin-weather-forecast-table-back {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-weather-forecast-table-back:hover {
+  border-color: rgba(255, 91, 62, 0.4);
+  color: var(--primary-soft);
+}
+
+.admin-weather-forecast-table-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.admin-weather-forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.admin-weather-forecast-table th,
+.admin-weather-forecast-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 9px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-weather-forecast-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in oklab, var(--card) 94%, black);
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-weather-forecast-table td {
+  color: var(--text);
+  font-weight: 720;
+}
+
+.admin-weather-forecast-table td:last-child {
+  color: var(--primary-soft);
+  font-weight: 830;
+}
+
+.admin-weather-forecast-region-list {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-weather-forecast-region-list span {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-weather-forecast-region-list b {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .admin-weather-outlook-panel {
   min-height: 0;
   padding: 28px;
@@ -400,6 +653,16 @@
   font-size: 0.95rem;
   font-weight: 650;
   line-height: 1.35;
+}
+
+.admin-weather-outlook-head .admin-weather-outlook-cache {
+  margin-top: 6px;
+  color: color-mix(in oklab, var(--muted) 82%, var(--primary-soft));
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .admin-weather-outlook-head > span {
@@ -597,18 +860,70 @@
   line-height: 1.2;
 }
 
-.admin-weather-outlook-day > strong {
+.admin-weather-outlook-condition {
+  display: block;
+  min-height: 2.55rem;
   color: var(--primary-soft);
   font-size: 1.15rem;
   font-weight: 850;
   line-height: 1.1;
 }
 
-.admin-weather-outlook-day > small {
+.admin-weather-outlook-recommendation {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 82px;
+  padding-top: 2px;
+}
+
+.admin-weather-outlook-recommendation > b {
   color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 620;
-  line-height: 1.25;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.admin-weather-outlook-advice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 60px;
+}
+
+.admin-weather-outlook-advice-item {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  padding: 0 9px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.admin-weather-outlook-advice-item.is-info {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.08);
+  color: #cbd5e1;
+}
+
+.admin-weather-outlook-advice-item.is-watch {
+  border-color: rgba(251, 146, 60, 0.28);
+  background: rgba(251, 146, 60, 0.1);
+  color: #fed7aa;
+}
+
+.admin-weather-outlook-advice-item.is-warning {
+  border-color: rgba(255, 91, 62, 0.34);
+  background: rgba(255, 91, 62, 0.12);
+  color: #fecaca;
 }
 
 .admin-weather-outlook-meta {
@@ -1402,6 +1717,18 @@
   }
 }
 
+@keyframes admin-weather-forecast-face-in {
+  from {
+    opacity: 0;
+    transform: rotateY(-6deg) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotateY(0) scale(1);
+  }
+}
+
 @media (max-width: 860px) {
   .admin-weather-header {
     grid-template-columns: auto minmax(0, 1fr);
@@ -1431,6 +1758,10 @@
   .admin-weather-outlook-icon .admin-weather-thunder-shower-bolt {
     animation: none !important;
   }
+
+  .admin-weather-forecast-table-face {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1448,6 +1779,16 @@
   .admin-weather-context-row {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .admin-weather-backend-cache {
+    width: min(320px, 100%);
+    justify-items: start;
+    text-align: left;
+  }
+
+  .admin-weather-forecast-side {
+    max-width: none;
   }
 
   .admin-weather-outlook-head {

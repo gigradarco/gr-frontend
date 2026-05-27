@@ -208,17 +208,6 @@ export const reputationBadgesFallback: ReputationBadgeItem[] = [
     progressTarget: 5,
     earnedAt: null,
   },
-  {
-    id: 'early-bird',
-    code: 'early_bird',
-    icon: Star,
-    label: 'EARLY\nBIRD',
-    status: 'locked',
-    unlockHint: 'Check in before start time 5 times.',
-    progressValue: 0,
-    progressTarget: 5,
-    earnedAt: null,
-  },
 ]
 
 export function mapReputationBadgeFromApi(row: ReputationBadgeApiRow): ReputationBadgeItem {
