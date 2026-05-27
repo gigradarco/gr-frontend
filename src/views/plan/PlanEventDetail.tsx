@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   Clock,
+  Cloud,
   ExternalLink,
   Heart,
   MapPin,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react'
 import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { fallbackImageForEvent, handleEventImageError } from '../../lib/event-image-fallback'
+import { fetchEventWeatherSummary, type EventWeatherSummary } from '../../lib/event-weather-summary'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 import { EventShareSheet } from '../../components/EventShareSheet'
@@ -116,6 +118,8 @@ export function PlanEventDetail({
 }: PlanEventDetailProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [weatherSummary, setWeatherSummary] = useState<EventWeatherSummary | null>(null)
+  const [weatherLoading, setWeatherLoading] = useState(true)
   const heroEvent = heroEventItem(data)
   const heroImageSrc = data.heroImage.trim() || fallbackImageForEvent(heroEvent)
 
@@ -127,6 +131,34 @@ export function PlanEventDetail({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [cancelConfirmOpen])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setWeatherLoading(true)
+    void fetchEventWeatherSummary(
+      {
+        lat: data.lat,
+        lng: data.lng,
+        cityId: data.locationCityId,
+        eventDateTime: data.eventDateTime,
+      },
+      controller.signal,
+    )
+      .then((summary) => {
+        if (controller.signal.aborted) return
+        setWeatherSummary(summary)
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setWeatherSummary({ available: false, message: 'No data available' })
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return
+        setWeatherLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [data.eventId, data.eventDateTime, data.lat, data.lng, data.locationCityId])
   const mapQuery = mapsQueryFromData(data)
   const mapEmbedSrc = googleMapsEmbedSrc(mapQuery)
   const mapSearchUrl = googleMapsSearchUrl(mapQuery)
@@ -229,6 +261,28 @@ export function PlanEventDetail({
               <div className="plan-info-pill plan-info-pill--location">
                 <MapPin size={13} strokeWidth={2.2} aria-hidden />
                 <span className="plan-info-pill-text">{data.venueLine}</span>
+              </div>
+              <div
+                className={`plan-info-pill plan-info-pill--weather${weatherSummary?.available ? ' is-available' : ''}`}
+                title={
+                  weatherSummary?.available
+                    ? `${weatherSummary.areaName} · valid ${weatherSummary.validText}`
+                    : undefined
+                }
+              >
+                <Cloud size={13} strokeWidth={2.2} aria-hidden />
+                <span className="plan-info-pill-text">
+                  {weatherLoading ? (
+                    'Loading weather…'
+                  ) : weatherSummary?.available ? (
+                    <>
+                      {weatherSummary.condition}
+                      <span className="plan-info-pill-advice"> · Recommendation: {weatherSummary.adviceLabel}</span>
+                    </>
+                  ) : (
+                    'No data available'
+                  )}
+                </span>
               </div>
               <div className="plan-info-pill plan-info-pill--time">
                 <Clock size={13} strokeWidth={2.2} aria-hidden />

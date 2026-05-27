@@ -73,9 +73,17 @@ export type PlanPageEvent = {
   artistLine: string
   genreTags: [string, string]
   venueLine: string
+  /** Venue latitude for weather lookup (optional). */
+  lat?: number
+  /** Venue longitude for weather lookup (optional). */
+  lng?: number
+  /** Matches `LocationCity.id` for weather source selection. */
+  locationCityId?: string
   /** Google Maps Embed/search query, usually venue + full address or future `place_id:...`. */
   mapQuery?: string
   timeRange: string
+  /** Machine-readable event datetime for weather horizon checks. */
+  eventDateTime?: string | null
   ticketPrice?: string
   aiVibeScore?: number | null
   eliteVerifiedCount: number

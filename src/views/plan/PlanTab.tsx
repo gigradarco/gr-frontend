@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, MapPin, RefreshCw, X } from 'lucide-react'
+import { Clock, MapPin, X } from 'lucide-react'
 import {
   planDetailFromEventItem,
 } from '../../data/demoData'
@@ -19,9 +19,15 @@ import { isPastPlanEventDateTime, planSegmentForEventDateTime } from '../../lib/
 import { fetchDiscoverEventById, mapDiscoverEventListItemToEventItem } from '../../lib/useDiscoverEvents'
 import { useAppState, type FavoriteEvent } from '../../store/appStore'
 import type { EventItem, PlanPageEvent, Tab } from '../../types'
+import { fetchCityWeatherSummary, type CityWeatherSummary } from '../../lib/event-weather-summary'
 import { PlanCancelConfirmDialog } from './PlanCancelConfirmDialog'
 import { PlanEventDetail } from './PlanEventDetail'
 import { PlanEventReview } from './PlanEventReview'
+import { PlanHub } from './PlanHub'
+import { PlanScheduledScreen } from './PlanScheduledScreen'
+import { PlanWeatherScreen } from './PlanWeatherScreen'
+
+type PlanShellView = 'hub' | 'weather' | 'scheduled'
 
 type PendingCancelPlan = {
   eventId: string
@@ -64,7 +70,7 @@ function tabReturnAriaLabel(t: Tab): string {
     case 'favorites':
       return 'Back to saved events'
     case 'plan':
-      return 'Back to plan list'
+      return 'Back to plan'
     case 'profile':
       return 'Back to profile'
   }
@@ -105,6 +111,9 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
   })
 
   const [segment, setSegment] = useState<'upcoming' | 'past'>('upcoming')
+  const [shellView, setShellView] = useState<PlanShellView>('hub')
+  const [cityWeather, setCityWeather] = useState<CityWeatherSummary | null>(null)
+  const [cityWeatherLoading, setCityWeatherLoading] = useState(false)
   const [detail, setDetail] = useState<DetailRoute | null>(null)
   const [detailReturnTab, setDetailReturnTab] = useState<Tab | null>(null)
   const [reviewPastId, setReviewPastId] = useState<string | null>(null)
@@ -366,11 +375,32 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
     if (!pendingPlanDetail) return
     // Discover / Ask / Profile: App shows full detail as an overlay; tab stays put.
     if (pendingPlanDetail.returnTab != null && pendingPlanDetail.returnTab !== 'plan') return
+    setShellView('scheduled')
     setDetail({ kind: pendingPlanDetail.kind, id: pendingPlanDetail.id })
     setSegment(pendingPlanDetail.kind === 'past' ? 'past' : 'upcoming')
     setDetailReturnTab(pendingPlanDetail.returnTab ?? null)
     clearPendingPlanDetail()
   }, [pendingPlanDetail, clearPendingPlanDetail])
+
+  useEffect(() => {
+    if (!isAuthenticated || shellView !== 'hub') return
+    const controller = new AbortController()
+    setCityWeatherLoading(true)
+    void fetchCityWeatherSummary('singapore', controller.signal)
+      .then((summary) => {
+        if (controller.signal.aborted) return
+        setCityWeather(summary)
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setCityWeather({ available: false, message: 'No data available' })
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return
+        setCityWeatherLoading(false)
+      })
+    return () => controller.abort()
+  }, [isAuthenticated, shellView])
 
   if (reviewPastId) {
     const reviewEvent = pastDisplayEvents.find((event) => event.id === reviewPastId) ?? null
@@ -417,7 +447,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
           data={data}
           variant={detail.kind}
           backAriaLabel={
-            detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to plan list'
+            detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to scheduled'
           }
           onBack={exitEventDetail}
           onOpenEvent={onOpenEvent}
@@ -447,19 +477,16 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
       >
         <header className="plan-home-header">
           <h1 className="plan-home-title">Plan</h1>
-          <p className="plan-home-sub">Upcoming nights and where you&apos;ve been.</p>
+          <p className="plan-home-sub">Weather, scheduled nights, and where you&apos;ve been.</p>
         </header>
-        <div className="favorites-empty">
-          <p className="favorites-empty-title">Sign in to start planning</p>
-          <p className="favorites-empty-copy">Your Plan syncs upcoming and past events across devices.</p>
-          <button
-            type="button"
-            className="plan-segment plan-segment--on"
-            onClick={() => openSignIn('Sign in to view and manage your event plan.')}
-          >
-            Sign in
-          </button>
-        </div>
+        <PlanHub
+          weatherPreview="Sign in to view"
+          weatherLoading={false}
+          upcomingCount={0}
+          pastCount={0}
+          onOpenWeather={() => openSignIn('Sign in to view weather in Plan.')}
+          onOpenScheduled={() => openSignIn('Sign in to view and manage your event plan.')}
+        />
       </motion.div>
     )
   }
@@ -471,6 +498,129 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
     ? upcomingQuery.isLoading && upcomingDisplayEvents.length === 0
     : pastEvents.length === 0 && pastQuery.isLoading && pastDisplayEvents.length === 0
   const error = segment === 'upcoming' ? upcomingQuery.error : pastQuery.error
+  const weatherPreview = cityWeatherLoading
+    ? 'Loading…'
+    : cityWeather?.available
+      ? cityWeather.condition
+      : 'No data available'
+
+  const segmentControls = (
+    <div className="plan-segments" role="tablist" aria-label="Scheduled lists">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={segment === 'upcoming'}
+        className={segment === 'upcoming' ? 'plan-segment plan-segment--on' : 'plan-segment'}
+        onClick={() => setSegment('upcoming')}
+      >
+        Upcoming
+        <span className="plan-seg-count">{upcomingCount}</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={segment === 'past'}
+        className={segment === 'past' ? 'plan-segment plan-segment--on' : 'plan-segment'}
+        onClick={() => setSegment('past')}
+      >
+        Past
+        <span className="plan-seg-count">{pastCount}</span>
+      </button>
+    </div>
+  )
+
+  const listContent = (
+    <div className="plan-list" role="tabpanel">
+      {loading ? (
+        <div className="favorites-empty">
+          <p className="favorites-empty-title">Loading your plan</p>
+          <p className="favorites-empty-copy">Checking saved event IDs and hydrating event details.</p>
+        </div>
+      ) : error ? (
+        <div className="favorites-empty">
+          <p className="favorites-empty-title">Plan could not load</p>
+          <p className="favorites-empty-copy">{error.message}</p>
+        </div>
+      ) : visibleEvents.length === 0 ? (
+        <div className="favorites-empty">
+          <p className="favorites-empty-title">
+            {segment === 'upcoming' ? 'No upcoming plans yet' : 'No past events yet'}
+          </p>
+          <p className="favorites-empty-copy">
+            {segment === 'upcoming'
+              ? 'Tap I\'m Going on any event to add it here.'
+              : 'Events move here after their event date has passed.'}
+          </p>
+        </div>
+      ) : (
+        <>
+          {segment === 'upcoming'
+            ? visibleEvents.map((ev) => (
+            <div key={ev.id} className="plan-list-item-wrap" role="listitem">
+              <button
+                type="button"
+                className="plan-list-card"
+                onClick={() => {
+                  setDetailReturnTab(null)
+                  setDetail({ kind: 'upcoming', id: ev.id })
+                }}
+              >
+                <img src={ev.image} alt="" className="plan-list-card-img" decoding="async" />
+                <div className="plan-list-card-body plan-list-card-body--with-cancel">
+                  <span className="plan-list-card-label">{ev.genre}</span>
+                  <h2 className="plan-list-card-title">{ev.title}</h2>
+                  <p className="plan-list-card-meta">
+                    <MapPin size={13} aria-hidden />
+                    {ev.venue}, {ev.district}
+                  </p>
+                  <p className="plan-list-card-meta">
+                    <Clock size={13} aria-hidden />
+                    {ev.time}
+                    {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                className="plan-list-cancel"
+                aria-label={`Cancel plan for ${ev.title}`}
+                disabled={isUpdating}
+                onClick={() => requestCancelPlan(ev.id, ev.title)}
+              >
+                <X size={14} strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
+          ))
+            : visibleEvents.map((p: EventItem) => (
+            <button
+              type="button"
+              key={p.id}
+              className="plan-list-card plan-list-card--past"
+              onClick={() => {
+                setDetailReturnTab(null)
+                setDetail({ kind: 'past', id: p.id })
+              }}
+            >
+              <img src={p.image} alt="" className="plan-list-card-img" decoding="async" />
+              <div className="plan-list-card-body">
+                <span className="plan-list-card-label plan-list-card-label--past">{p.displayDateTimeLabel ?? p.time}</span>
+                <h2 className="plan-list-card-title">{p.title}</h2>
+                <p className="plan-list-card-meta">
+                  <MapPin size={13} aria-hidden />
+                  {p.venue}, {p.district}
+                </p>
+              </div>
+            </button>
+          ))}
+          {segment === 'past' && pastNextOffset != null ? (
+            <div className="plan-history-load-more" ref={historyLoadMoreRef} role="status" aria-live="polite">
+              {pastQuery.isFetching ? 'Loading more history...' : 'Scroll for more history'}
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  )
 
   return (
     <>
@@ -480,148 +630,36 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <header className="plan-home-header">
-        <div className="plan-home-header-row">
-          <h1 className="plan-home-title">Plan</h1>
-          <div className="plan-home-header-actions">
-            {refreshedAt ? (
-              <span
-                className="favorites-limit-bubble"
-                aria-label={`Plan last updated at ${new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}`}
-              >
-                Last updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className="favorites-refresh"
-              onClick={() => {
-                void refreshPlan()
-              }}
-              disabled={refreshing || !isAuthenticated}
-            >
-              <RefreshCw size={15} className={refreshing ? 'favorites-refresh-icon is-spinning' : 'favorites-refresh-icon'} aria-hidden />
-              <span>{refreshing ? 'Refreshing' : 'Refresh'}</span>
-            </button>
-          </div>
-        </div>
-        <p className="plan-home-sub">Upcoming nights and where you&apos;ve been.</p>
-        {refreshError ? <p className="favorites-refresh-error" role="alert">{refreshError}</p> : null}
-      </header>
-
-      <div className="plan-segments" role="tablist" aria-label="Plan lists">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={segment === 'upcoming'}
-          className={segment === 'upcoming' ? 'plan-segment plan-segment--on' : 'plan-segment'}
-          onClick={() => setSegment('upcoming')}
-        >
-          Upcoming
-          <span className="plan-seg-count">{upcomingCount}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={segment === 'past'}
-          className={segment === 'past' ? 'plan-segment plan-segment--on' : 'plan-segment'}
-          onClick={() => setSegment('past')}
-        >
-          Past
-          <span className="plan-seg-count">{pastCount}</span>
-        </button>
-      </div>
-
-      <div className="plan-list" role="tabpanel">
-        {loading ? (
-          <div className="favorites-empty">
-            <p className="favorites-empty-title">Loading your plan</p>
-            <p className="favorites-empty-copy">Checking saved event IDs and hydrating event details.</p>
-          </div>
-        ) : error ? (
-          <div className="favorites-empty">
-            <p className="favorites-empty-title">Plan could not load</p>
-            <p className="favorites-empty-copy">{error.message}</p>
-          </div>
-        ) : visibleEvents.length === 0 ? (
-          <div className="favorites-empty">
-            <p className="favorites-empty-title">
-              {segment === 'upcoming' ? 'No upcoming plans yet' : 'No past events yet'}
-            </p>
-            <p className="favorites-empty-copy">
-              {segment === 'upcoming'
-                ? 'Tap I\'m Going on any event to add it here.'
-                : 'Events move here after their event date has passed.'}
-            </p>
-          </div>
-        ) : (
-          <>
-            {segment === 'upcoming'
-              ? visibleEvents.map((ev) => (
-              <div key={ev.id} className="plan-list-item-wrap" role="listitem">
-                <button
-                  type="button"
-                  className="plan-list-card"
-                  onClick={() => {
-                    setDetailReturnTab(null)
-                    setDetail({ kind: 'upcoming', id: ev.id })
-                  }}
-                >
-                  <img src={ev.image} alt="" className="plan-list-card-img" decoding="async" />
-                  <div className="plan-list-card-body plan-list-card-body--with-cancel">
-                    <span className="plan-list-card-label">{ev.genre}</span>
-                    <h2 className="plan-list-card-title">{ev.title}</h2>
-                    <p className="plan-list-card-meta">
-                      <MapPin size={13} aria-hidden />
-                      {ev.venue}, {ev.district}
-                    </p>
-                    <p className="plan-list-card-meta">
-                      <Clock size={13} aria-hidden />
-                      {ev.time}
-                      {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
-                    </p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="plan-list-cancel"
-                  aria-label={`Cancel plan for ${ev.title}`}
-                  disabled={isUpdating}
-                  onClick={() => requestCancelPlan(ev.id, ev.title)}
-                >
-                  <X size={14} strokeWidth={2.25} aria-hidden />
-                </button>
-              </div>
-            ))
-              : visibleEvents.map((p: EventItem) => (
-              <button
-                type="button"
-                key={p.id}
-                className="plan-list-card plan-list-card--past"
-                onClick={() => {
-                  setDetailReturnTab(null)
-                  setDetail({ kind: 'past', id: p.id })
-                }}
-              >
-                <img src={p.image} alt="" className="plan-list-card-img" decoding="async" />
-                <div className="plan-list-card-body">
-                  <span className="plan-list-card-label plan-list-card-label--past">{p.displayDateTimeLabel ?? p.time}</span>
-                  <h2 className="plan-list-card-title">{p.title}</h2>
-                  <p className="plan-list-card-meta">
-                    <MapPin size={13} aria-hidden />
-                    {p.venue}, {p.district}
-                  </p>
-                </div>
-              </button>
-            ))}
-            {segment === 'past' && pastNextOffset != null ? (
-              <div className="plan-history-load-more" ref={historyLoadMoreRef} role="status" aria-live="polite">
-                {pastQuery.isFetching ? 'Loading more history...' : 'Scroll for more history'}
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
+      {shellView === 'hub' ? (
+        <>
+          <header className="plan-home-header">
+            <h1 className="plan-home-title">Plan</h1>
+            <p className="plan-home-sub">Weather, scheduled nights, and where you&apos;ve been.</p>
+          </header>
+          <PlanHub
+            weatherPreview={weatherPreview}
+            weatherLoading={cityWeatherLoading}
+            upcomingCount={upcomingCount}
+            pastCount={pastCount}
+            onOpenWeather={() => setShellView('weather')}
+            onOpenScheduled={() => setShellView('scheduled')}
+          />
+        </>
+      ) : shellView === 'weather' ? (
+        <PlanWeatherScreen onBack={() => setShellView('hub')} />
+      ) : (
+        <PlanScheduledScreen
+          refreshedAt={refreshedAt}
+          refreshing={refreshing}
+          refreshError={refreshError}
+          onBack={() => setShellView('hub')}
+          onRefresh={() => {
+            void refreshPlan()
+          }}
+          segmentControls={segmentControls}
+          listContent={listContent}
+        />
+      )}
     </motion.div>
     {pendingCancelPlan ? (
       <PlanCancelConfirmDialog
