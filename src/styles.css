@@ -9313,6 +9313,12 @@ button.taste-tag:focus-visible {
   color: color-mix(in oklab, #d9b784 78%, var(--text));
 }
 
+.favorites-limit-bubble--loading {
+  border-color: color-mix(in oklab, var(--stroke) 80%, var(--muted) 20%);
+  background: color-mix(in oklab, var(--card) 82%, var(--bg));
+  color: var(--muted);
+}
+
 .favorites-refresh-error {
   margin: 4px 0 0;
   font-size: 0.78rem;

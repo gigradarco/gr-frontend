@@ -80,6 +80,7 @@ export function FavoritesTab({ events, onOpenFavorite }: FavoritesTabProps) {
   const favoriteEventIds = useAppState((s) => s.favoriteEventIds)
   const favoriteEventSnapshots = useAppState((s) => s.favoriteEvents)
   const subscriptionTier = useAppState((s) => s.subscriptionTier)
+  const authSessionHydrated = useAppState((s) => s.authSessionHydrated)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const [cachedFavorites, setCachedFavorites] = useState<Record<string, FavoriteEvent>>({})
   const [refreshing, setRefreshing] = useState(false)
@@ -87,7 +88,8 @@ export function FavoritesTab({ events, onOpenFavorite }: FavoritesTabProps) {
   const [refreshedAt, setRefreshedAt] = useState<number | null>(null)
   const [unavailableFavoriteIds, setUnavailableFavoriteIds] = useState<Set<string>>(() => new Set())
   const requestedIdsRef = useRef(new Set<string>())
-  const favoriteLimit = favoriteLimitForTier(subscriptionTier)
+  const hasHydratedPlan = authSessionHydrated
+  const favoriteLimit = hasHydratedPlan ? favoriteLimitForTier(subscriptionTier) : null
   const tierLabel = subscriptionTier === 'pro' ? 'Buzo Pro' : 'Buzo Basic'
 
   const favoriteEvents = useMemo(() => {
@@ -209,9 +211,25 @@ export function FavoritesTab({ events, onOpenFavorite }: FavoritesTabProps) {
             <span>{refreshing ? 'Refreshing' : 'Refresh'}</span>
           </button>
         </div>
-        <div className="favorites-limit-bubbles" aria-label={`${tierLabel}, ${favoriteEventIds.length} of ${favoriteLimit} favourites saved`}>
-          <span className={`favorites-limit-bubble favorites-limit-bubble--${subscriptionTier}`}>{tierLabel}</span>
-          <span className="favorites-limit-bubble">{favoriteEventIds.length} / {favoriteLimit} favourites</span>
+        <div
+          className="favorites-limit-bubbles"
+          aria-busy={!hasHydratedPlan}
+          aria-label={
+            hasHydratedPlan
+              ? `${tierLabel}, ${favoriteEventIds.length} of ${favoriteLimit} favourites saved`
+              : `Checking plan, ${favoriteEventIds.length} favourites saved`
+          }
+        >
+          <span
+            className={`favorites-limit-bubble ${
+              hasHydratedPlan ? `favorites-limit-bubble--${subscriptionTier}` : 'favorites-limit-bubble--loading'
+            }`}
+          >
+            {hasHydratedPlan ? tierLabel : 'Checking plan'}
+          </span>
+          <span className="favorites-limit-bubble">
+            {hasHydratedPlan ? `${favoriteEventIds.length} / ${favoriteLimit} favourites` : `${favoriteEventIds.length} favourites saved`}
+          </span>
           {refreshedAt ? (
             <span className="favorites-limit-bubble">
               Last updated {new Date(refreshedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })}
