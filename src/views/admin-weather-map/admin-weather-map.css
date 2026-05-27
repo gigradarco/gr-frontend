@@ -1078,7 +1078,7 @@
 }
 
 .admin-weather-context-copy span,
-.admin-weather-advisory-title span,
+.admin-weather-advisory-title-copy > span,
 .admin-weather-alert-message {
   display: block;
   margin-top: 6px;
@@ -1140,7 +1140,7 @@
   align-items: center;
 }
 
-.admin-weather-advisory-title > div > span {
+.admin-weather-advisory-title-copy > span {
   margin-top: 4px;
   font-size: 0.88rem;
   font-weight: 850;
@@ -1319,23 +1319,23 @@
   text-transform: uppercase;
 }
 
-.admin-weather-advisory-row.is-level-1 .admin-weather-advisory-title span {
+.admin-weather-advisory-row.is-level-1 .admin-weather-advisory-title-copy > span {
   color: #4ade80;
 }
 
-.admin-weather-advisory-row.is-level-2 .admin-weather-advisory-title span {
+.admin-weather-advisory-row.is-level-2 .admin-weather-advisory-title-copy > span {
   color: #a3e635;
 }
 
-.admin-weather-advisory-row.is-level-3 .admin-weather-advisory-title span {
+.admin-weather-advisory-row.is-level-3 .admin-weather-advisory-title-copy > span {
   color: #f59e0b;
 }
 
-.admin-weather-advisory-row.is-level-4 .admin-weather-advisory-title span {
+.admin-weather-advisory-row.is-level-4 .admin-weather-advisory-title-copy > span {
   color: #ff8a70;
 }
 
-.admin-weather-advisory-row.is-level-5 .admin-weather-advisory-title span {
+.admin-weather-advisory-row.is-level-5 .admin-weather-advisory-title-copy > span {
   color: #f87171;
 }
 
@@ -1346,6 +1346,30 @@
 
 .admin-weather-advisory-badge.is-derived {
   border-color: color-mix(in oklab, #aeb4bf 34%, var(--stroke));
+}
+
+.admin-weather-advisory-source-row {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid color-mix(in oklab, var(--primary) 26%, var(--stroke));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 7%, transparent);
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-weather-advisory-source-row strong {
+  color: color-mix(in oklab, var(--primary-soft) 84%, #fff);
+  font-size: 0.78rem;
+  font-weight: 950;
 }
 
 .admin-weather-scorebar {

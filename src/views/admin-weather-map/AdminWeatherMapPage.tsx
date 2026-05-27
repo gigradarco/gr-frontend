@@ -935,6 +935,22 @@ function ScoreMetricRuler({
   )
 }
 
+function sourceTtlValue(category: WeatherAdvisoryCategory): string {
+  if (category === 'flood') return 'Real-time'
+  if (category === 'rain') return '5m / 30m'
+  if (category === 'thunder') return '30m'
+  if (category === 'heat') return '5m'
+  return '30m'
+}
+
+function sourceTtlDescription(category: WeatherAdvisoryCategory): string {
+  if (category === 'flood') return 'PUB flood alerts are event-driven real-time source data.'
+  if (category === 'rain') return 'Rainfall readings update every 5 minutes; 2-hour forecast updates every 30 minutes.'
+  if (category === 'thunder') return '2-hour weather forecast updates every 30 minutes.'
+  if (category === 'heat') return 'Air temperature and relative humidity readings update every 5 minutes.'
+  return 'UV index updates every 30 minutes.'
+}
+
 const ADVISORY_GLYPH_SIZE = 28
 const ADVISORY_GLYPH_STROKE = 2.3
 
@@ -1161,7 +1177,7 @@ function AdvisoryRow({ category, title, message, context, kind = 'derived', leve
           <span className={`admin-weather-advisory-icon is-${category}`} aria-hidden>
             <AdvisoryIcon category={category} />
           </span>
-          <div>
+          <div className="admin-weather-advisory-title-copy">
             <strong>{title}</strong>
             <span>{level}/5 {conditionLabel(level)}</span>
           </div>
@@ -1169,6 +1185,14 @@ function AdvisoryRow({ category, title, message, context, kind = 'derived', leve
         <span className={`admin-weather-advisory-badge is-${kind}`}>
           {kind === 'official' ? 'Official' : kind === 'source' ? 'Source' : 'Derived'}
         </span>
+      </div>
+      <div
+        className="admin-weather-advisory-source-row"
+        aria-label={`Source TTL ${sourceTtlValue(category)}`}
+        title={sourceTtlDescription(category)}
+      >
+        <span>Source TTL</span>
+        <strong>{sourceTtlValue(category)}</strong>
       </div>
       <ScoreBar level={level} />
       <ScoreMetricRuler category={category} level={level} />
