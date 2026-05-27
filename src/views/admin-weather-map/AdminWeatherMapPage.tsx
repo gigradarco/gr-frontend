@@ -44,6 +44,11 @@ import {
 } from '../../lib/weather-map-data'
 import { buildForecastWeatherAdvice, buildFourDayWeatherAdvice, type WeatherAdvice } from '../../lib/weather-advice'
 import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
+import {
+  mapTwentyFourHourPeriodToAreas,
+  pickActiveTwentyFourHourPeriod,
+  type MapForecastLayer,
+} from '../../lib/weather-map-map-layers'
 import './admin-weather-map.css'
 
 const WEATHER_COUNTRY_DISCOVER_CITY_ID: Record<WeatherMapCountryCode, string> = {
@@ -100,7 +105,7 @@ type WeatherAdvisorySignal = {
 }
 
 const WEATHER_CONDITION_LEVELS: WeatherConditionLevel[] = [1, 2, 3, 4, 5]
-const forecastIconCache = new Map<ForecastMarkerKind, DivIcon>()
+const forecastIconCache = new Map<string, DivIcon>()
 
 function getWeatherCountryMapDefaults(country: WeatherMapCountryCode): {
   center: [number, number]
@@ -568,21 +573,25 @@ function ForecastMarkerGlyph({ kind, size = 13 }: { kind: ForecastMarkerKind; si
   return <CloudSun {...props} />
 }
 
-function forecastMarkerIcon(kind: ForecastMarkerKind): DivIcon {
-  const cached = forecastIconCache.get(kind)
+function forecastMarkerIcon(kind: ForecastMarkerKind, size: 'area' | 'region' = 'area'): DivIcon {
+  const cacheKey = `${kind}:${size}`
+  const cached = forecastIconCache.get(cacheKey)
   if (cached) return cached
 
+  const glyphSize = size === 'region' ? 15 : 13
+  const markerSize = size === 'region' ? 30 : 24
+  const anchor = markerSize / 2
   const icon = divIcon({
-    className: `admin-weather-forecast-div-icon is-${kind}`,
+    className: `admin-weather-forecast-div-icon is-${kind}${size === 'region' ? ' is-region' : ''}`,
     html: `<span class="admin-weather-forecast-marker">${renderToStaticMarkup(
-      <ForecastMarkerGlyph kind={kind} />,
+      <ForecastMarkerGlyph kind={kind} size={glyphSize} />,
     )}</span>`,
-    iconAnchor: [12, 12],
-    iconSize: [24, 24],
-    popupAnchor: [0, -13],
-    tooltipAnchor: [0, -13],
+    iconAnchor: [anchor, anchor],
+    iconSize: [markerSize, markerSize],
+    popupAnchor: [0, -anchor - 1],
+    tooltipAnchor: [0, -anchor - 1],
   })
-  forecastIconCache.set(kind, icon)
+  forecastIconCache.set(cacheKey, icon)
   return icon
 }
 
@@ -1205,10 +1214,16 @@ function AdvisoryRow({ category, title, message, context, kind = 'derived', leve
   )
 }
 
-function ForecastAreaMarker({ area }: { area: ForecastAreaWeather }) {
+function ForecastAreaMarker({
+  area,
+  markerSize = 'area',
+}: {
+  area: ForecastAreaWeather
+  markerSize?: 'area' | 'region'
+}) {
   const kind = forecastMarkerKind(area.forecast)
   return (
-    <Marker position={[area.lat, area.lng]} icon={forecastMarkerIcon(kind)}>
+    <Marker position={[area.lat, area.lng]} icon={forecastMarkerIcon(kind, markerSize)}>
       <Tooltip direction="top" opacity={0.94}>
         <strong>{area.name}</strong>
         <br />
@@ -1343,6 +1358,9 @@ export function AdminWeatherMapPage() {
   const [loadState, setLoadState] = useState<LoadState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [forecastTableCard, setForecastTableCard] = useState<ForecastTableCard>(null)
+  const [mapForecastLayer, setMapForecastLayer] = useState<MapForecastLayer>('twoHour')
+  const [showMapForecast, setShowMapForecast] = useState(true)
+  const [showMapTemperature, setShowMapTemperature] = useState(true)
   const countryPickerRef = useRef<HTMLDivElement>(null)
 
   const countryAvailable = isWeatherCountryAvailable(country)
@@ -1448,6 +1466,30 @@ export function AdminWeatherMapPage() {
     ] : []),
     [weather],
   )
+  const twentyFourHourMapReady = weather?.twentyFourHourForecast.status === 'ready'
+  const activeTwentyFourHourPeriod = useMemo(
+    () => (weather && twentyFourHourMapReady
+      ? pickActiveTwentyFourHourPeriod(weather.twentyFourHourForecast.periods)
+      : null),
+    [weather, twentyFourHourMapReady],
+  )
+  const mapForecastAreas = useMemo(() => {
+    if (!weather) return []
+    if (mapForecastLayer === 'twoHour') return weather.twoHourForecast.areas
+    if (!activeTwentyFourHourPeriod) return []
+    return mapTwentyFourHourPeriodToAreas(activeTwentyFourHourPeriod)
+  }, [weather, mapForecastLayer, activeTwentyFourHourPeriod])
+  const mapForecastMarkerSize: 'area' | 'region' = mapForecastLayer === 'twentyFourHour' ? 'region' : 'area'
+  const mapLayerNote = useMemo(() => {
+    if (!weather) return ''
+    if (mapForecastLayer === 'twoHour') {
+      return `2-hour nowcast · ${formatForecastTimeRange(weather.twoHourForecast.validStart, weather.twoHourForecast.validEnd)} · ${weather.twoHourForecast.areaCount} areas`
+    }
+    if (!twentyFourHourMapReady) return '24-hour forecast unavailable'
+    if (!activeTwentyFourHourPeriod) return '24-hour forecast has no active period'
+    const regionCount = mapForecastAreas.length
+    return `24-hour forecast · ${activeTwentyFourHourPeriod.validText} · ${regionCount} ${regionCount === 1 ? 'region' : 'regions'}`
+  }, [weather, mapForecastLayer, twentyFourHourMapReady, activeTwentyFourHourPeriod, mapForecastAreas.length])
 
   return (
     <main className="admin-weather-page">
@@ -1704,33 +1746,92 @@ export function AdminWeatherMapPage() {
             ) : null}
             {weather ? (
               <>
-                <div className="admin-weather-map-legend" aria-label="Weather map legend">
-                  <span><i className="is-temp" /> Temperature station</span>
-                  <span><MapLegendForecastIcon kind="partly-cloudy" /> Fair / cloudy</span>
-                  <span><MapLegendForecastIcon kind="rain" /> Rain</span>
-                  <span><MapLegendForecastIcon kind="thunder" /> Thunder</span>
-                  <span><MapLegendForecastIcon kind="haze" /> Haze / wind</span>
+                <div className="admin-weather-map-head">
+                  <div className="admin-weather-map-tabs" role="tablist" aria-label="Map forecast layer">
+                    <button
+                      type="button"
+                      role="tab"
+                      className="admin-weather-map-tab"
+                      aria-selected={mapForecastLayer === 'twoHour'}
+                      onClick={() => setMapForecastLayer('twoHour')}
+                    >
+                      2-hour nowcast
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      className="admin-weather-map-tab"
+                      aria-selected={mapForecastLayer === 'twentyFourHour'}
+                      disabled={!twentyFourHourMapReady}
+                      onClick={() => setMapForecastLayer('twentyFourHour')}
+                    >
+                      24-hour forecast
+                    </button>
+                  </div>
+                  <p className="admin-weather-map-layer-note">{mapLayerNote}</p>
                 </div>
-                <MapContainer
-                  center={mapDefaults.center}
-                  zoom={mapDefaults.zoom}
-                  zoomControl={false}
-                  attributionControl={false}
-                  className="admin-weather-leaflet"
-                >
-                  <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                    subdomains={['a', 'b', 'c', 'd']}
-                    maxZoom={20}
-                  />
-                  <WeatherMapControls center={mapDefaults.center} zoom={mapDefaults.zoom} />
-                  {weather.twoHourForecast.areas.map((area) => (
-                    <ForecastAreaMarker key={area.name} area={area} />
-                  ))}
-                  {weather.temperature.stations.map((station) => (
-                    <TemperatureMarker key={station.stationId} station={station} />
-                  ))}
-                </MapContainer>
+                <div className="admin-weather-map-legend">
+                  <div className="admin-weather-map-layer-toggles" role="group" aria-label="Map layer visibility">
+                    <button
+                      type="button"
+                      className={`admin-weather-map-layer-toggle${showMapForecast ? ' is-on' : ''}`}
+                      aria-pressed={showMapForecast}
+                      onClick={() => setShowMapForecast((value) => !value)}
+                    >
+                      <MapLegendForecastIcon kind="partly-cloudy" />
+                      {mapForecastLayer === 'twoHour' ? 'Weather' : 'Weather regions'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-weather-map-layer-toggle${showMapTemperature ? ' is-on' : ''}`}
+                      aria-pressed={showMapTemperature}
+                      onClick={() => setShowMapTemperature((value) => !value)}
+                    >
+                      <i className="is-temp" aria-hidden />
+                      Temperature
+                    </button>
+                  </div>
+                  <div className="admin-weather-map-legend-keys" aria-label="Forecast icon legend">
+                    <span><MapLegendForecastIcon kind="rain" /> Rain</span>
+                    <span><MapLegendForecastIcon kind="thunder" /> Thunder</span>
+                    <span><MapLegendForecastIcon kind="haze" /> Haze / wind</span>
+                  </div>
+                </div>
+                <div className="admin-weather-map-frame">
+                  {showMapForecast && mapForecastLayer === 'twentyFourHour' && mapForecastAreas.length === 0 ? (
+                    <p className="admin-weather-map-layer-empty" role="status">
+                      No regional markers available for the current 24-hour period.
+                    </p>
+                  ) : null}
+                  <MapContainer
+                    center={mapDefaults.center}
+                    zoom={mapDefaults.zoom}
+                    zoomControl={false}
+                    attributionControl={false}
+                    className="admin-weather-leaflet"
+                  >
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                      subdomains={['a', 'b', 'c', 'd']}
+                      maxZoom={20}
+                    />
+                    <WeatherMapControls center={mapDefaults.center} zoom={mapDefaults.zoom} />
+                    {showMapForecast
+                      ? mapForecastAreas.map((area) => (
+                          <ForecastAreaMarker
+                            key={`${mapForecastLayer}-${area.name}`}
+                            area={area}
+                            markerSize={mapForecastMarkerSize}
+                          />
+                        ))
+                      : null}
+                    {showMapTemperature
+                      ? weather.temperature.stations.map((station) => (
+                          <TemperatureMarker key={station.stationId} station={station} />
+                        ))
+                      : null}
+                  </MapContainer>
+                </div>
               </>
             ) : null}
           </section>
