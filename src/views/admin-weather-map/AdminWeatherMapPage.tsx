@@ -960,8 +960,8 @@ function sourceTtlDescription(category: WeatherAdvisoryCategory): string {
   return 'UV index updates every 30 minutes.'
 }
 
-const ADVISORY_GLYPH_SIZE = 28
-const ADVISORY_GLYPH_STROKE = 2.3
+const ADVISORY_GLYPH_SIZE = 36
+const ADVISORY_GLYPH_STROKE = 2.5
 
 function AdvisoryGlyphFrame({
   className,
@@ -1189,19 +1189,19 @@ function AdvisoryRow({ category, title, message, context, kind = 'derived', leve
           <div className="admin-weather-advisory-title-copy">
             <strong>{title}</strong>
             <span>{level}/5 {conditionLabel(level)}</span>
+            <div
+              className="admin-weather-advisory-source-row"
+              aria-label={`Source TTL ${sourceTtlValue(category)}`}
+              title={sourceTtlDescription(category)}
+            >
+              <span>Source TTL</span>
+              <strong>{sourceTtlValue(category)}</strong>
+            </div>
           </div>
         </div>
         <span className={`admin-weather-advisory-badge is-${kind}`}>
           {kind === 'official' ? 'Official' : kind === 'source' ? 'Source' : 'Derived'}
         </span>
-      </div>
-      <div
-        className="admin-weather-advisory-source-row"
-        aria-label={`Source TTL ${sourceTtlValue(category)}`}
-        title={sourceTtlDescription(category)}
-      >
-        <span>Source TTL</span>
-        <strong>{sourceTtlValue(category)}</strong>
       </div>
       <ScoreBar level={level} />
       <ScoreMetricRuler category={category} level={level} />
