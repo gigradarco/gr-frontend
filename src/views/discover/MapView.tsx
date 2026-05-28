@@ -4,7 +4,7 @@ import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CheckCircle, ChevronLeft, Funnel, Heart, Info, Maximize2, Minimize2, Pause, Play, RefreshCw, Share2 } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ExternalLink, Funnel, Heart, Info, Maximize2, Minimize2, Pause, Play, RefreshCw, Share2 } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import { EventShareSheet } from '../../components/EventShareSheet'
 import {
@@ -17,8 +17,6 @@ import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
 import { handleEventImageError } from '../../lib/event-image-fallback'
-import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
-import { useEventPlans } from '../../lib/useEventPlans'
 import type { EventItem } from '../../types'
 
 // ─── Category → accent (mirrors EventCardFeed) ───────────────────────────────
@@ -406,7 +404,6 @@ export function MapView({
   const openSignIn = useAppState((s) => s.openSignIn)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
-  const { isEventPlanned, toggleEventPlan } = useEventPlans()
   const tileUrl =
     theme === 'light'
       ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
@@ -818,9 +815,9 @@ export function MapView({
               <div className="mv-carousel" ref={carouselRef}>
                 {cityEvents.map(({ event }) => {
                   const isSel = selectedId === event.id
-                  const isGoing = isEventPlanned(event.id)
                   const isSaved = isEventFavorited(event.id)
                   const accent = getAccent(event)
+                  const sourceUrl = (event.sourceUrl ?? '').trim()
                   return (
                     <div
                       key={event.id}
@@ -846,59 +843,63 @@ export function MapView({
                         <div className="mv-card-actions">
                           <button
                             type="button"
-                            className={`mv-card-going${isGoing ? ' mv-card-going--active' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (!isGoing) fireGoingCelebration(e.currentTarget)
-                              toggleEventPlan(event.id)
-                            }}
-                          >
-                            {isGoing ? "✓ I'm Going" : "I'm Going"}
-                          </button>
-                          <button
-                            type="button"
                             className="mv-card-details-btn"
-                            aria-label="More details"
                             onClick={(e) => {
                               e.stopPropagation()
                               onMoreDetails(event.id)
                             }}
                           >
                             <Info size={13} strokeWidth={2} aria-hidden />
-                            <span>More Details</span>
+                            <span>View event info</span>
                           </button>
-                          <button
-                            type="button"
-                            className="mv-card-icon-btn"
-                            aria-label="Save event"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (!isAuthenticated) {
-                                openSignIn('Sign in to save this event.')
-                                return
-                              }
-                              toggleFavoriteEvent(toFavoriteEvent(event))
-                            }}
-                          >
-                            <Heart
-                              size={13}
-                              strokeWidth={isSaved ? 2.5 : 2}
-                              fill={isSaved ? accent : 'none'}
-                              color={isSaved ? accent : undefined}
-                              aria-hidden
-                            />
-                          </button>
-                          <button
-                            type="button"
-                            className="mv-card-icon-btn"
-                            aria-label="Share event"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setShareEventTarget(event)
-                            }}
-                          >
-                            <Share2 size={13} strokeWidth={2} aria-hidden />
-                          </button>
+                          <div className="mv-card-icon-row">
+                            <button
+                              type="button"
+                              className="mv-card-icon-grid-btn"
+                              aria-label="Save event"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (!isAuthenticated) {
+                                  openSignIn('Sign in to save this event.')
+                                  return
+                                }
+                                toggleFavoriteEvent(toFavoriteEvent(event))
+                              }}
+                            >
+                              <Heart
+                                size={13}
+                                strokeWidth={isSaved ? 2.5 : 2}
+                                fill={isSaved ? accent : 'none'}
+                                color={isSaved ? accent : undefined}
+                                aria-hidden
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              className="mv-card-icon-grid-btn"
+                              aria-label="View event source"
+                              title="View event source"
+                              disabled={!sourceUrl}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (!sourceUrl) return
+                                window.open(sourceUrl, '_blank', 'noopener,noreferrer')
+                              }}
+                            >
+                              <ExternalLink size={13} strokeWidth={2} aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              className="mv-card-icon-grid-btn"
+                              aria-label="Share event"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShareEventTarget(event)
+                              }}
+                            >
+                              <Share2 size={13} strokeWidth={2} aria-hidden />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
