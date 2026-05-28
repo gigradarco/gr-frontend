@@ -110,7 +110,12 @@ export function mapDiscoverEventListItemToEventItem(item: DiscoverEventListItem 
   }
 }
 
-function discoverEventsUrl(cityId: string, cursor: string | null, filters: DiscoverEventFilters): string {
+function discoverEventsUrl(
+  cityId: string,
+  cursor: string | null,
+  filters: DiscoverEventFilters,
+  refreshNonce?: number,
+): string {
   const params = new URLSearchParams()
   params.set('cityId', cityId)
   params.set('limit', String(DISCOVER_FEED_CONFIG.pageSize))
@@ -128,6 +133,7 @@ function discoverEventsUrl(cityId: string, cursor: string | null, filters: Disco
   }
   if (filters.area !== 'All') params.set('area', filters.area)
   if (filters.price !== 'All') params.set('pricePreset', filters.price)
+  if (refreshNonce) params.set('refresh', String(refreshNonce))
   const base = apiBase()
   const path = `/api/discover/events?${params.toString()}`
   return base ? `${base}${path}` : path
@@ -165,30 +171,38 @@ export async function openDiscoverEventSource(
   sourceUrl?: string | null,
   onFallback?: () => void,
 ) {
-  const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
-  const openTarget = (target: string) => {
-    if (popup) popup.location.replace(target)
-    else window.open(target, '_blank', 'noopener,noreferrer')
+  const toExternalHttpUrl = (value?: string | null): string | null => {
+    const raw = value?.trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return raw
+    if (/^\/\//.test(raw)) return `https:${raw}`
+    if (/^[^\s./]+\.[^\s]+/.test(raw)) return `https://${raw}`
+    return null
   }
 
-  const directUrl = sourceUrl?.trim()
-  if (directUrl) {
-    openTarget(directUrl)
+  const openTarget = (target: string): boolean => {
+    const safeTarget = toExternalHttpUrl(target)
+    if (!safeTarget) return false
+
+    const opened = window.open(safeTarget, '_blank', 'noopener,noreferrer')
+    return Boolean(opened)
+  }
+
+  const directUrl = toExternalHttpUrl(sourceUrl)
+  if (directUrl && openTarget(directUrl)) {
     return
   }
 
   try {
     const detail = await fetchDiscoverEventById(eventId)
-    const resolvedUrl = detail.sourceUrl?.trim()
-    if (resolvedUrl) {
-      openTarget(resolvedUrl)
+    const resolvedUrl = toExternalHttpUrl(detail.sourceUrl)
+    if (resolvedUrl && openTarget(resolvedUrl)) {
       return
     }
   } catch {
     // Fall back below.
   }
 
-  if (popup) popup.close()
   onFallback?.()
 }
 
@@ -202,12 +216,13 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
   const [hasMore, setHasMore] = useState(source !== 'demo')
   const [totalAvailable, setTotalAvailable] = useState<number | null>(source === 'demo' ? demoEvents.length : null)
   const abortRef = useRef<AbortController | null>(null)
+  const refreshNonceRef = useRef(0)
   const pendingCursorRef = useRef<string | null>(null)
   const lastAppendFinishedAtRef = useRef(0)
   const allowDemoFallback = useMemo(() => demoFallbackEnabled(), [])
 
   const fetchPage = useCallback(
-    async (nextCursor: string | null, mode: 'reset' | 'append') => {
+    async (nextCursor: string | null, mode: 'reset' | 'append', forceRefresh = false) => {
       if (source === 'demo') return
       if (pendingCursorRef.current === nextCursor && mode === 'append') return
       pendingCursorRef.current = nextCursor
@@ -224,9 +239,10 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
 
       const controller = mode === 'reset' ? abortRef.current! : new AbortController()
       try {
-        const res = await fetch(discoverEventsUrl(cityId, nextCursor, filters), {
+        const res = await fetch(discoverEventsUrl(cityId, nextCursor, filters, forceRefresh ? refreshNonceRef.current : 0), {
           credentials: 'include',
           signal: controller.signal,
+          cache: 'no-store',
         })
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -301,9 +317,10 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
 
   const refresh = useCallback(() => {
     if (source === 'demo') return
+    refreshNonceRef.current = Date.now()
     setCursor(null)
     setHasMore(true)
-    void fetchPage(null, 'reset')
+    void fetchPage(null, 'reset', true)
   }, [fetchPage, source])
 
   return {

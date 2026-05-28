@@ -165,30 +165,38 @@ export function PlanEventDetail({
   const mapSearchUrl = googleMapsSearchUrl(mapQuery)
 
   const openEventSourceInNewTab = async () => {
-    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
-    const openTarget = (target: string) => {
-      if (popup) popup.location.replace(target)
-      else window.open(target, '_blank', 'noopener,noreferrer')
+    const toExternalHttpUrl = (value?: string | null): string | null => {
+      const raw = value?.trim()
+      if (!raw) return null
+      if (/^https?:\/\//i.test(raw)) return raw
+      if (/^\/\//.test(raw)) return `https:${raw}`
+      if (/^[^\s./]+\.[^\s]+/.test(raw)) return `https://${raw}`
+      return null
     }
 
-    const directUrl = data.sourceUrl?.trim()
-    if (directUrl) {
-      openTarget(directUrl)
+    const openTarget = (target: string): boolean => {
+      const safeTarget = toExternalHttpUrl(target)
+      if (!safeTarget) return false
+
+      const opened = window.open(safeTarget, '_blank', 'noopener,noreferrer')
+      return Boolean(opened)
+    }
+
+    const directUrl = toExternalHttpUrl(data.sourceUrl)
+    if (directUrl && openTarget(directUrl)) {
       return
     }
 
     try {
       const detail = await fetchDiscoverEventById(data.eventId)
-      const resolvedUrl = detail.sourceUrl?.trim()
-      if (resolvedUrl) {
-        openTarget(resolvedUrl)
+      const resolvedUrl = toExternalHttpUrl(detail.sourceUrl)
+      if (resolvedUrl && openTarget(resolvedUrl)) {
         return
       }
     } catch {
       // Fall back below.
     }
 
-    if (popup) popup.close()
     onOpenEvent(data.eventId)
   }
 
