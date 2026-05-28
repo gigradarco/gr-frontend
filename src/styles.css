@@ -17623,6 +17623,23 @@ vite-error-overlay::part(window) {
   color: var(--primary);
 }
 
+/* iPhone SE / narrow phones: allow map-card date to wrap instead of clipping */
+@media (max-width: 380px) {
+  .mv-card-meta-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .mv-card-time {
+    margin-left: auto;
+    max-width: 62%;
+    white-space: normal;
+    text-align: right;
+    line-height: 1.15;
+  }
+}
+
 /* Pin bubbles in light mode: white pill with accent border */
 .theme-light .mv-pin-bubble {
   background: rgba(255, 255, 255, 0.96);
