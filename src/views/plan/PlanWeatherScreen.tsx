@@ -77,40 +77,51 @@ function PlanWeatherCacheControls({
           <small>Cache</small>
           <strong>{formatCacheTtl(cacheMeta.expiresAt)}</strong>
         </div>
-      ) : null}
-      <label
-        className="plan-weather-cache-auto-refresh"
-        title="When enabled, refetch weather after the backend cache expires"
-      >
-        <input
-          type="checkbox"
-          checked={autoRefresh}
-          onChange={(event) => onAutoRefreshChange(event.target.checked)}
-          disabled={isRefreshing}
-        />
-        <span>Auto-refresh</span>
-      </label>
-      <button
-        type="button"
-        className={`plan-weather-cache-refresh${isRefreshing ? ' is-refreshing' : ''}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          if (isRefreshing) return
-          onForceRefresh()
-        }}
-        aria-busy={isRefreshing}
-        aria-disabled={isRefreshing}
-        aria-label={isRefreshing ? 'Refreshing weather cache' : 'Force backend re-cache'}
-        title={isRefreshing ? 'Refreshing weather cache' : 'Force backend re-cache'}
-      >
-        <RefreshCw
-          size={12}
-          strokeWidth={2.4}
-          aria-hidden
-          className={isRefreshing ? 'favorites-refresh-icon is-spinning' : 'favorites-refresh-icon'}
-        />
-        <span>{isRefreshing ? 'Refreshing' : 'Re-cache'}</span>
-      </button>
+      ) : (
+        <span className="plan-weather-cache-meta plan-weather-cache-meta--placeholder" aria-hidden />
+      )}
+      <div className="plan-weather-cache-actions">
+        <label
+          className="plan-weather-cache-auto-refresh"
+          title="When enabled, refetch weather after the backend cache expires"
+        >
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(event) => onAutoRefreshChange(event.target.checked)}
+            disabled={isRefreshing}
+          />
+          <span className="plan-weather-cache-auto-refresh-label plan-weather-cache-auto-refresh-label--long">
+            Auto-refresh
+          </span>
+          <span className="plan-weather-cache-auto-refresh-label plan-weather-cache-auto-refresh-label--short">
+            Auto
+          </span>
+        </label>
+        <button
+          type="button"
+          className={`plan-weather-cache-refresh${isRefreshing ? ' is-refreshing' : ''}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (isRefreshing) return
+            onForceRefresh()
+          }}
+          aria-busy={isRefreshing}
+          aria-disabled={isRefreshing}
+          aria-label={isRefreshing ? 'Refreshing weather cache' : 'Force backend re-cache'}
+          title={isRefreshing ? 'Refreshing weather cache' : 'Force backend re-cache'}
+        >
+          <RefreshCw
+            size={12}
+            strokeWidth={2.4}
+            aria-hidden
+            className={isRefreshing ? 'favorites-refresh-icon is-spinning' : 'favorites-refresh-icon'}
+          />
+          <span className="plan-weather-cache-refresh-label">
+            {isRefreshing ? 'Refreshing' : 'Re-cache'}
+          </span>
+        </button>
+      </div>
     </div>
   )
 }
