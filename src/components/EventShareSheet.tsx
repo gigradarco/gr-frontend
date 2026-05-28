@@ -110,6 +110,7 @@ export function EventShareSheet({
           <div>
             <h3>Share Event</h3>
             <p className="event-share-sub">Send this gig to your friends in one tap.</p>
+            <p className="event-share-head-event">{title}</p>
           </div>
           <button type="button" className="event-share-close" aria-label="Close share sheet" onClick={onClose}>
             <X size={20} strokeWidth={2.4} />
@@ -231,6 +232,9 @@ export function EventShareSheet({
             </div>
           </section>
 
+        </div>
+
+        <div className="event-share-footer">
           <div className="event-share-link-row">
             <input type="text" value={targetUrl} readOnly aria-label="Share link" />
             <div className="event-share-link-actions">

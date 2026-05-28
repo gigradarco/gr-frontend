@@ -804,11 +804,16 @@ export function MapView({
                   </svg>
                 </span>
                 <span className="mv-sheet-handle-bar" aria-hidden />
-                <small>
-                  {mapSheetState === 'expanded'
-                    ? 'Hold down to hide · Tap to shrink'
-                    : 'Hold down to hide · Tap to expand'}
-                </small>
+                <p className="mv-sheet-hint">
+                  <span className="mv-sheet-hint-action mv-sheet-hint-action--hold">Hold down to hide</span>
+                  <span className="mv-sheet-hint-sep" aria-hidden>
+                    {' '}
+                    ·{' '}
+                  </span>
+                  <span className="mv-sheet-hint-action mv-sheet-hint-action--tap">
+                    {mapSheetState === 'expanded' ? 'Tap to shrink' : 'Tap to expand'}
+                  </span>
+                </p>
               </button>
               <div className="mv-carousel" ref={carouselRef}>
                 {cityEvents.map(({ event }) => {

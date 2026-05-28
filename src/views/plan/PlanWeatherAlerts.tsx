@@ -1,12 +1,5 @@
-import {
-  CloudRain,
-  Sun,
-  ThermometerSun,
-  Waves,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react'
 import type { CityWeatherAlert } from '../../lib/event-weather-summary'
+import { WeatherAdvisoryIcon } from '../../lib/weather-advisory-glyphs'
 
 const ALERT_SCALE = [
   { level: 1, label: 'Excellent', tone: 'level-1' },
@@ -16,22 +9,19 @@ const ALERT_SCALE = [
   { level: 5, label: 'Bad', tone: 'level-5' },
 ] as const
 
-const ALERT_ICONS: Record<CityWeatherAlert['category'], LucideIcon> = {
-  flood: Waves,
-  rain: CloudRain,
-  thunder: Zap,
-  heat: ThermometerSun,
-  uv: Sun,
-}
+const PLAN_ALERT_GLYPH_SIZE = 22
+const PLAN_ALERT_GLYPH_STROKE = 2.2
 
 function PlanWeatherAlertCard({ alert }: { alert: CityWeatherAlert }) {
-  const Icon = ALERT_ICONS[alert.category]
-
   return (
     <article className={`plan-weather-alert is-${alert.category} is-level-${alert.level}`}>
       <div className="plan-weather-alert-head">
         <span className="plan-weather-alert-icon" aria-hidden>
-          <Icon size={22} strokeWidth={2.2} />
+          <WeatherAdvisoryIcon
+            category={alert.category}
+            size={PLAN_ALERT_GLYPH_SIZE}
+            strokeWidth={PLAN_ALERT_GLYPH_STROKE}
+          />
         </span>
         <div className="plan-weather-alert-copy">
           <strong>{alert.title}</strong>

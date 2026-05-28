@@ -203,6 +203,26 @@ async function fetchBackendWeather(forceRefresh: boolean, signal?: AbortSignal):
   return res.json() as Promise<SingaporeWeatherMapData>
 }
 
+async function fetchPublicWeatherMap(
+  cityId = 'singapore',
+  forceRefresh = false,
+  signal?: AbortSignal,
+): Promise<SingaporeWeatherMapData> {
+  const params = new URLSearchParams({ cityId: cityId.trim() || 'singapore' })
+  if (forceRefresh) params.set('refresh', '1')
+
+  const res = await fetch(`${apiBase()}/api/weather/event-summary/map?${params.toString()}`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+    throw new Error(body.error ?? body.message ?? `Weather map failed with HTTP ${res.status}`)
+  }
+  return res.json() as Promise<SingaporeWeatherMapData>
+}
+
 export async function getSingaporeWeatherMapData({
   forceRefresh = false,
   signal,
@@ -223,6 +243,19 @@ export async function getSingaporeWeatherMapData({
   }
 
   const next = await fetchBackendWeather(forceRefresh, signal)
+  const stored: StoredSingaporeWeather = { ...next }
+  delete (stored as Partial<SingaporeWeatherMapData>).cacheState
+  memoryCache = stored
+  writeSessionCache(stored)
+  return next
+}
+
+export async function fetchSingaporeWeatherMapForCity(
+  cityId = 'singapore',
+  options: { forceRefresh?: boolean; signal?: AbortSignal } = {},
+): Promise<SingaporeWeatherMapData> {
+  const { forceRefresh = false, signal } = options
+  const next = await fetchPublicWeatherMap(cityId, forceRefresh, signal)
   const stored: StoredSingaporeWeather = { ...next }
   delete (stored as Partial<SingaporeWeatherMapData>).cacheState
   memoryCache = stored

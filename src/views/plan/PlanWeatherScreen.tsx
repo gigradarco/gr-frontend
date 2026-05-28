@@ -19,6 +19,11 @@ import {
   formatOutlookTemperatureRange,
 } from '../../lib/weather-forecast-format'
 import { ForecastMarkerGlyph, forecastMarkerKind } from '../../lib/weather-forecast-icons'
+import {
+  fetchSingaporeWeatherMapForCity,
+  type SingaporeWeatherMapData,
+} from '../../lib/weather-map-data'
+import { SingaporeWeatherMapPanel } from '../../components/weather/SingaporeWeatherMapPanel'
 import { PlanWeatherAlerts } from './PlanWeatherAlerts'
 
 const MIN_REFRESH_SPIN_MS = 650
@@ -144,12 +149,38 @@ function PlanWeatherOutlookDayCard({ day }: { day: CityWeatherOutlookDay }) {
 
 export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
   const [summary, setSummary] = useState<CityWeatherSummary | null>(null)
+  const [mapWeather, setMapWeather] = useState<SingaporeWeatherMapData | null>(null)
+  const [mapLoading, setMapLoading] = useState(true)
+  const [mapError, setMapError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(readWeatherAutoRefreshPreference)
   const summaryRef = useRef<CityWeatherSummary | null>(null)
+  const mapWeatherRef = useRef<SingaporeWeatherMapData | null>(null)
   const requestIdRef = useRef(0)
+  const mapRequestIdRef = useRef(0)
   summaryRef.current = summary
+  mapWeatherRef.current = mapWeather
+
+  const loadMapWeather = useCallback(async (forceRefresh = false, signal?: AbortSignal) => {
+    const requestId = ++mapRequestIdRef.current
+    const isSubsequentLoad = forceRefresh || mapWeatherRef.current !== null
+    if (!isSubsequentLoad) setMapLoading(true)
+    setMapError(null)
+
+    try {
+      const next = await fetchSingaporeWeatherMapForCity('singapore', { forceRefresh, signal })
+      if (signal?.aborted || requestId !== mapRequestIdRef.current) return
+      setMapWeather(next)
+    } catch (error) {
+      if (signal?.aborted || requestId !== mapRequestIdRef.current) return
+      setMapWeather(null)
+      setMapError(error instanceof Error ? error.message : 'Weather map could not load')
+    } finally {
+      if (signal?.aborted || requestId !== mapRequestIdRef.current) return
+      setMapLoading(false)
+    }
+  }, [])
 
   const loadWeather = useCallback(async (forceRefresh = false, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current
@@ -194,22 +225,36 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
   useEffect(() => {
     const controller = new AbortController()
     void loadWeather(false, controller.signal)
+    void loadMapWeather(false, controller.signal)
     return () => controller.abort()
-  }, [loadWeather])
+  }, [loadMapWeather, loadWeather])
 
   useEffect(() => {
-    if (!autoRefresh || !summary?.available || !summary.cacheExpiresAt) return
+    if (!autoRefresh) return
+    const timers: number[] = []
 
-    const expiresAt = new Date(summary.cacheExpiresAt).getTime()
-    if (Number.isNaN(expiresAt)) return
+    if (summary?.available && summary.cacheExpiresAt) {
+      const expiresAt = new Date(summary.cacheExpiresAt).getTime()
+      if (!Number.isNaN(expiresAt)) {
+        timers.push(window.setTimeout(() => {
+          void loadWeather(false)
+        }, Math.max(0, expiresAt - Date.now())))
+      }
+    }
 
-    const delayMs = Math.max(0, expiresAt - Date.now())
-    const timer = window.setTimeout(() => {
-      void loadWeather(false)
-    }, delayMs)
+    if (mapWeather?.cacheExpiresAt) {
+      const expiresAt = new Date(mapWeather.cacheExpiresAt).getTime()
+      if (!Number.isNaN(expiresAt)) {
+        timers.push(window.setTimeout(() => {
+          void loadMapWeather(false)
+        }, Math.max(0, expiresAt - Date.now())))
+      }
+    }
 
-    return () => window.clearTimeout(timer)
-  }, [autoRefresh, summary, loadWeather])
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer)
+    }
+  }, [autoRefresh, loadMapWeather, loadWeather, mapWeather?.cacheExpiresAt, summary])
 
   const nowcastIconKind = useMemo(
     () => (summary?.available ? forecastMarkerKind(summary.condition) : 'cloudy'),
@@ -245,8 +290,11 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
       {summary || !loading ? (
         <PlanWeatherCacheControls
           summary={summary}
-          onForceRefresh={() => void loadWeather(true)}
-          isRefreshing={refreshing}
+          onForceRefresh={() => {
+            void loadWeather(true)
+            void loadMapWeather(true)
+          }}
+          isRefreshing={refreshing || mapLoading}
           autoRefresh={autoRefresh}
           onAutoRefreshChange={handleAutoRefreshChange}
         />
@@ -369,6 +417,12 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
           {(summary.alerts?.length ?? 0) > 0 ? (
             <PlanWeatherAlerts alerts={summary.alerts ?? []} />
           ) : null}
+
+          <SingaporeWeatherMapPanel
+            weather={mapWeather}
+            loading={mapLoading && !mapWeather}
+            error={mapError}
+          />
         </div>
       ) : (
         <div className="favorites-empty">
