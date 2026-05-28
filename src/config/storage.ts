@@ -13,3 +13,4 @@ export const LAST_USED_ACCOUNT_STORAGE_KEY = 'buzo_last_account'
 export const AVATAR_CACHE_STORAGE_KEY = 'gr_avatar_cache'
 
 export const SIGNUP_ONBOARDING_DISMISSED_KEY_PREFIX = 'buzo-signup-onboarding-dismissed:'
+export const BUZO_SELECTED_AGENT_STORAGE_KEY = 'buzo-selected-agent-id'

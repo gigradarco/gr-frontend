@@ -1,3 +1,18 @@
+type BuzoAgentId = 'echo' | 'shade' | 'blaze' | 'noir'
+
+const BUZO_AGENT_IDS: BuzoAgentId[] = ['echo', 'shade', 'blaze', 'noir']
+
+const agentPersonas: Record<BuzoAgentId, string> = {
+  echo:
+    'You are Echo, a social navigator bat. Prioritize crowd momentum, social proof, and where people are actually going tonight. Speak confident and scene-aware.',
+  shade:
+    'You are Shade, a hidden-gem hunter bat. Prioritize underground rooms, off-radar venues, and picks that skip tourist traps. Speak selective and insider.',
+  blaze:
+    'You are Blaze, a peak-energy guide bat. Prioritize high-energy clubs, loud lineups, and main-character nights. Speak bold and urgent.',
+  noir:
+    'You are Noir, an intimate curator bat. Prioritize jazz lounges, cocktail bars, and low-key credible nights. Speak calm, warm, and precise.',
+}
+
 type EventSummary = {
   id: string
   title: string
@@ -11,6 +26,7 @@ type EventSummary = {
 
 type ExploreRequestBody = {
   prompt?: string
+  agentId?: string
   events?: EventSummary[]
 }
 
@@ -59,6 +75,25 @@ function parseModelJson(content: string): ExploreModelResult | null {
   }
 }
 
+function resolveAgentId(raw: string | undefined): BuzoAgentId {
+  if (raw && BUZO_AGENT_IDS.includes(raw as BuzoAgentId)) {
+    return raw as BuzoAgentId
+  }
+  return 'echo'
+}
+
+function buildSystemPrompt(agentId: BuzoAgentId): string {
+  return [
+    agentPersonas[agentId],
+    'You help users decide what to do tonight in Singapore nightlife.',
+    'Use only the provided event list. Recommend exactly one best-match event when possible.',
+    'If nothing fits, say so briefly and still stay in character.',
+    'Respond as strict JSON only (no markdown):',
+    '{"reply":"string","suggestedEventId":"string|null"}',
+    'Keep reply concise, 1-2 sentences, and user-friendly.',
+  ].join(' ')
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
@@ -71,11 +106,13 @@ export default async function handler(req: any, res: any) {
     return
   }
 
-  const { prompt, events } = parseRequestBody(req.body)
+  const { prompt, agentId: rawAgentId, events } = parseRequestBody(req.body)
   if (typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'Missing prompt' })
     return
   }
+
+  const agentId = resolveAgentId(rawAgentId)
 
   const compactEvents = Array.isArray(events)
     ? events.map((event) => ({
@@ -91,13 +128,7 @@ export default async function handler(req: any, res: any) {
     : []
 
   const model = process.env.OPENAI_MODEL || 'gpt-5.4-nano'
-  const systemPrompt = [
-    'You are Buzo assistant for nightlife discovery.',
-    'Use the provided event list to recommend exactly one best-match event if possible.',
-    'Respond as strict JSON only (no markdown):',
-    '{"reply":"string","suggestedEventId":"string|null"}',
-    'Keep reply concise, 1-2 sentences, and user-friendly.',
-  ].join(' ')
+  const systemPrompt = buildSystemPrompt(agentId)
 
   try {
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -6,6 +6,6 @@ export function getDiscoverMapCityCenter(cityId: string): [number, number] {
 }
 
 export function getDiscoverMapCityDefaultZoom(cityId: string): number {
-  if (cityId === 'singapore') return 11.5
+  if (cityId === 'singapore') return 10.8
   return 14
 }

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { CheckCircle, ChevronLeft, ExternalLink, Funnel, Heart, Info, Maximize2, Minimize2, Pause, Play, RefreshCw, Share2 } from 'lucide-react'
 import { LocationCityPickerControl, CityPickerSheet } from '../../components/LocationCityPickerControl'
 import { EventShareSheet } from '../../components/EventShareSheet'
@@ -18,131 +15,9 @@ import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import type { EventItem } from '../../types'
-
-// ─── Category → accent (mirrors EventCardFeed) ───────────────────────────────
-const CATEGORY_ACCENT: Record<string, string> = {
-  'live-music':  '#ff3d00',
-  'club-nights': '#00aaff',
-  'jazz-blues':  '#00cc66',
-  underground:   '#cc00ff',
-  arts:          '#00e5cc',
-  food:          '#ffaa00',
-  popups:        '#0d9488',
-  festivals:     '#9333ea',
-}
-const DEFAULT_ACCENT = '#ff3d00'
-
-const GENRE_TO_CATEGORY: Record<string, string> = {
-  Techno:        'club-nights',
-  'Club Nights': 'club-nights',
-  Jazz:          'jazz-blues',
-  Electronic:    'underground',
-  'Live Music':  'live-music',
-  'Cocktail Bar':'food',
-}
-
-function getAccent(event: EventItem): string {
-  const catId = CATEGORY_ACCENT[event.exploreCategoryId]
-    ? event.exploreCategoryId
-    : GENRE_TO_CATEGORY[event.genre] ?? event.exploreCategoryId
-  return CATEGORY_ACCENT[catId] ?? DEFAULT_ACCENT
-}
-
-function eventLatLng(event: EventItem): [number, number] | null {
-  if (event.lat != null && event.lng != null) return [event.lat, event.lng]
-  return null
-}
-
-function distanceKm(a: [number, number], b: [number, number]): number {
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const R = 6371
-  const dLat = toRad(b[0] - a[0])
-  const dLng = toRad(b[1] - a[1])
-  const lat1 = toRad(a[0])
-  const lat2 = toRad(b[0])
-  const h =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2)
-  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
-}
-
-type Cluster = {
-  items: { event: EventItem; pos: [number, number] }[]
-  center: [number, number]
-}
-
-function clusterByDistance(
-  items: { event: EventItem; pos: [number, number] }[],
-  thresholdKm: number,
-): Cluster[] {
-  const clusters: Cluster[] = []
-  for (const item of items) {
-    let target: Cluster | null = null
-    for (const c of clusters) {
-      if (distanceKm(item.pos, c.center) <= thresholdKm) {
-        target = c
-        break
-      }
-    }
-    if (!target) {
-      clusters.push({ items: [item], center: item.pos })
-      continue
-    }
-    target.items.push(item)
-    const n = target.items.length
-    target.center = [
-      (target.center[0] * (n - 1) + item.pos[0]) / n,
-      (target.center[1] * (n - 1) + item.pos[1]) / n,
-    ]
-  }
-  return clusters
-}
-
-function clusterThresholdKmForZoom(zoom: number): number {
-  if (zoom >= 13.2) return 0
-  if (zoom >= 12.6) return 0.7
-  if (zoom >= 12) return 1.2
-  return 1.8
-}
-
-/**
- * When several events share the exact same coordinates (district fallback or identical venue),
- * fan them out in a small circle so their pins don't stack on top of each other.
- * ~80 m radius at typical zoom — invisible at city scale, obvious at venue zoom.
- */
-function spreadOverlappingPositions(
-  items: { event: EventItem; pos: [number, number] }[],
-): { event: EventItem; pos: [number, number] }[] {
-  const RADIUS_DEG = 0.003 // ≈ 333 m — visible at city zoom (zoom 12-13)
-
-  // Group by rounded position (6 dp ≈ 0.1 m precision)
-  const groups = new Map<string, { event: EventItem; pos: [number, number] }[]>()
-  for (const item of items) {
-    const key = `${item.pos[0].toFixed(6)},${item.pos[1].toFixed(6)}`
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(item)
-  }
-
-  const result: { event: EventItem; pos: [number, number] }[] = []
-  for (const group of groups.values()) {
-    if (group.length === 1) {
-      result.push(group[0]!)
-      continue
-    }
-    // Rotate each pin evenly around the original point, starting from the top
-    group.forEach((item, i) => {
-      const angle = (2 * Math.PI * i) / group.length - Math.PI / 2
-      result.push({
-        ...item,
-        pos: [
-          item.pos[0] + RADIUS_DEG * Math.cos(angle),
-          item.pos[1] + RADIUS_DEG * Math.sin(angle),
-        ],
-      })
-    })
-  }
-  return result
-}
+import { DiscoverMapCanvas } from './map/DiscoverMapCanvas'
+import { eventLatLng, type EventMapPoint } from './map/map-geo'
+import { compactDateTimeLabel, getAccent } from './map/map-pin-html'
 
 function getCityName(cityId: string): string {
   for (const region of LOCATION_REGIONS) {
@@ -150,19 +25,6 @@ function getCityName(cityId: string): string {
     if (city) return city.name
   }
   return cityId
-}
-
-function eventDateTimeLabel(event: EventItem): string {
-  return event.displayDateTimeLabel ?? event.time
-}
-
-function compactDateTimeLabel(event: EventItem): string {
-  const label = eventDateTimeLabel(event).trim()
-  if (!label) return 'TBA'
-  if (/^date tba/i.test(label)) return 'TBA'
-  const tonight = label.match(/^tonight\s+(.+)$/i)
-  if (tonight?.[1]) return tonight[1]
-  return label
 }
 
 function toFavoriteEvent(event: EventItem) {
@@ -174,190 +36,6 @@ function toFavoriteEvent(event: EventItem) {
     image: event.image,
     variant: 'upcoming' as const,
   }
-}
-
-// ─── Pin (Leaflet DivIcon) ───────────────────────────────────────────────────
-function buildPinIcon(event: EventItem, isSelected: boolean): L.DivIcon {
-  const accent = getAccent(event)
-  const markerLabel = compactDateTimeLabel(event)
-  const html = `
-    <div class="mv-pin-stack">
-      <div class="mv-pin-bubble${isSelected ? ' mv-pin-bubble--active' : ''}" style="--pin-accent:${accent};">
-        <span class="mv-pin-time">${escapeHtml(markerLabel)}</span>
-      </div>
-      <div class="mv-pin-tail" style="--pin-accent:${accent};"></div>
-    </div>
-  `
-  return L.divIcon({
-    html,
-    className: 'mv-pin',
-    iconSize: [0, 0],
-    iconAnchor: [0, 0],
-  })
-}
-
-function pickClusterAccent(items: { event: EventItem; pos: [number, number] }[]): string {
-  const counts = new Map<string, number>()
-  for (const item of items) {
-    const accent = getAccent(item.event)
-    counts.set(accent, (counts.get(accent) ?? 0) + 1)
-  }
-  let best = DEFAULT_ACCENT
-  let bestCount = -1
-  for (const [accent, count] of counts) {
-    if (count > bestCount) {
-      best = accent
-      bestCount = count
-    }
-  }
-  return best
-}
-
-function buildClusterPinIcon(count: number, accent: string): L.DivIcon {
-  const html = `
-    <div class="mv-pin-stack">
-      <div class="mv-pin-bubble mv-pin-bubble--cluster" style="--pin-accent:${accent};">
-        <span class="mv-pin-time">${count} events</span>
-      </div>
-      <div class="mv-pin-tail mv-pin-tail--cluster" style="--pin-accent:${accent};"></div>
-    </div>
-  `
-  return L.divIcon({
-    html,
-    className: 'mv-pin',
-    iconSize: [0, 0],
-    iconAnchor: [0, 0],
-  })
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c] as string))
-}
-
-// ─── Fit map to show all pins on first render ─────────────────────────────────
-function FitBounds({
-  positions,
-  onMapClick,
-}: {
-  positions: [number, number][]
-  onMapClick: () => void
-}) {
-  const map = useMap()
-  useEffect(() => {
-    if (positions.length === 0) return
-    if (positions.length === 1) {
-      map.setView(positions[0], 15, { animate: false })
-      return
-    }
-    const bounds = L.latLngBounds(positions)
-    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, animate: false })
-  // Run once on mount only
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    map.on('click', onMapClick)
-    return () => { map.off('click', onMapClick) }
-  }, [map, onMapClick])
-
-  return null
-}
-
-// ─── Helper: fly to a target on selection change ─────────────────────────────
-function FlyToSelected({ target }: { target: [number, number] | null }) {
-  const map = useMap()
-  useEffect(() => {
-    if (target) map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 0.5 })
-  }, [target, map])
-  return null
-}
-
-// ─── Zoom + reset controls ────────────────────────────────────────────────────
-function MapControls({
-  cityCenter,
-  cityDefaultZoom,
-}: {
-  cityCenter: [number, number]
-  cityDefaultZoom: number
-}) {
-  const map = useMap()
-  const prevCityCenterRef = useRef<[number, number] | null>(null)
-  const prevCityZoomRef = useRef<number | null>(null)
-
-  // Recenter only when city defaults actually change (avoid fighting manual zoom/pan).
-  useEffect(() => {
-    const prevCenter = prevCityCenterRef.current
-    const prevZoom = prevCityZoomRef.current
-    const changed =
-      !prevCenter ||
-      prevCenter[0] !== cityCenter[0] ||
-      prevCenter[1] !== cityCenter[1] ||
-      prevZoom !== cityDefaultZoom
-    if (!changed) return
-    prevCityCenterRef.current = cityCenter
-    prevCityZoomRef.current = cityDefaultZoom
-    map.flyTo(cityCenter, cityDefaultZoom, { duration: 0.5 })
-  }, [cityCenter, cityDefaultZoom, map])
-
-  function resetView() {
-    map.flyTo(cityCenter, cityDefaultZoom, { duration: 0.5 })
-  }
-
-  return (
-    <div className="mv-zoom-controls">
-      <button
-        type="button"
-        className="mv-zoom-btn"
-        aria-label="Zoom in"
-        title="Zoom in"
-        onClick={() => map.zoomIn()}
-      >
-        +
-      </button>
-      <button
-        type="button"
-        className="mv-zoom-btn"
-        aria-label="Zoom out"
-        title="Zoom out"
-        onClick={() => map.zoomOut()}
-      >
-        −
-      </button>
-      <div className="mv-zoom-divider" />
-      <button
-        type="button"
-        className="mv-zoom-btn mv-zoom-btn--reset"
-        aria-label="Reset coordinates"
-        title="Reset coordinates"
-        onClick={resetView}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-        </svg>
-      </button>
-    </div>
-  )
-}
-
-function ZoomWatcher({
-  onZoomChange,
-}: {
-  onZoomChange: (zoom: number) => void
-}) {
-  const map = useMapEvents({
-    zoomend: () => {
-      onZoomChange(map.getZoom())
-    },
-  })
-
-  useEffect(() => {
-    onZoomChange(map.getZoom())
-  }, [map, onZoomChange])
-
-  return null
 }
 
 // ─── Main MapView ────────────────────────────────────────────────────────────
@@ -404,10 +82,6 @@ export function MapView({
   const openSignIn = useAppState((s) => s.openSignIn)
   const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
   const isEventFavorited = useAppState((s) => s.isEventFavorited)
-  const tileUrl =
-    theme === 'light'
-      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [localFilters, setLocalFilters] = useState<EventFeedFilters>(filters)
   const [showFilter, setShowFilter] = useState(false)
@@ -416,7 +90,6 @@ export function MapView({
   const [isCycling, setIsCycling] = useState(false)
   const [mapSheetState, setMapSheetState] = useState<MapSheetState>('peek')
   const [holdProgress, setHoldProgress] = useState(0)
-  const [mapZoom, setMapZoom] = useState<number>(11.5)
   const cycleIdxRef = useRef(0)
   const carouselRef = useRef<HTMLDivElement>(null)
   const carouselEndRef = useRef<HTMLDivElement | null>(null)
@@ -436,21 +109,13 @@ export function MapView({
       .filter((e) => e.locationCityId === locationCityId)
       .filter((e) => eventMatchesFilters(e, localFilters))
       .map((e) => ({ event: e, pos: eventLatLng(e) }))
-      .filter((r): r is { event: EventItem; pos: [number, number] } => r.pos != null)
-    return spreadOverlappingPositions(raw)
+      .filter((r): r is EventMapPoint => r.pos != null)
+    return raw
   }, [events, localFilters, locationCityId])
 
-  const cityCenter = getDiscoverMapCityCenter(locationCityId)
-  const cityDefaultZoom = getDiscoverMapCityDefaultZoom(locationCityId)
+  const cityCenter = useMemo(() => getDiscoverMapCityCenter(locationCityId), [locationCityId])
+  const cityDefaultZoom = useMemo(() => getDiscoverMapCityDefaultZoom(locationCityId), [locationCityId])
   const cityName = getCityName(locationCityId)
-  const selected = cityEvents.find((r) => r.event.id === selectedId) ?? null
-  const clusterThresholdKm = useMemo(() => clusterThresholdKmForZoom(mapZoom), [mapZoom])
-  const cityClusters = useMemo(
-    () => (clusterThresholdKm > 0 ? clusterByDistance(cityEvents, clusterThresholdKm) : []),
-    [cityEvents, clusterThresholdKm],
-  )
-
-  const allPositions = useMemo(() => cityEvents.map((r) => r.pos), [cityEvents])
 
   function selectAndScroll(id: string) {
     setSelectedId(id)
@@ -696,60 +361,15 @@ export function MapView({
 
       {/* Map */}
       <div className="mv-map-wrap">
-        <MapContainer
-          center={cityCenter}
-          zoom={cityDefaultZoom}
-          zoomControl={false}
-          attributionControl={false}
-          className="mv-leaflet"
-        >
-          <TileLayer
-            key={theme}
-            url={tileUrl}
-            subdomains={['a', 'b', 'c', 'd']}
-            maxZoom={20}
-          />
-          <ZoomWatcher onZoomChange={setMapZoom} />
-          <FitBounds positions={allPositions} onMapClick={() => setSelectedId(null)} />
-          <FlyToSelected target={selected ? selected.pos : null} />
-          <MapControls cityCenter={cityCenter} cityDefaultZoom={cityDefaultZoom} />
-          {selectedId || clusterThresholdKm <= 0
-            ? cityEvents.map(({ event, pos }) => (
-                <Marker
-                  key={event.id}
-                  position={pos}
-                  icon={buildPinIcon(event, selectedId === event.id)}
-                  eventHandlers={{ click: () => selectAndScroll(event.id) }}
-                  zIndexOffset={selectedId === event.id ? 1000 : 0}
-                />
-              ))
-            : cityClusters.map((cluster) => {
-                if (cluster.items.length === 1) {
-                  const only = cluster.items[0]
-                  return (
-                    <Marker
-                      key={only.event.id}
-                      position={only.pos}
-                      icon={buildPinIcon(only.event, false)}
-                      eventHandlers={{ click: () => selectAndScroll(only.event.id) }}
-                    />
-                  )
-                }
-                return (
-                  <Marker
-                    key={`cluster:${cluster.items.map((i) => i.event.id).join(',')}`}
-                    position={cluster.center}
-                    icon={buildClusterPinIcon(cluster.items.length, pickClusterAccent(cluster.items))}
-                    eventHandlers={{
-                      click: () => {
-                        const first = cluster.items[0]
-                        if (first) selectAndScroll(first.event.id)
-                      },
-                    }}
-                  />
-                )
-              })}
-        </MapContainer>
+        <DiscoverMapCanvas
+          theme={theme}
+          points={cityEvents}
+          selectedId={selectedId}
+          cityCenter={cityCenter}
+          cityDefaultZoom={cityDefaultZoom}
+          onSelectEvent={selectAndScroll}
+          onClearSelection={() => setSelectedId(null)}
+        />
 
         {/* Empty state overlay */}
         {cityEvents.length === 0 && (

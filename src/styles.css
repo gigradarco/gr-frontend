@@ -9498,81 +9498,60 @@ button.taste-tag:focus-visible {
 }
 
 .plan-hub {
-  margin-top: 6px;
-  padding: 12px;
-  border-radius: 24px;
-  border: 1px solid color-mix(in oklab, var(--stroke) 72%, transparent);
-  background:
-    linear-gradient(145deg, color-mix(in oklab, var(--primary) 8%, transparent) 0%, transparent 36%),
-    linear-gradient(180deg, color-mix(in oklab, var(--card) 62%, transparent), color-mix(in oklab, var(--bg) 92%, transparent));
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 5%, transparent),
-    0 16px 34px color-mix(in oklab, black 32%, transparent);
+  margin-top: 2px;
 }
 
 .plan-hub-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  min-height: min(88vw, 360px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .plan-hub-card {
   position: relative;
-  grid-column: span 2;
-  grid-row: span 2;
   isolation: isolate;
   overflow: hidden;
-  min-height: 0;
-  padding: 0;
-  border: 1px solid color-mix(in oklab, var(--primary) 12%, var(--stroke));
-  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 128px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background:
+    radial-gradient(100% 80% at 50% 0%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 62%),
+    linear-gradient(
+      168deg,
+      color-mix(in oklab, var(--card) 90%, var(--bg-elev)) 0%,
+      color-mix(in oklab, var(--card) 74%, var(--bg)) 100%
+    );
   color: var(--text);
+  font: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 6%, transparent),
-    0 14px 28px color-mix(in oklab, black 38%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 5%, transparent);
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.plan-hub-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 8%, transparent),
-    0 18px 36px color-mix(in oklab, black 42%, transparent);
+.plan-hub-card > :not(.plan-hub-card-shine) {
+  position: relative;
+  z-index: 1;
 }
 
-.plan-hub-card:active {
-  transform: translateY(0);
-}
-
-.plan-hub-card:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--primary) 60%, white);
-  outline-offset: 3px;
-}
-
-.plan-hub-card-ambient,
 .plan-hub-card-shine {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-}
-
-.plan-hub-card-ambient {
   z-index: 0;
-  opacity: 0.84;
-}
-
-.plan-hub-card-shine {
-  z-index: 1;
   overflow: hidden;
-  opacity: 1;
+  pointer-events: none;
   mix-blend-mode: screen;
+  background: linear-gradient(180deg, color-mix(in oklab, white 5%, transparent), transparent 38%);
 }
 
 .plan-hub-card-shine::before {
@@ -9622,120 +9601,150 @@ button.taste-tag:focus-visible {
   }
 }
 
-.plan-hub-card-body {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 7px;
-  height: 100%;
-  min-height: 100%;
-  padding: 16px;
-  box-sizing: border-box;
+@media (prefers-reduced-motion: reduce) {
+  .plan-hub-card:hover .plan-hub-card-shine::before {
+    animation: none;
+  }
+}
+
+.plan-hub-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 7%, transparent),
+    0 10px 24px color-mix(in oklab, black 28%, transparent);
+}
+
+.plan-hub-card:active {
+  transform: translateY(0);
+}
+
+.plan-hub-card:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .plan-hub-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   margin-bottom: auto;
-  border-radius: 14px;
-  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--stroke));
-  background: color-mix(in oklab, var(--bg-elev) 72%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 8%, transparent),
-    0 8px 16px color-mix(in oklab, black 24%, transparent);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 .plan-hub-card-kicker {
   font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in oklab, white 58%, var(--muted));
+  color: color-mix(in oklab, var(--primary) 72%, var(--muted));
 }
 
 .plan-hub-card-title {
-  font-size: clamp(1rem, 4.2vw, 1.2rem);
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: clamp(0.92rem, 3.6vw, 1.02rem);
   font-weight: 800;
-  line-height: 1.18;
+  line-height: 1.22;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
   text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .plan-hub-card-meta {
   font-size: 0.72rem;
   line-height: 1.35;
-  color: color-mix(in oklab, white 52%, var(--muted));
+  color: var(--muted);
 }
 
 .plan-hub-card--weather {
-  border-color: color-mix(in oklab, #8fb9c8 22%, var(--stroke));
+  border-color: color-mix(in oklab, #8fb9c8 20%, var(--stroke));
   background:
-    linear-gradient(150deg, color-mix(in oklab, #8fb9c8 34%, #151b23) 0%, color-mix(in oklab, #8fb9c8 18%, #111722) 46%, #0d131d 100%),
-    linear-gradient(180deg, #212834 0%, #171f2b 52%, #101824 100%);
-}
-
-.plan-hub-card--weather .plan-hub-card-ambient {
-  background:
-    linear-gradient(135deg, color-mix(in oklab, #8fb9c8 16%, #131a24) 0%, color-mix(in oklab, #8fb9c8 28%, #121a25) 58%, color-mix(in oklab, #8fb9c8 12%, #0f1620) 100%),
-    linear-gradient(180deg, color-mix(in oklab, var(--primary) 16%, #131b26), color-mix(in oklab, var(--primary) 8%, #101722) 54%);
+    radial-gradient(115% 90% at 100% 0%, color-mix(in oklab, #8fb9c8 18%, transparent), transparent 58%),
+    radial-gradient(85% 75% at 0% 100%, color-mix(in oklab, #1d4291 14%, transparent), transparent 64%),
+    linear-gradient(
+      168deg,
+      color-mix(in oklab, var(--card) 88%, #151b23) 0%,
+      color-mix(in oklab, var(--bg) 82%, #0d131d) 100%
+    );
 }
 
 .plan-hub-card--weather .plan-hub-card-shine {
-  background: linear-gradient(180deg, color-mix(in oklab, white 7%, transparent), transparent 34%);
+  background: linear-gradient(180deg, color-mix(in oklab, #8fb9c8 7%, transparent), transparent 40%);
+}
+
+.plan-hub-card--weather .plan-hub-card-kicker {
+  color: color-mix(in oklab, #8fb9c8 72%, var(--muted));
 }
 
 .plan-hub-card--weather .plan-hub-card-icon {
-  color: #b8d4dc;
-  background: color-mix(in oklab, #8fb9c8 14%, var(--bg-elev));
-  border-color: color-mix(in oklab, #8fb9c8 28%, var(--stroke));
-}
-
-.plan-hub-card--weather .plan-hub-card-title {
-  color: #f4f5f7;
+  color: color-mix(in oklab, #8fb9c8 82%, white);
+  border-color: color-mix(in oklab, #8fb9c8 28%, rgba(255, 255, 255, 0.14));
+  background: color-mix(in oklab, #8fb9c8 10%, rgba(255, 255, 255, 0.06));
 }
 
 .plan-hub-card--weather:hover {
-  border-color: color-mix(in oklab, #8fb9c8 42%, var(--primary));
+  border-color: color-mix(in oklab, #8fb9c8 38%, var(--stroke));
+  background:
+    radial-gradient(115% 90% at 100% 0%, color-mix(in oklab, #8fb9c8 24%, transparent), transparent 58%),
+    radial-gradient(85% 75% at 0% 100%, color-mix(in oklab, #1d4291 18%, transparent), transparent 64%),
+    linear-gradient(
+      168deg,
+      color-mix(in oklab, var(--card) 92%, #151b23) 0%,
+      color-mix(in oklab, var(--bg) 86%, #0d131d) 100%
+    );
 }
 
 .plan-hub-card--scheduled {
-  border-color: color-mix(in oklab, var(--primary-soft) 34%, var(--stroke));
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--stroke));
   background:
-    linear-gradient(150deg, color-mix(in oklab, var(--primary) 46%, #1f120f) 0%, color-mix(in oklab, var(--primary) 26%, #180f0d) 48%, #120b09 100%),
-    linear-gradient(180deg, #2b1714 0%, #1f1310 52%, #140c0a 100%);
-}
-
-.plan-hub-card--scheduled .plan-hub-card-ambient {
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--primary-soft) 30%, #1a100e) 0%, color-mix(in oklab, var(--primary-soft) 16%, #140d0b) 50%),
-    linear-gradient(180deg, color-mix(in oklab, var(--primary) 22%, #1f1210), color-mix(in oklab, var(--primary) 11%, #140d0b) 56%);
+    radial-gradient(115% 90% at 0% 0%, color-mix(in oklab, var(--primary) 20%, transparent), transparent 55%),
+    radial-gradient(80% 70% at 100% 100%, color-mix(in oklab, var(--primary-soft) 12%, transparent), transparent 62%),
+    linear-gradient(
+      168deg,
+      color-mix(in oklab, var(--card) 86%, #1a100e) 0%,
+      color-mix(in oklab, var(--bg) 84%, #120b09) 100%
+    );
 }
 
 .plan-hub-card--scheduled .plan-hub-card-shine {
-  background: linear-gradient(180deg, color-mix(in oklab, #fdba74 8%, transparent), transparent 36%);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--primary-soft) 7%, transparent), transparent 40%);
+}
+
+.plan-hub-card--scheduled .plan-hub-card-kicker {
+  color: color-mix(in oklab, var(--primary) 78%, var(--muted));
 }
 
 .plan-hub-card--scheduled .plan-hub-card-icon {
-  color: #ffb49f;
-  background: color-mix(in oklab, var(--primary) 13%, var(--bg-elev));
-  border-color: color-mix(in oklab, var(--primary-soft) 30%, var(--stroke));
+  color: var(--primary-soft);
+  border-color: color-mix(in oklab, var(--primary) 32%, rgba(255, 255, 255, 0.14));
+  background: color-mix(in oklab, var(--primary) 12%, rgba(255, 255, 255, 0.06));
 }
 
 .plan-hub-card--scheduled .plan-hub-card-title {
-  font-size: clamp(1.65rem, 7vw, 2rem);
+  font-size: clamp(1.55rem, 6.5vw, 1.85rem);
   line-height: 1;
-  color: #fff7ed;
+  -webkit-line-clamp: 1;
 }
 
 .plan-hub-card--scheduled:hover {
-  border-color: color-mix(in oklab, var(--primary-soft) 52%, var(--stroke));
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--stroke));
+  background:
+    radial-gradient(115% 90% at 0% 0%, color-mix(in oklab, var(--primary) 26%, transparent), transparent 55%),
+    radial-gradient(80% 70% at 100% 100%, color-mix(in oklab, var(--primary-soft) 16%, transparent), transparent 62%),
+    linear-gradient(
+      168deg,
+      color-mix(in oklab, var(--card) 90%, #1a100e) 0%,
+      color-mix(in oklab, var(--bg) 88%, #120b09) 100%
+    );
 }
 
 .plan-subscreen {
@@ -10802,22 +10811,9 @@ button.taste-tag:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .plan-hub-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(8, minmax(0, 1fr));
-    min-height: 0;
-  }
-
-  .plan-hub-card--weather {
-    grid-column: 1 / -1;
-    grid-row: 1 / span 4;
-    min-height: 150px;
-  }
-
-  .plan-hub-card--scheduled {
-    grid-column: 1 / -1;
-    grid-row: 5 / span 4;
-    min-height: 150px;
+  .plan-hub-card {
+    min-height: 120px;
+    padding: 12px;
   }
 }
 
@@ -11263,78 +11259,68 @@ button.taste-tag:focus-visible {
 }
 
 .theme-light .plan-hub {
-  border-color: rgba(0, 0, 0, 0.06);
-  background:
-    radial-gradient(120% 90% at 0% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 58%),
-    radial-gradient(90% 70% at 100% 100%, color-mix(in oklab, #3b82f6 8%, transparent), transparent 62%),
-    linear-gradient(180deg, #f8fafc, #eef2f7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 16px 34px rgba(15, 23, 42, 0.08);
+  /* Cards sit directly on the page — no wrapper chrome */
 }
 
 .theme-light .plan-hub-card {
+  border-color: var(--stroke);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.theme-light .plan-hub-card:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 14px 28px rgba(15, 23, 42, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .theme-light .plan-hub-card--weather {
   background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.48) 0%, transparent 46%),
-    linear-gradient(165deg, #d8e3f2 0%, #b8cbe4 42%, #8faed4 100%);
-  border-color: color-mix(in oklab, #2563eb 18%, rgba(15, 23, 42, 0.14));
+    radial-gradient(110% 85% at 100% 0%, rgba(59, 130, 246, 0.14), transparent 58%),
+    radial-gradient(80% 70% at 0% 100%, rgba(99, 102, 241, 0.08), transparent 64%),
+    linear-gradient(168deg, #f8fafc 0%, #eef2f7 100%);
 }
 
-.theme-light .plan-hub-card--weather .plan-hub-card-ambient {
+.theme-light .plan-hub-card--weather:hover {
+  border-color: color-mix(in oklab, #2563eb 28%, var(--stroke));
   background:
-    radial-gradient(90% 80% at 100% 0%, rgba(59, 130, 246, 0.17), transparent 62%),
-    radial-gradient(70% 60% at 0% 100%, rgba(99, 102, 241, 0.09), transparent 66%);
+    radial-gradient(110% 85% at 100% 0%, rgba(59, 130, 246, 0.18), transparent 58%),
+    radial-gradient(80% 70% at 0% 100%, rgba(99, 102, 241, 0.1), transparent 64%),
+    linear-gradient(168deg, #ffffff 0%, #eef2f7 100%);
 }
 
-.theme-light .plan-hub-card--weather .plan-hub-card-title {
-  color: #0f172a;
-  text-shadow: none;
-}
-
-.theme-light .plan-hub-card--weather .plan-hub-card-kicker,
-.theme-light .plan-hub-card--weather .plan-hub-card-meta {
-  color: #475569;
+.theme-light .plan-hub-card--weather .plan-hub-card-kicker {
+  color: color-mix(in oklab, #2563eb 55%, var(--muted));
 }
 
 .theme-light .plan-hub-card--weather .plan-hub-card-icon {
-  color: #2b4f86;
-  background: rgba(255, 255, 255, 0.58);
-  border-color: rgba(59, 130, 246, 0.16);
+  color: #2563eb;
+  border-color: color-mix(in oklab, #2563eb 22%, var(--stroke));
+  background: color-mix(in oklab, #2563eb 8%, var(--bg-elev));
 }
 
 .theme-light .plan-hub-card--scheduled {
   background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.48) 0%, transparent 46%),
-    linear-gradient(165deg, #f5e4cf 0%, #e6be93 40%, #cb8453 100%);
-  border-color: color-mix(in oklab, var(--primary) 20%, rgba(15, 23, 42, 0.14));
+    radial-gradient(110% 85% at 0% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 55%),
+    radial-gradient(80% 70% at 100% 100%, rgba(251, 146, 60, 0.08), transparent 62%),
+    linear-gradient(168deg, #faf8f6 0%, #f3eeea 100%);
 }
 
-.theme-light .plan-hub-card--scheduled .plan-hub-card-ambient {
+.theme-light .plan-hub-card--scheduled:hover {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--stroke));
   background:
-    radial-gradient(95% 85% at 100% 0%, rgba(251, 146, 60, 0.2), transparent 62%),
-    radial-gradient(75% 65% at 0% 100%, rgba(251, 191, 36, 0.1), transparent 68%);
+    radial-gradient(110% 85% at 0% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 55%),
+    radial-gradient(80% 70% at 100% 100%, rgba(251, 146, 60, 0.1), transparent 62%),
+    linear-gradient(168deg, #ffffff 0%, #f3eeea 100%);
 }
 
-.theme-light .plan-hub-card--scheduled .plan-hub-card-title {
-  color: #431407;
-  text-shadow: none;
-}
-
-.theme-light .plan-hub-card--scheduled .plan-hub-card-kicker,
-.theme-light .plan-hub-card--scheduled .plan-hub-card-meta {
-  color: #6b3420;
+.theme-light .plan-hub-card--scheduled .plan-hub-card-kicker {
+  color: color-mix(in oklab, var(--primary) 65%, var(--muted));
 }
 
 .theme-light .plan-hub-card--scheduled .plan-hub-card-icon {
-  color: #7a3a20;
-  background: rgba(255, 255, 255, 0.58);
-  border-color: rgba(234, 88, 12, 0.16);
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 10%, var(--bg-elev));
 }
 
 .plan-cta-primary--disabled {
@@ -13692,6 +13678,44 @@ button.taste-tag:focus-visible {
   flex-shrink: 0;
 }
 
+.discover-secondary-header:has(.discover-agent-change-back) {
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.discover-agent-change-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 10px 0 4px;
+  min-height: 36px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card) 60%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.2s ease;
+}
+
+.discover-agent-change-back:hover {
+  background: var(--card);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
+}
+
+.discover-agent-change-heading {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .discover-more-row {
   display: flex;
   align-items: center;
@@ -13738,7 +13762,7 @@ button.taste-tag:focus-visible {
 /* Discover — agent reply source: beside New chat */
 .discover-agent-mode-hint {
   flex-shrink: 0;
-  padding: 0 2px 0 0;
+  padding: 0 2px;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -14109,6 +14133,16 @@ button.taste-tag:focus-visible {
   overflow-y: visible;
   justify-content: center;
   align-items: center;
+}
+
+.discover-layla-scroll--advisor {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.discover-layla-scroll--advisor .buzo-agent-advisor-describe {
+  position: relative;
+  z-index: 1;
 }
 
 /* Empty state centred content */
@@ -16971,6 +17005,7 @@ vite-error-overlay::part(window) {
   isolation: isolate;
 }
 
+.mv-maplibre,
 .mv-leaflet {
   position: absolute;
   inset: 0;
@@ -16980,10 +17015,36 @@ vite-error-overlay::part(window) {
   z-index: 0;
 }
 
+.mv-maplibre .maplibregl-canvas {
+  background: #0a0a0a;
+}
+
+.mv-maplibre .maplibregl-marker {
+  will-change: transform;
+}
+
+.mv-map-error {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 920;
+  transform: translate(-50%, -50%);
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(15, 16, 20, 0.82);
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* Pin styles */
 .mv-pin {
   background: transparent !important;
   border: none !important;
+  cursor: pointer;
 }
 
 .mv-pin-stack {
@@ -17025,6 +17086,24 @@ vite-error-overlay::part(window) {
   color: var(--pin-accent);
   padding: 5px 11px;
   border-radius: 10px;
+}
+
+.mv-pin-bubble--compact-cluster {
+  min-width: 30px;
+  height: 30px;
+  justify-content: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.mv-pin-bubble--compact-cluster .mv-pin-time {
+  font-size: 11px;
+}
+
+.mv-pin-stack--compact-cluster .mv-pin-tail {
+  display: none;
 }
 
 @keyframes mv-pin-pulse {
@@ -17527,6 +17606,11 @@ vite-error-overlay::part(window) {
 
 /* ─── MapView – light mode overrides ────────────────────────────────────── */
 .theme-light .mv-root {
+  background: #f4f6fa;
+}
+
+.theme-light .mv-maplibre,
+.theme-light .mv-maplibre .maplibregl-canvas {
   background: #f4f6fa;
 }
 
@@ -18446,4 +18530,810 @@ vite-error-overlay::part(window) {
   .going-celebration {
     display: none;
   }
+}
+
+/* ─── Buzo agent picker (Ask Buzo) ─────────────────────────────────────────── */
+
+.buzo-agent-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 4px 20px;
+  min-height: 100%;
+}
+
+.buzo-agent-picker-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.buzo-agent-picker-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--primary) 72%, var(--muted));
+}
+
+.buzo-agent-picker-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.buzo-agent-picker-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.buzo-agent-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.buzo-agent-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 28%, var(--stroke));
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--card)),
+      var(--card)
+    );
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buzo-agent-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 48%, var(--stroke));
+  box-shadow: 0 10px 28px color-mix(in oklab, var(--agent-accent, var(--primary)) 18%, transparent);
+}
+
+.buzo-agent-card:active {
+  transform: translateY(0);
+}
+
+.buzo-agent-card--selected {
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 62%, var(--stroke));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--agent-accent, var(--primary)) 28%, transparent),
+    0 10px 28px color-mix(in oklab, var(--agent-accent, var(--primary)) 22%, transparent);
+}
+
+.buzo-agent-picker--change {
+  padding-top: 4px;
+  min-height: 0;
+  gap: 14px;
+}
+
+.buzo-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buzo-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buzo-agent-row:hover {
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 36%, var(--stroke));
+  background: var(--card);
+}
+
+.buzo-agent-row--selected {
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 52%, var(--stroke));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--agent-accent, var(--primary)) 12%, var(--card)),
+      var(--card)
+    );
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, transparent);
+}
+
+.buzo-agent-row-glyph {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--bg));
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.buzo-agent-row-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.buzo-agent-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.buzo-agent-row-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.buzo-agent-row-current {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 18%, transparent);
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 82%, var(--text));
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.buzo-agent-row-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 72%, var(--muted));
+}
+
+.buzo-agent-row-tagline {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.buzo-agent-row-check {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 18%, transparent);
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 88%, var(--text));
+}
+
+.buzo-agent-card-glyph {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.buzo-agent-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.buzo-agent-card-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 78%, var(--text));
+}
+
+.buzo-agent-card-tagline {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.buzo-agent-card-description {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.discover-agent-badge {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: min(68vw, 236px);
+  margin: 0;
+  min-height: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 60%, transparent);
+  box-shadow: none;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.discover-agent-badge-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 8px 0 10px;
+  border: none;
+  background: transparent;
+}
+
+.discover-agent-badge--button {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.2s ease;
+}
+
+.discover-agent-badge:hover {
+  background: var(--card);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
+}
+
+.discover-agent-badge-main:active {
+  background: color-mix(in oklab, var(--card) 88%, var(--bg));
+}
+
+.discover-agent-badge-main:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.discover-agent-badge-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.discover-agent-badge-remove:hover {
+  background: color-mix(in oklab, #ff4d4d 12%, transparent);
+  color: #ff6b6b;
+}
+
+.discover-agent-badge-remove:active {
+  background: color-mix(in oklab, #ff4d4d 18%, transparent);
+}
+
+.discover-agent-badge-remove:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.buzo-agent-remove-confirm-overlay {
+  z-index: 220;
+}
+
+.discover-agent-badge-glyph {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.discover-agent-badge-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.discover-agent-badge-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text);
+}
+
+.discover-agent-badge-title {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-new-chat-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 360px) {
+  .buzo-agent-picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Buzo agent matchmaker (advisor) ──────────────────────────────────────── */
+
+.buzo-agent-help-choose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in oklab, var(--primary) 42%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  color: color-mix(in oklab, var(--primary-soft) 88%, var(--text));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buzo-agent-help-choose:hover {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 58%, var(--stroke));
+}
+
+.buzo-agent-advisor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 4px 16px;
+}
+
+.buzo-agent-advisor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.buzo-agent-advisor-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 10px 0 4px;
+  min-height: 34px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card) 60%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.buzo-agent-advisor-brand {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--primary) 34%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  color: var(--primary-soft);
+}
+
+.buzo-agent-advisor-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.buzo-agent-advisor-eyebrow,
+.buzo-agent-advisor-progress + .buzo-agent-advisor-step .buzo-agent-advisor-question {
+  margin: 0;
+}
+
+.buzo-agent-advisor-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--primary) 72%, var(--muted));
+}
+
+.buzo-agent-advisor-title {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.buzo-agent-advisor-sub {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.buzo-agent-advisor-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buzo-agent-advisor-progress-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted) 24%, transparent);
+}
+
+.buzo-agent-advisor-progress-dot--active {
+  background: linear-gradient(90deg, var(--primary-soft), var(--primary));
+}
+
+.buzo-agent-advisor-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buzo-agent-advisor-question {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.buzo-agent-advisor-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.buzo-agent-advisor-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.buzo-agent-advisor-option:hover {
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
+  background: var(--card);
+}
+
+.buzo-agent-advisor-option-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.buzo-agent-advisor-option-sub {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.buzo-agent-advisor-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buzo-agent-advisor-result-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 42%, var(--stroke));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--agent-accent, var(--primary)) 12%, var(--card)),
+      var(--card)
+    );
+}
+
+.buzo-agent-advisor-result-glyph {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--bg));
+  font-size: 1.25rem;
+}
+
+.buzo-agent-advisor-result-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.buzo-agent-advisor-result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.buzo-agent-advisor-result-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.buzo-agent-advisor-result-match {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 42%, var(--stroke));
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 12%, var(--bg));
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 82%, var(--text));
+  line-height: 1;
+}
+
+.buzo-agent-advisor-result-match-value {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.buzo-agent-advisor-result-match-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.88;
+}
+
+.buzo-agent-advisor-result-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 72%, var(--muted));
+}
+
+.buzo-agent-advisor-result-reason {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.buzo-agent-advisor-choose {
+  min-height: 42px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--primary-soft), var(--primary));
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buzo-agent-advisor-retry {
+  min-height: 38px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.buzo-agent-advisor-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buzo-agent-advisor-path {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.buzo-agent-advisor-path:hover {
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--stroke));
+  background: var(--card);
+}
+
+.buzo-agent-advisor-path--agentic {
+  border-color: color-mix(in oklab, var(--primary) 34%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+
+.buzo-agent-advisor-path-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 80%, var(--bg));
+  color: var(--primary-soft);
+}
+
+.buzo-agent-advisor-path-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.buzo-agent-advisor-path-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.buzo-agent-advisor-path-sub {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.buzo-agent-advisor-switch {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: color-mix(in oklab, var(--primary-soft) 88%, var(--text));
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.buzo-agent-advisor-describe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buzo-agent-advisor-describe-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.buzo-agent-advisor-describe-input {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: max(16px, 0.88rem);
+  line-height: 1.45;
+  resize: vertical;
+  touch-action: auto;
+  -webkit-user-select: text;
+  user-select: text;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.buzo-agent-advisor-describe-input:focus {
+  outline: 2px solid color-mix(in oklab, var(--primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.buzo-agent-advisor-describe-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--primary-soft), var(--primary));
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buzo-agent-advisor-describe-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.buzo-agent-advisor-result-source {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.buzo-agent-advisor-result-source--live {
+  color: color-mix(in oklab, #22c55e 82%, var(--text));
+}
+
+.buzo-agent-advisor-result-source--offline {
+  color: var(--muted);
 }

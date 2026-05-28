@@ -26,18 +26,15 @@ export function PlanHub({
           onClick={onOpenWeather}
           aria-label="Open weather"
         >
-          <span className="plan-hub-card-ambient" aria-hidden />
           <span className="plan-hub-card-shine" aria-hidden />
-          <span className="plan-hub-card-body">
-            <span className="plan-hub-card-icon" aria-hidden>
-              <CloudSun size={26} strokeWidth={2.1} />
-            </span>
-            <span className="plan-hub-card-kicker">Weather</span>
-            <strong className="plan-hub-card-title">
-              {weatherLoading ? 'Loading…' : weatherPreview}
-            </strong>
-            <small className="plan-hub-card-meta">2-hour nowcast · Singapore</small>
+          <span className="plan-hub-card-icon" aria-hidden>
+            <CloudSun size={20} strokeWidth={2.25} />
           </span>
+          <span className="plan-hub-card-kicker">Weather</span>
+          <strong className="plan-hub-card-title">
+            {weatherLoading ? 'Loading…' : weatherPreview}
+          </strong>
+          <small className="plan-hub-card-meta">2-hour nowcast · Singapore</small>
         </button>
 
         <button
@@ -46,18 +43,15 @@ export function PlanHub({
           onClick={onOpenScheduled}
           aria-label="Open scheduled events"
         >
-          <span className="plan-hub-card-ambient" aria-hidden />
           <span className="plan-hub-card-shine" aria-hidden />
-          <span className="plan-hub-card-body">
-            <span className="plan-hub-card-icon" aria-hidden>
-              <CalendarDays size={26} strokeWidth={2.1} />
-            </span>
-            <span className="plan-hub-card-kicker">Scheduled</span>
-            <strong className="plan-hub-card-title">{upcomingCount}</strong>
-            <small className="plan-hub-card-meta">
-              Upcoming · {pastCount} past
-            </small>
+          <span className="plan-hub-card-icon" aria-hidden>
+            <CalendarDays size={20} strokeWidth={2.25} />
           </span>
+          <span className="plan-hub-card-kicker">Scheduled</span>
+          <strong className="plan-hub-card-title">{upcomingCount}</strong>
+          <small className="plan-hub-card-meta">
+            Upcoming · {pastCount} past
+          </small>
         </button>
       </div>
     </div>

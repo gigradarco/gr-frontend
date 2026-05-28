@@ -37,6 +37,14 @@ export default defineConfig({
           if (id.includes('/framer-motion/')) return 'vendor-motion'
           if (id.includes('/@tanstack/') || id.includes('/@trpc/')) return 'vendor-api'
           if (id.includes('/lucide-react/')) return 'vendor-icons'
+          if (
+            id.includes('/maplibre-gl/') ||
+            id.includes('/react-map-gl/') ||
+            id.includes('/@vis.gl/react-maplibre/') ||
+            id.includes('/supercluster/')
+          ) {
+            return 'vendor-maplibre'
+          }
           if (id.includes('/leaflet/') || id.includes('/react-leaflet/')) return 'vendor-map'
         },
       },

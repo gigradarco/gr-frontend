@@ -34,11 +34,19 @@ import {
   normalizePrompt,
 } from './discoverAgent'
 import { LaylaAttachDropdown } from '../../components/LaylaAttachDropdown'
+import { getBuzoAgent, type BuzoAgentId } from '../../config/buzoAgents'
+import {
+  readSelectedBuzoAgentId,
+  writeSelectedBuzoAgentId,
+  clearSelectedBuzoAgentId,
+} from '../../lib/buzo-agent-preference'
 import { api } from '../../lib/trpc'
 import { getAccessToken } from '../../lib/session'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
 import type { EventItem } from '../../types'
+import { BuzoAgentPicker } from './BuzoAgentPicker'
+import { BuzoAgentRemoveConfirmDialog } from './BuzoAgentRemoveConfirmDialog'
 
 type DiscoverTabProps = {
   onOpenEvent: (eventId: string) => void
@@ -100,6 +108,16 @@ export function DiscoverTab({
   const [discoverMoreOpen, setDiscoverMoreOpen] = useState(false)
   /** Thread-mode composer: user can expand for more visible typing area */
   const [composerExpanded, setComposerExpanded] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useState<BuzoAgentId | null>(() =>
+    readSelectedBuzoAgentId(),
+  )
+  const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false)
+  const [isAgentAdvisorOpen, setIsAgentAdvisorOpen] = useState(false)
+  const [showRemoveAgentConfirm, setShowRemoveAgentConfirm] = useState(false)
+  const selectedAgent = useMemo(
+    () => (selectedAgentId ? getBuzoAgent(selectedAgentId) : null),
+    [selectedAgentId],
+  )
 
   const tryAskingLabelId = useId()
   const requestCounter = useRef(0)
@@ -137,6 +155,52 @@ export function DiscoverTab({
       )
     )
   }, [submittedPrompt, status, resultMode, agentReply, agentEventId, usedDemoFallback, currentConversationId])
+
+  const handleSelectAgent = (agentId: BuzoAgentId) => {
+    const changed = selectedAgentId !== null && selectedAgentId !== agentId
+    writeSelectedBuzoAgentId(agentId)
+    setSelectedAgentId(agentId)
+    setIsAgentPickerOpen(false)
+    if (changed) {
+      handleNewChat()
+    }
+  }
+
+  const openAgentPicker = () => {
+    setDiscoverMoreOpen(false)
+    setIsAgentAdvisorOpen(false)
+    setIsAgentPickerOpen(true)
+  }
+
+  const closeAgentPicker = () => {
+    setIsAgentPickerOpen(false)
+    setIsAgentAdvisorOpen(false)
+  }
+
+  const requestRemoveAgent = () => {
+    setDiscoverMoreOpen(false)
+    setShowRemoveAgentConfirm(true)
+  }
+
+  const cancelRemoveAgent = () => {
+    setShowRemoveAgentConfirm(false)
+  }
+
+  const confirmRemoveAgent = () => {
+    clearSelectedBuzoAgentId()
+    setSelectedAgentId(null)
+    setShowRemoveAgentConfirm(false)
+    closeAgentPicker()
+    handleNewChat()
+  }
+
+  const handleChangeHeaderBack = () => {
+    if (isAgentAdvisorOpen) {
+      setIsAgentAdvisorOpen(false)
+      return
+    }
+    closeAgentPicker()
+  }
 
   const handleNewChat = () => {
     setInputValue('')
@@ -188,6 +252,7 @@ export function DiscoverTab({
     [conversations, pendingDeleteConvId],
   )
 
+
   useEffect(() => {
     if (!pendingDeleteConvId) return
     const onKey = (e: KeyboardEvent) => {
@@ -196,6 +261,15 @@ export function DiscoverTab({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [pendingDeleteConvId])
+
+  useEffect(() => {
+    if (!showRemoveAgentConfirm) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowRemoveAgentConfirm(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showRemoveAgentConfirm])
 
   const handleStartRename = (conv: Conversation, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -251,7 +325,7 @@ export function DiscoverTab({
   const submitPrompt = async (rawPrompt: string) => {
     const nextPrompt = rawPrompt.trim()
 
-    if (!nextPrompt) {
+    if (!nextPrompt || !selectedAgentId) {
       return
     }
 
@@ -300,6 +374,7 @@ export function DiscoverTab({
       try {
         resolvedAgentResult = await discoverMut.mutateAsync({
           prompt: nextPrompt,
+          agentId: selectedAgentId,
           events: events.map((e) => ({
             id: e.id,
             title: e.title,
@@ -318,9 +393,9 @@ export function DiscoverTab({
 
     let fromDemoFallback = false
     if (!resolvedAgentResult) {
-      const openAiResult = await fetchOpenAIDiscoverResult(nextPrompt, events)
+      const openAiResult = await fetchOpenAIDiscoverResult(nextPrompt, selectedAgentId, events)
       fromDemoFallback = openAiResult === null
-      resolvedAgentResult = openAiResult ?? getHardcodedAgentFallback(nextPrompt)
+      resolvedAgentResult = openAiResult ?? getHardcodedAgentFallback(nextPrompt, selectedAgentId)
     }
 
     if (requestCounter.current !== requestId) {
@@ -487,6 +562,19 @@ export function DiscoverTab({
     }
   }, [discoverMoreOpen])
 
+  const needsAgentSelection = selectedAgentId === null
+  const isChangingAgent = isAgentPickerOpen && selectedAgentId !== null
+  const showAgentPicker = needsAgentSelection || isChangingAgent
+
+  useEffect(() => {
+    if (!isChangingAgent) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleChangeHeaderBack()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isChangingAgent, isAgentAdvisorOpen])
+
   return (
     <motion.div
       className="discover-tab discover-layla"
@@ -495,6 +583,20 @@ export function DiscoverTab({
       transition={{ duration: 0.2 }}
     >
       <div className="discover-secondary-header">
+        {isChangingAgent ? (
+          <>
+            <button
+              type="button"
+              className="discover-agent-change-back"
+              onClick={handleChangeHeaderBack}
+              aria-label={isAgentAdvisorOpen ? 'Back to all bats' : 'Back to chat'}
+            >
+              <ChevronLeft size={20} strokeWidth={2.25} aria-hidden />
+              <span>{isAgentAdvisorOpen ? 'All bats' : 'Back to chat'}</span>
+            </button>
+          </>
+        ) : (
+          <>
         <div className="discover-more-row" ref={discoverMoreRef}>
           <button
             className={`icon-btn discover-more-btn${discoverMoreOpen ? ' icon-btn--active' : ''}`}
@@ -564,15 +666,44 @@ export function DiscoverTab({
               {usedDemoFallback ? 'Offline' : 'Live'}
             </div>
           ) : null}
+          {selectedAgent ? (
+            <div className="discover-agent-badge">
+              <button
+                type="button"
+                className="discover-agent-badge-main discover-agent-badge--button"
+                aria-label={`Your bat: ${selectedAgent.name}, ${selectedAgent.title}. Tap to change bat.`}
+                onClick={openAgentPicker}
+              >
+                <span className="discover-agent-badge-glyph" aria-hidden>
+                  {selectedAgent.glyph}
+                </span>
+                <span className="discover-agent-badge-copy">
+                  <span className="discover-agent-badge-name">{selectedAgent.name}</span>
+                  <span className="discover-agent-badge-title">{selectedAgent.title}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="discover-agent-badge-remove"
+                aria-label={`Remove ${selectedAgent.name}`}
+                onClick={requestRemoveAgent}
+              >
+                <X size={14} strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
+          ) : null}
           <button
             className="discover-new-chat-button"
             type="button"
             aria-label="Start new chat"
             onClick={() => handleNewChat()}
+            disabled={needsAgentSelection}
           >
             <span className="discover-new-chat-label">New chat</span>
           </button>
         </div>
+          </>
+        )}
       </div>
 
       <AnimatePresence>
@@ -741,12 +872,33 @@ export function DiscoverTab({
         )}
       </AnimatePresence>
 
+      {showRemoveAgentConfirm && selectedAgent ? (
+        <BuzoAgentRemoveConfirmDialog
+          agent={selectedAgent}
+          onConfirm={confirmRemoveAgent}
+          onDismiss={cancelRemoveAgent}
+        />
+      ) : null}
+
       <div
-        className={
-          hasThread ? 'discover-layla-scroll' : 'discover-layla-scroll discover-layla-scroll--empty'
-        }
+        className={[
+          hasThread || showAgentPicker
+            ? 'discover-layla-scroll'
+            : 'discover-layla-scroll discover-layla-scroll--empty',
+          isAgentAdvisorOpen && 'discover-layla-scroll--advisor',
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        {hasThread ? (
+        {showAgentPicker ? (
+          <BuzoAgentPicker
+            variant={needsAgentSelection ? 'initial' : 'change'}
+            selectedAgentId={selectedAgentId}
+            onSelect={handleSelectAgent}
+            advisorOpen={isAgentAdvisorOpen}
+            onAdvisorOpenChange={setIsAgentAdvisorOpen}
+          />
+        ) : hasThread ? (
           <div className="discover-layla-scroll-inner">
             {submittedPrompt && <div className="chat-bubble user">{submittedPrompt}</div>}
 
@@ -839,14 +991,17 @@ export function DiscoverTab({
           </div>
         ) : (
           <div className="discover-layla-empty">
-            <h4 className="discover-layla-empty-title">Chat With Buzo...</h4>
+            <h4 className="discover-layla-empty-title">
+              Chat with {selectedAgent?.name ?? 'Buzo'}...
+            </h4>
             <p className="discover-layla-empty-sub">
-              Venues, lineups, areas, or budget — replies show up here.
+              {selectedAgent?.tagline ?? 'Venues, lineups, areas, or budget — replies show up here.'}
             </p>
           </div>
         )}
       </div>
 
+      {!showAgentPicker ? (
       <div className="discover-layla-footer">
         <div className="welcome-layla-prompt-stack discover-layla-prompt-stack">
           {!hasThread && (
@@ -959,6 +1114,7 @@ export function DiscoverTab({
           </div>
         </div>
       </div>
+      ) : null}
     </motion.div>
   )
 }
