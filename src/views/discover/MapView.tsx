@@ -453,7 +453,7 @@ export function MapView({
   const allPositions = useMemo(() => cityEvents.map((r) => r.pos), [cityEvents])
 
   function selectAndScroll(id: string) {
-    setSelectedId((prev) => (prev === id ? null : id))
+    setSelectedId(id)
     const idx = cityEvents.findIndex((r) => r.event.id === id)
     const el = carouselRef.current
     if (!el || idx < 0) return
