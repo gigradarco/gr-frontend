@@ -821,7 +821,6 @@ export function MapView({
                   const isGoing = isEventPlanned(event.id)
                   const isSaved = isEventFavorited(event.id)
                   const accent = getAccent(event)
-                  const dateTime = eventDateTimeLabel(event)
                   return (
                     <div
                       key={event.id}
@@ -842,9 +841,7 @@ export function MapView({
                           <span className="mv-card-time">{compactDateTimeLabel(event)}</span>
                         </div>
                         <p className="mv-card-title">{event.title}</p>
-                        <p className="mv-card-sub">
-                          {event.district} · {dateTime}
-                        </p>
+                        <p className="mv-card-sub">{event.district}</p>
                         <p className="mv-card-price">{event.ticketPrice}</p>
                         <div className="mv-card-actions">
                           <button

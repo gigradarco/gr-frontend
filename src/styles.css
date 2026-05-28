@@ -17687,11 +17687,18 @@ vite-error-overlay::part(window) {
 /* iPhone SE / narrow phones: keep metadata clean and avoid duplicate date crowding */
 @media (max-width: 380px) {
   .mv-card-meta-row {
-    align-items: center;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .mv-card-time {
-    display: none;
+    display: block;
+    margin-left: 0;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.14;
   }
 
   .mv-card-title {
