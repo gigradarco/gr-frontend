@@ -9757,9 +9757,11 @@ button.taste-tag:focus-visible {
 .plan-weather-cache {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   margin-top: -4px;
 }
 
@@ -9767,8 +9769,26 @@ button.taste-tag:focus-visible {
   display: flex;
   align-items: baseline;
   gap: 7px;
+  flex: 0 1 auto;
   min-width: 0;
   white-space: nowrap;
+}
+
+.plan-weather-cache-meta--placeholder {
+  flex: 1 1 auto;
+}
+
+.plan-weather-cache-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.plan-weather-cache-auto-refresh-label--short {
+  display: none;
 }
 
 .plan-weather-cache-meta small {
@@ -9856,6 +9876,47 @@ button.taste-tag:focus-visible {
 .plan-weather-cache-refresh:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@media (max-width: 390px) {
+  .plan-weather-cache {
+    gap: 6px;
+  }
+
+  .plan-weather-cache-actions {
+    gap: 4px;
+  }
+
+  .plan-weather-cache-meta small {
+    font-size: 0.58rem;
+  }
+
+  .plan-weather-cache-meta strong {
+    font-size: 0.74rem;
+  }
+
+  .plan-weather-cache-auto-refresh,
+  .plan-weather-cache-refresh {
+    min-height: 28px;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+  }
+
+  .plan-weather-cache-auto-refresh-label--long {
+    display: none;
+  }
+
+  .plan-weather-cache-auto-refresh-label--short {
+    display: inline;
+  }
+
+  .plan-weather-cache-refresh-label {
+    display: none;
+  }
+
+  .plan-weather-cache-refresh {
+    padding: 5px 7px;
+  }
 }
 
 .plan-weather-grid {
@@ -17623,20 +17684,22 @@ vite-error-overlay::part(window) {
   color: var(--primary);
 }
 
-/* iPhone SE / narrow phones: allow map-card date to wrap instead of clipping */
+/* iPhone SE / narrow phones: keep metadata clean and avoid duplicate date crowding */
 @media (max-width: 380px) {
   .mv-card-meta-row {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    row-gap: 2px;
+    align-items: center;
   }
 
   .mv-card-time {
-    margin-left: auto;
-    max-width: 62%;
-    white-space: normal;
-    text-align: right;
-    line-height: 1.15;
+    display: none;
+  }
+
+  .mv-card-title {
+    margin-top: 5px;
+  }
+
+  .mv-card-sub {
+    line-height: 1.22;
   }
 }
 
