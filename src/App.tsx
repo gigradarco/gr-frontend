@@ -4,10 +4,13 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import {
   discoverEventIdFromPath,
   getDiscoverEventPath,
+  isKnownPlanPath,
   navigateShellToTab,
+  normalizeShellPath,
   pathToTab,
   setShellNavigate,
 } from './lib/tabRoutes'
+import { PLAN_PATHS } from './config/routes'
 import { SESSION_PENDING_HOME_COMPOSER_PREFILL_KEY } from './lib/session'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Heart, Info, Moon, Sun, User, X } from 'lucide-react'
@@ -260,8 +263,16 @@ function MainApp() {
   useLayoutEffect(() => {
     if (!welcomeDismissed && !discoverRouteEventId) return
     const { pathname } = location
+    const normalizedPath = normalizeShellPath(pathname)
     if (pathname === '/' || pathname === '') {
       navigate('/discover', { replace: true })
+      return
+    }
+    if (
+      normalizedPath.startsWith(`${PLAN_PATHS.hub}/`) &&
+      !isKnownPlanPath(pathname)
+    ) {
+      navigate(PLAN_PATHS.hub, { replace: true })
       return
     }
     const pathTab = pathToTab(pathname)

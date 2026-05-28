@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Clock, MapPin, X } from 'lucide-react'
 import {
   planDetailFromEventItem,
 } from '../../data/demoData'
 import { PLAN_CONFIG } from '../../config/plan'
-import { navigateShellToTab } from '../../lib/tabRoutes'
+import { PLAN_PATHS } from '../../config/routes'
+import {
+  getPlanScheduledEventPath,
+  navigateShellToTab,
+  planScheduledEventIdFromPath,
+  planShellViewFromPath,
+} from '../../lib/tabRoutes'
 import {
   prunePlanDetailCache,
   readFreshPlanDetails,
@@ -27,8 +34,6 @@ import { PlanHub } from './PlanHub'
 import { PlanScheduledScreen } from './PlanScheduledScreen'
 import { PlanWeatherScreen } from './PlanWeatherScreen'
 
-type PlanShellView = 'hub' | 'weather' | 'scheduled'
-
 type PendingCancelPlan = {
   eventId: string
   title: string
@@ -38,10 +43,6 @@ type PlanTabProps = {
   events: EventItem[]
   onOpenEvent: (eventId: string) => void
 }
-
-type DetailRoute =
-  | { kind: 'upcoming'; id: string }
-  | { kind: 'past'; id: string }
 
 async function fetchPlanEventDetails(ids: string[], signal: AbortSignal): Promise<PlanCachedRow[]> {
   const out: PlanCachedRow[] = []
@@ -77,6 +78,10 @@ function tabReturnAriaLabel(t: Tab): string {
 }
 
 export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const planView = planShellViewFromPath(location.pathname)
+  const scheduledEventId = planScheduledEventIdFromPath(location.pathname)
   const isAuthenticated = useAppState((s) => s.isAuthenticated)
   const openSignIn = useAppState((s) => s.openSignIn)
   const pendingPlanDetail = useAppState((s) => s.pendingPlanDetail)
@@ -111,13 +116,27 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
   })
 
   const [segment, setSegment] = useState<'upcoming' | 'past'>('upcoming')
-  const [shellView, setShellView] = useState<PlanShellView>('hub')
   const [cityWeather, setCityWeather] = useState<CityWeatherSummary | null>(null)
   const [cityWeatherLoading, setCityWeatherLoading] = useState(false)
-  const [detail, setDetail] = useState<DetailRoute | null>(null)
   const [detailReturnTab, setDetailReturnTab] = useState<Tab | null>(null)
   const [reviewPastId, setReviewPastId] = useState<string | null>(null)
   const [pendingCancelPlan, setPendingCancelPlan] = useState<PendingCancelPlan | null>(null)
+
+  useEffect(() => {
+    setPendingCancelPlan(null)
+  }, [location.pathname])
+
+  const openPlanHub = useCallback(() => {
+    navigate(PLAN_PATHS.hub)
+  }, [navigate])
+
+  const openPlanWeather = useCallback(() => {
+    navigate(PLAN_PATHS.weather)
+  }, [navigate])
+
+  const openPlanScheduled = useCallback(() => {
+    navigate(PLAN_PATHS.scheduled)
+  }, [navigate])
 
   const upcomingEvents = useMemo(
     () => (upcomingQuery.data ?? []).map(mapDiscoverEventListItemToEventItem),
@@ -147,24 +166,45 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
       .map((row) => row.event)
   }, [cachedPlan, pastEvents])
 
-  const detailEvents = detail?.kind === 'past' ? pastDisplayEvents : upcomingDisplayEvents
-  const detailEvent = detail ? detailEvents.find((event) => event.id === detail.id) ?? null : null
+  const detailKind = useMemo((): 'upcoming' | 'past' | null => {
+    if (!scheduledEventId) return null
+    if (upcomingDisplayEvents.some((event) => event.id === scheduledEventId)) return 'upcoming'
+    if (pastDisplayEvents.some((event) => event.id === scheduledEventId)) return 'past'
+    const cached = cachedPlan[scheduledEventId]?.event
+    if (cached) {
+      return planSegmentForEventDateTime(cached.eventDateTime) === 'past' ? 'past' : 'upcoming'
+    }
+    return segment
+  }, [cachedPlan, pastDisplayEvents, scheduledEventId, segment, upcomingDisplayEvents])
+
+  const detailEvent = useMemo(() => {
+    if (!scheduledEventId) return null
+    return (
+      upcomingDisplayEvents.find((event) => event.id === scheduledEventId) ??
+      pastDisplayEvents.find((event) => event.id === scheduledEventId) ??
+      cachedPlan[scheduledEventId]?.event ??
+      null
+    )
+  }, [cachedPlan, pastDisplayEvents, scheduledEventId, upcomingDisplayEvents])
 
   const exitEventDetail = useCallback(() => {
     setReviewPastId(null)
-    setDetail(null)
     const go = detailReturnTab
     setDetailReturnTab(null)
-    if (go) navigateShellToTab(go)
-  }, [detailReturnTab])
+    if (go) {
+      navigateShellToTab(go)
+      return
+    }
+    navigate(PLAN_PATHS.scheduled)
+  }, [detailReturnTab, navigate])
 
   const handleCancelPlanFromList = useCallback((eventId: string) => {
     if (!isEventPlanned(eventId)) return
     toggleEventPlan(eventId)
-    if (detail?.id === eventId) {
+    if (scheduledEventId === eventId) {
       exitEventDetail()
     }
-  }, [detail, exitEventDetail, isEventPlanned, toggleEventPlan])
+  }, [exitEventDetail, isEventPlanned, scheduledEventId, toggleEventPlan])
 
   const requestCancelPlan = useCallback((eventId: string, title: string) => {
     setPendingCancelPlan({
@@ -193,24 +233,35 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
   }, [dismissCancelPlan, pendingCancelPlan])
 
   useEffect(() => {
-    if (!detail) return
-    if (isEventPlanned(detail.id)) return
+    if (!scheduledEventId) return
+    if (isEventPlanned(scheduledEventId)) return
     const loading =
-      detail.kind === 'upcoming'
+      detailKind === 'upcoming'
         ? upcomingQuery.isLoading && upcomingDisplayEvents.length === 0
         : pastQuery.isLoading && pastDisplayEvents.length === 0
     if (loading || detailEvent) return
     exitEventDetail()
   }, [
-    detail,
     detailEvent,
+    detailKind,
     exitEventDetail,
     isEventPlanned,
     pastDisplayEvents.length,
     pastQuery.isLoading,
+    scheduledEventId,
     upcomingDisplayEvents.length,
     upcomingQuery.isLoading,
   ])
+
+  useEffect(() => {
+    if (!scheduledEventId || detailKind == null) return
+    setSegment(detailKind)
+  }, [detailKind, scheduledEventId])
+
+  useEffect(() => {
+    if (isAuthenticated || !scheduledEventId) return
+    navigate(PLAN_PATHS.hub, { replace: true })
+  }, [isAuthenticated, navigate, scheduledEventId])
 
   useEffect(() => {
     prunePlanDetailCache(plannedEventIds)
@@ -375,18 +426,17 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
     if (!pendingPlanDetail) return
     // Discover / Ask / Profile: App shows full detail as an overlay; tab stays put.
     if (pendingPlanDetail.returnTab != null && pendingPlanDetail.returnTab !== 'plan') return
-    setShellView('scheduled')
-    setDetail({ kind: pendingPlanDetail.kind, id: pendingPlanDetail.id })
+    navigate(getPlanScheduledEventPath(pendingPlanDetail.id), { replace: true })
     setSegment(pendingPlanDetail.kind === 'past' ? 'past' : 'upcoming')
     setDetailReturnTab(pendingPlanDetail.returnTab ?? null)
     clearPendingPlanDetail()
-  }, [pendingPlanDetail, clearPendingPlanDetail])
+  }, [clearPendingPlanDetail, navigate, pendingPlanDetail])
 
   useEffect(() => {
-    if (!isAuthenticated || shellView !== 'hub') return
+    if (!isAuthenticated || planView !== 'hub') return
     const controller = new AbortController()
     setCityWeatherLoading(true)
-    void fetchCityWeatherSummary('singapore', controller.signal)
+    void fetchCityWeatherSummary('singapore', { signal: controller.signal })
       .then((summary) => {
         if (controller.signal.aborted) return
         setCityWeather(summary)
@@ -400,7 +450,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
         setCityWeatherLoading(false)
       })
     return () => controller.abort()
-  }, [isAuthenticated, shellView])
+  }, [isAuthenticated, planView])
 
   if (reviewPastId) {
     const reviewEvent = pastDisplayEvents.find((event) => event.id === reviewPastId) ?? null
@@ -423,7 +473,8 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
     )
   }
 
-  if (detail) {
+  if (scheduledEventId && isAuthenticated) {
+    const kind = detailKind ?? 'upcoming'
     const data = detailEvent ? planDetailFromEventItem(detailEvent) : null
 
     if (!data) {
@@ -435,7 +486,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
         >
           <p className="plan-home-sub">This event is no longer available.</p>
           <button type="button" className="plan-segment plan-segment--on" onClick={exitEventDetail}>
-            {detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to plan'}
+            {detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to scheduled'}
           </button>
         </motion.div>
       )
@@ -445,7 +496,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
       <>
         <PlanEventDetail
           data={data}
-          variant={detail.kind}
+          variant={kind}
           backAriaLabel={
             detailReturnTab ? tabReturnAriaLabel(detailReturnTab) : 'Back to scheduled'
           }
@@ -453,7 +504,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
           onOpenEvent={onOpenEvent}
           isFavorited={isEventFavorited(data.eventId)}
           onToggleFavorite={() =>
-            toggleFavoriteEvent(toFavoriteEvent(data.eventId, detail.kind, data))
+            toggleFavoriteEvent(toFavoriteEvent(data.eventId, kind, data))
           }
           isPlanned={isEventPlanned(data.eventId)}
           onTogglePlan={() => {
@@ -461,7 +512,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
             toggleEventPlan(data.eventId)
             if (wasPlanned) exitEventDetail()
           }}
-          onOpenReview={detail.kind === 'past' ? () => setReviewPastId(detail.id) : undefined}
+          onOpenReview={kind === 'past' ? () => setReviewPastId(scheduledEventId) : undefined}
         />
       </>
     )
@@ -562,7 +613,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
                 className="plan-list-card"
                 onClick={() => {
                   setDetailReturnTab(null)
-                  setDetail({ kind: 'upcoming', id: ev.id })
+                  navigate(getPlanScheduledEventPath(ev.id))
                 }}
               >
                 <img src={ev.image} alt="" className="plan-list-card-img" decoding="async" />
@@ -598,7 +649,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
               className="plan-list-card plan-list-card--past"
               onClick={() => {
                 setDetailReturnTab(null)
-                setDetail({ kind: 'past', id: p.id })
+                navigate(getPlanScheduledEventPath(p.id))
               }}
             >
               <img src={p.image} alt="" className="plan-list-card-img" decoding="async" />
@@ -630,7 +681,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {shellView === 'hub' ? (
+      {planView === 'hub' ? (
         <>
           <header className="plan-home-header">
             <h1 className="plan-home-title">Plan</h1>
@@ -641,18 +692,18 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
             weatherLoading={cityWeatherLoading}
             upcomingCount={upcomingCount}
             pastCount={pastCount}
-            onOpenWeather={() => setShellView('weather')}
-            onOpenScheduled={() => setShellView('scheduled')}
+            onOpenWeather={openPlanWeather}
+            onOpenScheduled={openPlanScheduled}
           />
         </>
-      ) : shellView === 'weather' ? (
-        <PlanWeatherScreen onBack={() => setShellView('hub')} />
+      ) : planView === 'weather' ? (
+        <PlanWeatherScreen onBack={openPlanHub} />
       ) : (
         <PlanScheduledScreen
           refreshedAt={refreshedAt}
           refreshing={refreshing}
           refreshError={refreshError}
-          onBack={() => setShellView('hub')}
+          onBack={openPlanHub}
           onRefresh={() => {
             void refreshPlan()
           }}

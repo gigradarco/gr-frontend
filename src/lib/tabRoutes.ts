@@ -1,11 +1,17 @@
 import type { NavigateFunction } from 'react-router-dom'
-import { TAB_PATHS } from '../config/routes'
+import { PLAN_PATHS, TAB_PATHS, type PlanShellView } from '../config/routes'
 import type { Tab } from '../types'
-export { TAB_PATHS } from '../config/routes'
+export { TAB_PATHS, PLAN_PATHS, type PlanShellView } from '../config/routes'
 
 const PATH_TO_TAB = Object.fromEntries(
   Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab]),
 ) as Record<string, Tab>
+
+const KNOWN_PLAN_PATHS = new Set<string>([
+  PLAN_PATHS.hub,
+  PLAN_PATHS.weather,
+  PLAN_PATHS.scheduled,
+])
 
 export function normalizeShellPath(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) {
@@ -17,7 +23,44 @@ export function normalizeShellPath(pathname: string): string {
 export function pathToTab(pathname: string): Tab | null {
   const p = normalizeShellPath(pathname)
   if (p.startsWith('/discover/')) return 'discover'
+  if (p === PLAN_PATHS.hub || p.startsWith(`${PLAN_PATHS.hub}/`)) return 'plan'
   return PATH_TO_TAB[p] ?? null
+}
+
+export function isKnownPlanPath(pathname: string): boolean {
+  const p = normalizeShellPath(pathname)
+  if (KNOWN_PLAN_PATHS.has(p)) return true
+  return planScheduledEventIdFromPath(pathname) != null
+}
+
+export function planShellViewFromPath(pathname: string): PlanShellView {
+  const p = normalizeShellPath(pathname)
+  if (p === PLAN_PATHS.weather) return 'weather'
+  if (p === PLAN_PATHS.scheduled || p.startsWith(`${PLAN_PATHS.scheduled}/`)) return 'scheduled'
+  return 'hub'
+}
+
+export function planScheduledEventIdFromPath(pathname: string): string | null {
+  const p = normalizeShellPath(pathname)
+  const prefix = `${PLAN_PATHS.scheduled}/`
+  if (!p.startsWith(prefix)) return null
+  const raw = p.slice(prefix.length)
+  if (!raw) return null
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
+export function getPlanScheduledEventPath(eventId: string): string {
+  return `${PLAN_PATHS.scheduled}/${encodeURIComponent(eventId)}`
+}
+
+export function getPlanPathForView(view: PlanShellView): string {
+  if (view === 'weather') return PLAN_PATHS.weather
+  if (view === 'scheduled') return PLAN_PATHS.scheduled
+  return PLAN_PATHS.hub
 }
 
 export function discoverEventIdFromPath(pathname: string): string | null {

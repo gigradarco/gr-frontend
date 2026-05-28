@@ -71,6 +71,30 @@ export async function fetchEventWeatherSummary(
   }
 }
 
+export type CityWeatherOutlookDay = {
+  day: string
+  timestamp: string
+  forecastText: string
+  adviceLabel: string
+  tempLowC: number | null
+  tempHighC: number | null
+  humidityLowPct: number | null
+  humidityHighPct: number | null
+}
+
+export type CityWeatherAlert = {
+  category: 'flood' | 'rain' | 'thunder' | 'heat' | 'uv'
+  title: string
+  level: 1 | 2 | 3 | 4 | 5
+  levelLabel: string
+  kind: 'official' | 'derived'
+  message: string
+  metricLabel: string
+  metricPrimary: string
+  metricSecondary: string | null
+  sourceBadge: string
+}
+
 export type CityWeatherSummaryAvailable = {
   available: true
   condition: string
@@ -89,7 +113,14 @@ export type CityWeatherSummaryAvailable = {
   twentyFourHourHumidityHighPct: number | null
   twentyFourHourValidStart: string | null
   twentyFourHourValidEnd: string | null
-  twentyFourHourPeriodCount: number | null
+  cachedAt: string
+  cacheExpiresAt: string
+  alerts: CityWeatherAlert[]
+  fourDayOutlook: {
+    status: 'ready' | 'unavailable'
+    dayCount: number
+    days: CityWeatherOutlookDay[]
+  }
 }
 
 export type CityWeatherSummaryUnavailable = {
@@ -106,24 +137,35 @@ const unavailableCitySummary: CityWeatherSummaryUnavailable = {
 
 export async function fetchCityWeatherSummary(
   cityId = 'singapore',
-  signal?: AbortSignal,
+  options: { forceRefresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<CityWeatherSummary> {
   const params = new URLSearchParams({ cityId: cityId.trim() || 'singapore' })
+  if (options.forceRefresh) params.set('refresh', '1')
 
   try {
     const res = await fetch(`${apiBase()}/api/weather/event-summary/city?${params.toString()}`, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
-      signal,
+      signal: options.signal,
     })
 
     if (!res.ok) return unavailableCitySummary
 
     const body = (await res.json()) as CityWeatherSummary
-    if (body.available) return body
+    if (body.available) {
+      return {
+        ...body,
+        alerts: Array.isArray(body.alerts) ? body.alerts : [],
+        fourDayOutlook: body.fourDayOutlook ?? {
+          status: 'unavailable',
+          dayCount: 0,
+          days: [],
+        },
+      }
+    }
     return unavailableCitySummary
   } catch (error) {
-    if (signal?.aborted) throw error
+    if (options.signal?.aborted) throw error
     return unavailableCitySummary
   }
 }

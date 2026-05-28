@@ -9565,7 +9565,7 @@ button.taste-tag:focus-visible {
 
 .plan-hub-card-ambient {
   z-index: 0;
-  opacity: 0.55;
+  opacity: 0.84;
 }
 
 .plan-hub-card-shine {
@@ -9677,14 +9677,14 @@ button.taste-tag:focus-visible {
 .plan-hub-card--weather {
   border-color: color-mix(in oklab, #8fb9c8 22%, var(--stroke));
   background:
-    linear-gradient(150deg, color-mix(in oklab, #8fb9c8 13%, transparent) 0%, transparent 42%),
-    linear-gradient(180deg, #17191d 0%, #101115 52%, #09090b 100%);
+    linear-gradient(150deg, color-mix(in oklab, #8fb9c8 34%, #151b23) 0%, color-mix(in oklab, #8fb9c8 18%, #111722) 46%, #0d131d 100%),
+    linear-gradient(180deg, #212834 0%, #171f2b 52%, #101824 100%);
 }
 
 .plan-hub-card--weather .plan-hub-card-ambient {
   background:
-    linear-gradient(135deg, transparent 0%, color-mix(in oklab, #8fb9c8 10%, transparent) 54%, transparent 100%),
-    linear-gradient(180deg, color-mix(in oklab, var(--primary) 7%, transparent), transparent 48%);
+    linear-gradient(135deg, color-mix(in oklab, #8fb9c8 16%, #131a24) 0%, color-mix(in oklab, #8fb9c8 28%, #121a25) 58%, color-mix(in oklab, #8fb9c8 12%, #0f1620) 100%),
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 16%, #131b26), color-mix(in oklab, var(--primary) 8%, #101722) 54%);
 }
 
 .plan-hub-card--weather .plan-hub-card-shine {
@@ -9708,14 +9708,14 @@ button.taste-tag:focus-visible {
 .plan-hub-card--scheduled {
   border-color: color-mix(in oklab, var(--primary-soft) 34%, var(--stroke));
   background:
-    linear-gradient(150deg, color-mix(in oklab, var(--primary) 22%, transparent) 0%, color-mix(in oklab, var(--primary) 7%, transparent) 42%, transparent 74%),
-    linear-gradient(180deg, #1a1110 0%, #100c0b 52%, #090807 100%);
+    linear-gradient(150deg, color-mix(in oklab, var(--primary) 46%, #1f120f) 0%, color-mix(in oklab, var(--primary) 26%, #180f0d) 48%, #120b09 100%),
+    linear-gradient(180deg, #2b1714 0%, #1f1310 52%, #140c0a 100%);
 }
 
 .plan-hub-card--scheduled .plan-hub-card-ambient {
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--primary-soft) 14%, transparent) 0%, transparent 46%),
-    linear-gradient(180deg, color-mix(in oklab, var(--primary) 8%, transparent), transparent 50%);
+    linear-gradient(135deg, color-mix(in oklab, var(--primary-soft) 30%, #1a100e) 0%, color-mix(in oklab, var(--primary-soft) 16%, #140d0b) 50%),
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 22%, #1f1210), color-mix(in oklab, var(--primary) 11%, #140d0b) 56%);
 }
 
 .plan-hub-card--scheduled .plan-hub-card-shine {
@@ -9752,6 +9752,110 @@ button.taste-tag:focus-visible {
 .plan-subscreen-heading {
   min-width: 0;
   padding-top: 2px;
+}
+
+.plan-weather-cache {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: -4px;
+}
+
+.plan-weather-cache-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.plan-weather-cache-meta small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.plan-weather-cache-meta strong {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.plan-weather-cache-auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--stroke) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  color: var(--muted);
+  padding: 6px 11px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.plan-weather-cache-auto-refresh input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.plan-weather-cache-auto-refresh:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.plan-weather-cache-auto-refresh:has(input:disabled) input {
+  cursor: not-allowed;
+}
+
+.plan-weather-cache-refresh {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--stroke));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  color: var(--primary-soft);
+  padding: 6px 11px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.plan-weather-cache-refresh:not(:disabled):hover,
+.plan-weather-cache-refresh:not(.is-refreshing):hover {
+  border-color: color-mix(in oklab, var(--primary) 44%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+.plan-weather-cache-refresh.is-refreshing {
+  opacity: 0.82;
+  cursor: progress;
+  pointer-events: none;
+}
+
+.plan-weather-cache-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .plan-weather-grid {
@@ -9992,6 +10096,10 @@ button.taste-tag:focus-visible {
   margin: 0;
 }
 
+.plan-weather-card-stats--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .plan-weather-card-stats div {
   display: grid;
   gap: 2px;
@@ -10027,8 +10135,301 @@ button.taste-tag:focus-visible {
 
 .plan-weather-credit {
   margin: 0;
+  padding-top: 4px;
   font-size: 0.68rem;
   color: var(--muted);
+}
+
+.plan-weather-outlook {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 5%, transparent), transparent 42%),
+    var(--bg-elev);
+}
+
+.plan-weather-outlook-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-weather-outlook-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--primary-soft);
+}
+
+.plan-weather-outlook-count {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.plan-weather-outlook-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 720px) {
+  .plan-weather-outlook-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.plan-weather-outlook-day {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+}
+
+.plan-weather-outlook-day-head {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-weather-outlook-day-name {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.plan-weather-outlook-day-date {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.plan-weather-outlook-day .plan-weather-forecast-icon {
+  width: 44px;
+  height: 44px;
+  margin-top: 2px;
+}
+
+.plan-weather-outlook-condition {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--primary-soft);
+}
+
+.plan-weather-outlook-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.plan-weather-outlook-meta div {
+  display: grid;
+  gap: 2px;
+}
+
+.plan-weather-outlook-meta dt {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-weather-outlook-meta dd {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.plan-weather-alerts {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 4%, transparent), transparent 38%),
+    var(--bg-elev);
+}
+
+.plan-weather-alerts-head {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-weather-alert-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-weather-alert-scale-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-weather-alert-scale-item::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.plan-weather-alert-scale-item.is-level-1 { color: #22c55e; }
+.plan-weather-alert-scale-item.is-level-2 { color: #84cc16; }
+.plan-weather-alert-scale-item.is-level-3 { color: #f59e0b; }
+.plan-weather-alert-scale-item.is-level-4 { color: #f97316; }
+.plan-weather-alert-scale-item.is-level-5 { color: #fb7185; }
+
+.plan-weather-alerts-list {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-weather-alert {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--bg) 76%, transparent);
+}
+
+.plan-weather-alert-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.plan-weather-alert-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--bg-elev) 88%, transparent);
+  color: var(--primary-soft);
+}
+
+.plan-weather-alert.is-flood .plan-weather-alert-icon { color: #22c55e; }
+.plan-weather-alert.is-rain .plan-weather-alert-icon { color: #60a5fa; }
+.plan-weather-alert.is-thunder .plan-weather-alert-icon { color: #facc15; }
+.plan-weather-alert.is-heat .plan-weather-alert-icon { color: #fb923c; }
+.plan-weather-alert.is-uv .plan-weather-alert-icon { color: #fbbf24; }
+
+.plan-weather-alert-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.plan-weather-alert-copy strong {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary-soft);
+}
+
+.plan-weather-alert-copy span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.plan-weather-alert.is-level-1 .plan-weather-alert-copy span { color: #22c55e; }
+.plan-weather-alert.is-level-2 .plan-weather-alert-copy span { color: #84cc16; }
+.plan-weather-alert.is-level-3 .plan-weather-alert-copy span { color: #f59e0b; }
+.plan-weather-alert.is-level-4 .plan-weather-alert-copy span { color: #f97316; }
+.plan-weather-alert.is-level-5 .plan-weather-alert-copy span { color: #fb7185; }
+
+.plan-weather-alert-metric {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+}
+
+.plan-weather-alert-metric small {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-weather-alert-metric strong {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.plan-weather-alert-score {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.plan-weather-alert-score-segment {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--stroke) 88%, transparent);
+}
+
+.plan-weather-alert-score-segment.is-filled.is-level-1 { background: #22c55e; }
+.plan-weather-alert-score-segment.is-filled.is-level-2 { background: #84cc16; }
+.plan-weather-alert-score-segment.is-filled.is-level-3 { background: #f59e0b; }
+.plan-weather-alert-score-segment.is-filled.is-level-4 { background: #f97316; }
+.plan-weather-alert-score-segment.is-filled.is-level-5 { background: #fb7185; }
+
+.plan-weather-alert-message {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.plan-weather-alert-badge {
+  justify-self: start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--bg-elev) 90%, transparent);
+  border: 1px solid var(--stroke);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-weather-alert-badge.is-official {
+  color: #86efac;
+  border-color: color-mix(in oklab, #22c55e 28%, var(--stroke));
 }
 
 @media (max-width: 420px) {

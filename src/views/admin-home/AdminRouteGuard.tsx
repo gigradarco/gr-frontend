@@ -5,21 +5,45 @@ import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { apiBase } from '../../lib/api-base'
 import { getAccessToken } from '../../lib/session'
 import { useAppState } from '../../store/appStore'
+import './admin-home.css'
 
 type AdminAccessStatus = 'checking' | 'authorized' | 'denied' | 'signed-out' | 'error'
-type AdminAccessStep = 'session' | 'token' | 'allowlist'
+
+function AdminAccessLoader({ error }: { error?: string | null }) {
+  return (
+    <main className="admin-home admin-home--loading">
+      <section className="admin-access-loader" aria-live="polite" aria-busy={!error}>
+        <div className="admin-access-loader-panel">
+          <span className="admin-access-loader-shield" aria-hidden>
+            <ShieldCheck size={28} strokeWidth={2.2} />
+          </span>
+          <p className="admin-access-loader-kicker">
+            {error ? 'Access check failed' : 'Admin workspace'}
+          </p>
+          <h1>{error ? 'Could not open admin' : 'Checking admin access'}</h1>
+          {error ? (
+            <p className="admin-access-loader-sub">{error}</p>
+          ) : (
+            <>
+              <p className="admin-access-loader-sub">Verifying your session and admin permissions.</p>
+              <div className="admin-access-loader-spinner" aria-hidden />
+            </>
+          )}
+        </div>
+      </section>
+    </main>
+  )
+}
 
 export function AdminRouteGuard() {
   const navigate = useNavigate()
   const authSessionHydrated = useAppState((state) => state.authSessionHydrated)
   const isAuthenticated = useAppState((state) => state.isAuthenticated)
   const [status, setStatus] = useState<AdminAccessStatus>('checking')
-  const [step, setStep] = useState<AdminAccessStep>('session')
   const [error, setError] = useState<string | null>(null)
 
   const verifyAdminAccess = useCallback(async () => {
     setError(null)
-    setStep('session')
 
     if (!authSessionHydrated) {
       setStatus('checking')
@@ -33,7 +57,6 @@ export function AdminRouteGuard() {
     }
 
     setStatus('checking')
-    setStep('token')
     const fresh = await ensureAccessTokenFresh()
     const token = fresh ? getAccessToken() : null
     if (!token) {
@@ -43,7 +66,6 @@ export function AdminRouteGuard() {
     }
 
     try {
-      setStep('allowlist')
       const res = await fetch(`${apiBase()}/api/admin/events?limit=1`, {
         credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
@@ -70,8 +92,9 @@ export function AdminRouteGuard() {
   }, [authSessionHydrated, isAuthenticated, navigate])
 
   useEffect(() => {
+    if (status === 'authorized' && authSessionHydrated && isAuthenticated) return
     void verifyAdminAccess()
-  }, [verifyAdminAccess])
+  }, [authSessionHydrated, isAuthenticated, status, verifyAdminAccess])
 
   if (status === 'authorized') {
     return <Outlet />
@@ -81,31 +104,5 @@ export function AdminRouteGuard() {
     return <Navigate to="/not-found-404" replace />
   }
 
-  return (
-    <main className="admin-home admin-home--loading">
-      <section className="admin-access-loader" aria-live="polite" aria-busy={status !== 'error'}>
-        <div className="admin-access-loader-panel">
-          <div className="admin-access-loader-copy">
-            <span className="admin-access-loader-shield" aria-hidden>
-              <ShieldCheck size={28} strokeWidth={2.2} />
-            </span>
-            <p className="admin-access-loader-kicker">
-              {status === 'error' ? 'Access check failed' : 'Admin workspace'}
-            </p>
-            <h1>{status === 'error' && error ? error : 'Verifying admin access'}</h1>
-            {status !== 'error' ? (
-              <div className="admin-access-loader-progress" aria-hidden>
-                <span className={`admin-access-loader-progress-fill is-${step}`} />
-              </div>
-            ) : null}
-            <div className="admin-access-loader-steps" aria-label="Admin access verification steps">
-              <span className={step === 'session' ? 'is-active' : 'is-complete'}>Session</span>
-              <span className={step === 'token' || step === 'allowlist' ? (step === 'token' ? 'is-active' : 'is-complete') : ''}>Token</span>
-              <span className={step === 'allowlist' ? 'is-active' : ''}>Allowlist</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  )
+  return <AdminAccessLoader error={status === 'error' ? error : null} />
 }

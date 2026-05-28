@@ -51,6 +51,10 @@ import {
   pickActiveTwentyFourHourPeriod,
   type MapForecastLayer,
 } from '../../lib/weather-map-map-layers'
+import {
+  readWeatherAutoRefreshPreference,
+  writeWeatherAutoRefreshPreference,
+} from '../../lib/weather-cache-preference'
 import './admin-weather-map.css'
 
 const WEATHER_COUNTRY_DISCOVER_CITY_ID: Record<WeatherMapCountryCode, string> = {
@@ -65,26 +69,6 @@ const SOURCE_TTL = {
   twentyFourHourForecast: 'Source TTL 6h',
   fourDayOutlook: 'Source TTL 12h',
 } as const
-
-const WEATHER_AUTO_REFRESH_STORAGE_KEY = 'buzo:admin-weather-map:auto-refresh'
-
-function readWeatherAutoRefreshPreference(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return window.localStorage.getItem(WEATHER_AUTO_REFRESH_STORAGE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeWeatherAutoRefreshPreference(enabled: boolean): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(WEATHER_AUTO_REFRESH_STORAGE_KEY, enabled ? '1' : '0')
-  } catch {
-    // Preference is optional; default stays off.
-  }
-}
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
 type ForecastTableCard = 'nowcast' | 'twentyFour' | null
@@ -2042,7 +2026,7 @@ export function AdminWeatherMapPage() {
             <FourDayOutlookPanel weather={weather} />
 
             <article className="admin-weather-nea-panel admin-weather-advisory-panel">
-              <h2>Event Weather Context (Islandwide)</h2>
+              <h2>Event Weather Alerts (Islandwide)</h2>
               <div className="admin-weather-advisory-scale" aria-label="Weather condition scale">
                 {WEATHER_CONDITION_LEVELS.map((level) => (
                   <span key={level} className={`is-level-${level}`}>

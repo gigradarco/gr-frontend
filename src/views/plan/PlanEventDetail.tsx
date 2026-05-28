@@ -13,6 +13,7 @@ import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { fallbackImageForEvent, handleEventImageError } from '../../lib/event-image-fallback'
 import { fetchEventWeatherSummary, type EventWeatherSummary } from '../../lib/event-weather-summary'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
+import { getPlanScheduledEventPath } from '../../lib/tabRoutes'
 import type { EventItem } from '../../types'
 import { EventShareSheet } from '../../components/EventShareSheet'
 import type { PlanPageEvent } from '../../types'
@@ -415,7 +416,7 @@ export function PlanEventDetail({
           venue={data.venueLine}
           when={data.timeRange}
           url={data.sourceUrl}
-          fallbackPath={`/discover/${data.eventId}`}
+          fallbackPath={getPlanScheduledEventPath(data.eventId)}
           onClose={() => setShareOpen(false)}
         />
       ) : null}

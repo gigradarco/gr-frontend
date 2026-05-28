@@ -8,3 +8,12 @@ export const TAB_PATHS: Record<Tab, string> = {
   profile: '/profile',
   favorites: '/favorites',
 }
+
+/** Plan sub-routes within the Plan tab shell. */
+export const PLAN_PATHS = {
+  hub: '/plan',
+  weather: '/plan/weather',
+  scheduled: '/plan/scheduled',
+} as const
+
+export type PlanShellView = 'hub' | 'weather' | 'scheduled'
