@@ -17653,8 +17653,8 @@ vite-error-overlay::part(window) {
   color: var(--primary);
 }
 
-/* iPhone SE / narrow phones: keep metadata clean and avoid duplicate date crowding */
-@media (max-width: 380px) {
+/* Small/medium phones: stack genre + datetime so header never collides */
+@media (max-width: 430px) {
   .mv-card-meta-row {
     align-items: flex-start;
     flex-direction: column;
