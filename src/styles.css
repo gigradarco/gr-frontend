@@ -13826,6 +13826,10 @@ button.taste-tag:focus-visible {
   white-space: nowrap;
 }
 
+.discover-new-chat-icon {
+  display: none;
+}
+
 /* ─── Discover drawer ─── */
 .discover-drawer-backdrop {
   position: absolute;
@@ -19048,7 +19052,16 @@ vite-error-overlay::part(window) {
 }
 
 @media (max-width: 430px) {
+  .discover-secondary-header {
+    gap: 8px;
+  }
+
+  .discover-more-row {
+    flex: 0 0 auto;
+  }
+
   .discover-secondary-header-actions {
+    flex: 1 1 auto;
     gap: 6px;
   }
 
@@ -19057,7 +19070,9 @@ vite-error-overlay::part(window) {
   }
 
   .discover-agent-badge {
-    max-width: 184px;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
   }
 
   .discover-agent-badge-main {
@@ -19066,7 +19081,17 @@ vite-error-overlay::part(window) {
   }
 
   .discover-new-chat-button {
-    padding: 0 12px;
+    flex: 0 0 36px;
+    width: 36px;
+    padding: 0;
+  }
+
+  .discover-new-chat-icon {
+    display: block;
+  }
+
+  .discover-new-chat-label {
+    display: none;
   }
 }
 

@@ -21,6 +21,7 @@ import {
   Minimize2,
   MoreHorizontal,
   Pencil,
+  Plus,
   Send,
   Share2,
   History,
@@ -975,6 +976,7 @@ export function DiscoverTab({
             onClick={() => handleNewChat()}
             disabled={needsAgentSelection}
           >
+            <Plus className="discover-new-chat-icon" size={18} strokeWidth={2.4} aria-hidden />
             <span className="discover-new-chat-label">New chat</span>
           </button>
         </div>
