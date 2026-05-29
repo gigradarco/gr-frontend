@@ -22,16 +22,12 @@ import {
   X,
 } from 'lucide-react'
 import { useAppState } from '../../store/appStore'
-import {
-  discoverSuggestedPrompts,
-  discoverTargetPrompt,
-  events as demoEventsFallback,
-} from '../../data/demoData'
+import { discoverSuggestedPrompts } from '../../data/demoData'
 import {
   type DiscoverAgentResult,
   fetchOpenAIDiscoverResult,
-  getHardcodedAgentFallback,
   normalizePrompt,
+  type DiscoverChatMessage,
 } from './discoverAgent'
 import { LaylaAttachDropdown } from '../../components/LaylaAttachDropdown'
 import { getBuzoAgent, type BuzoAgentId } from '../../config/buzoAgents'
@@ -41,7 +37,7 @@ import {
   clearSelectedBuzoAgentId,
 } from '../../lib/buzo-agent-preference'
 import { api } from '../../lib/trpc'
-import { getAccessToken } from '../../lib/session'
+import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
 import type { EventItem } from '../../types'
@@ -55,17 +51,97 @@ type DiscoverTabProps = {
   events: EventItem[]
 }
 
+type ChatMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  eventId?: string | null
+}
+
 type Conversation = {
   id: string
   prompt: string
   /** User-edited title; falls back to `prompt` when empty. */
   title?: string
   status: 'idle' | 'loading' | 'done'
-  resultMode: 'none' | 'hardcoded' | 'agent'
+  resultMode: 'none' | 'agent'
   agentReply: string
   agentEventId: string | null
   /** Built-in replies used because the assistant API did not return a result */
   usedDemoFallback: boolean
+  messages: ChatMessage[]
+}
+
+const MAX_MODEL_MESSAGES = 12
+
+function makeMessageId(prefix: string) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function messagesForModel(messages: ChatMessage[]): DiscoverChatMessage[] {
+  return messages
+    .filter((message) => message.content.trim().length > 0)
+    .slice(-MAX_MODEL_MESSAGES)
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim(),
+    }))
+}
+
+function latestAssistantMessage(messages: ChatMessage[]): ChatMessage | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i]
+    if (message.role === 'assistant') return message
+  }
+  return null
+}
+
+function firstUserPrompt(messages: ChatMessage[], fallback: string) {
+  return messages.find((message) => message.role === 'user')?.content.trim() || fallback
+}
+
+function CompactEventCard({
+  event,
+  onOpenEvent,
+}: {
+  event: EventItem
+  onOpenEvent: (eventId: string) => void
+}) {
+  return (
+    <article className="event-card compact">
+      <img
+        src={event.image}
+        alt={event.title}
+        loading="lazy"
+        decoding="async"
+        onError={(e) => handleEventImageError(event, e)}
+      />
+      <div className="event-meta">
+        <span className="chip">{event.genre}</span>
+      </div>
+      <div className="event-body">
+        <h3>{event.title}</h3>
+        <p>
+          {event.venue}, {event.district} · {event.displayDateTimeLabel ?? event.time}
+        </p>
+        <div className="tags">
+          {event.vibeTags.map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+        <button
+          className="cta-full"
+          type="button"
+          onClick={() => onOpenEvent(event.id)}
+        >
+          I'm Going
+        </button>
+      </div>
+    </article>
+  )
 }
 
 export function DiscoverTab({
@@ -76,26 +152,17 @@ export function DiscoverTab({
 }: DiscoverTabProps) {
   const discoverMut = api.discover.recommend.useMutation()
   const discoverChipAgentPromptsNormalized = useMemo(() => {
-    const jazzNorm = normalizePrompt(discoverTargetPrompt)
-    return new Set(
-      discoverSuggestedPrompts.map((p) => normalizePrompt(p)).filter((n) => n !== jazzNorm),
-    )
+    return new Set(discoverSuggestedPrompts.map((p) => normalizePrompt(p)))
   }, [])
 
-  const hardcodedJazzEvent = useMemo(() => {
-    const fromProps = events.find((e) => e.id === 'bluenote') ?? events[0]
-    if (fromProps) return fromProps
-    return (
-      demoEventsFallback.find((e) => e.id === 'bluenote') ?? demoEventsFallback[0] ?? null
-    )
-  }, [events])
   const [inputValue, setInputValue] = useState('')
   const [submittedPrompt, setSubmittedPrompt] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
-  const [resultMode, setResultMode] = useState<'none' | 'hardcoded' | 'agent'>('none')
+  const [resultMode, setResultMode] = useState<'none' | 'agent'>('none')
   const [agentReply, setAgentReply] = useState('')
   const [agentEventId, setAgentEventId] = useState<string | null>(null)
   const [usedDemoFallback, setUsedDemoFallback] = useState(false)
+  const [activeMessages, setActiveMessages] = useState<ChatMessage[]>([])
 
   // Chat History State
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -129,9 +196,9 @@ export function DiscoverTab({
     canRight: false,
   })
   const discoverMoreRef = useRef<HTMLDivElement | null>(null)
-  const agentEvent = useMemo(
-    () => (agentEventId ? events.find((item) => item.id === agentEventId) ?? null : null),
-    [agentEventId],
+  const eventById = useMemo(
+    () => new Map(events.map((event) => [event.id, event])),
+    [events],
   )
 
   const { isDiscoverExpanded, toggleDiscoverExpanded } = useAppState()
@@ -139,22 +206,33 @@ export function DiscoverTab({
   // Sync active view back to the current conversation
   useEffect(() => {
     if (!currentConversationId) return
+    const lastAssistant = latestAssistantMessage(activeMessages)
     setConversations((prev) =>
       prev.map((conv) =>
         conv.id === currentConversationId
           ? {
               ...conv,
-              prompt: submittedPrompt || conv.prompt,
+              prompt: firstUserPrompt(activeMessages, submittedPrompt || conv.prompt),
               status,
               resultMode,
-              agentReply,
-              agentEventId,
+              agentReply: lastAssistant?.content ?? agentReply,
+              agentEventId: lastAssistant?.eventId ?? agentEventId,
               usedDemoFallback,
+              messages: activeMessages,
             }
           : conv
       )
     )
-  }, [submittedPrompt, status, resultMode, agentReply, agentEventId, usedDemoFallback, currentConversationId])
+  }, [
+    submittedPrompt,
+    status,
+    resultMode,
+    agentReply,
+    agentEventId,
+    usedDemoFallback,
+    currentConversationId,
+    activeMessages,
+  ])
 
   const handleSelectAgent = (agentId: BuzoAgentId) => {
     const changed = selectedAgentId !== null && selectedAgentId !== agentId
@@ -203,6 +281,7 @@ export function DiscoverTab({
   }
 
   const handleNewChat = () => {
+    requestCounter.current += 1
     setInputValue('')
     setSubmittedPrompt('')
     setStatus('idle')
@@ -210,6 +289,7 @@ export function DiscoverTab({
     setAgentReply('')
     setAgentEventId(null)
     setUsedDemoFallback(false)
+    setActiveMessages([])
     setCurrentConversationId(null)
     setIsDrawerOpen(false)
     setDiscoverMoreOpen(false)
@@ -224,6 +304,7 @@ export function DiscoverTab({
     setAgentReply(conv.agentReply)
     setAgentEventId(conv.agentEventId)
     setUsedDemoFallback(conv.usedDemoFallback ?? false)
+    setActiveMessages(conv.messages)
     setCurrentConversationId(conv.id)
     setIsDrawerOpen(false)
   }
@@ -305,24 +386,10 @@ export function DiscoverTab({
     handleNewChat()
     setInputValue('')
     onConsumePrefill()
-    void submitPrompt(prefillPrompt)
+    void submitPrompt(prefillPrompt, { resetThread: true })
   }, [prefillPrompt, onConsumePrefill])
 
-  useEffect(() => {
-    if (status !== 'loading' || resultMode !== 'hardcoded') {
-      return
-    }
-
-    const timer = window.setTimeout(() => {
-      setStatus('done')
-    }, 2500)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [status, resultMode])
-
-  const submitPrompt = async (rawPrompt: string) => {
+  const submitPrompt = async (rawPrompt: string, options?: { resetThread?: boolean }) => {
     const nextPrompt = rawPrompt.trim()
 
     if (!nextPrompt || !selectedAgentId) {
@@ -332,33 +399,39 @@ export function DiscoverTab({
     const requestId = requestCounter.current + 1
     requestCounter.current = requestId
 
-    setSubmittedPrompt(nextPrompt)
+    const userMessage: ChatMessage = {
+      id: makeMessageId('user'),
+      role: 'user',
+      content: nextPrompt,
+    }
+    const baseMessages = options?.resetThread ? [] : activeMessages
+    const nextMessages = [...baseMessages, userMessage]
+    const conversationPrompt = firstUserPrompt(nextMessages, nextPrompt)
+
+    setInputValue('')
+    setSubmittedPrompt(conversationPrompt)
+    setActiveMessages(nextMessages)
     setAgentReply('')
     setAgentEventId(null)
 
-    let convId = currentConversationId
+    let convId = options?.resetThread ? null : currentConversationId
     if (!convId) {
-      convId = Date.now().toString()
-      setCurrentConversationId(convId)
+      const newConvId = makeMessageId('conversation')
+      convId = newConvId
+      setCurrentConversationId(newConvId)
       setConversations((prev) => [
         {
-          id: convId as string,
-          prompt: nextPrompt,
+          id: newConvId,
+          prompt: conversationPrompt,
           status: 'loading',
-          resultMode: 'none',
+          resultMode: 'agent',
           agentReply: '',
           agentEventId: null,
           usedDemoFallback: false,
+          messages: nextMessages,
         },
         ...prev,
       ])
-    }
-
-    if (normalizePrompt(nextPrompt) === discoverTargetPrompt) {
-      setResultMode('hardcoded')
-      setStatus('loading')
-      setUsedDemoFallback(false)
-      return
     }
 
     setResultMode('agent')
@@ -369,12 +442,14 @@ export function DiscoverTab({
     const needsMinAgentLoading = discoverChipAgentPromptsNormalized.has(normalizePrompt(nextPrompt))
 
     let resolvedAgentResult: DiscoverAgentResult | null = null
+    const modelMessages = messagesForModel(nextMessages)
 
-    if (getAccessToken()) {
+    if (await ensureAccessTokenFresh()) {
       try {
         resolvedAgentResult = await discoverMut.mutateAsync({
           prompt: nextPrompt,
           agentId: selectedAgentId,
+          messages: modelMessages,
           events: events.map((e) => ({
             id: e.id,
             title: e.title,
@@ -393,9 +468,19 @@ export function DiscoverTab({
 
     let fromDemoFallback = false
     if (!resolvedAgentResult) {
-      const openAiResult = await fetchOpenAIDiscoverResult(nextPrompt, selectedAgentId, events)
+      const openAiResult = await fetchOpenAIDiscoverResult(
+        nextPrompt,
+        selectedAgentId,
+        events,
+        modelMessages,
+      )
       fromDemoFallback = openAiResult === null
-      resolvedAgentResult = openAiResult ?? getHardcodedAgentFallback(nextPrompt, selectedAgentId)
+      resolvedAgentResult =
+        openAiResult ?? {
+          reply:
+            "I can't reach the live chat engine right now. Try again in a moment and I'll pick this up from here.",
+          suggestedEventId: null,
+        }
     }
 
     if (requestCounter.current !== requestId) {
@@ -407,6 +492,13 @@ export function DiscoverTab({
     const hasMatchingEvent =
       resolvedAgentResult.suggestedEventId !== null &&
       events.some((item) => item.id === resolvedAgentResult.suggestedEventId)
+    const finalEventId = hasMatchingEvent ? resolvedAgentResult.suggestedEventId : null
+    const assistantMessage: ChatMessage = {
+      id: makeMessageId('assistant'),
+      role: 'assistant',
+      content: finalReply,
+      eventId: finalEventId,
+    }
 
     if (needsMinAgentLoading) {
       const elapsed = performance.now() - agentLoadingStartedAt
@@ -421,8 +513,11 @@ export function DiscoverTab({
     }
 
     setAgentReply(finalReply)
-    setAgentEventId(hasMatchingEvent ? resolvedAgentResult.suggestedEventId : null)
+    setAgentEventId(finalEventId)
     setUsedDemoFallback(fromDemoFallback)
+    setActiveMessages((current) =>
+      requestCounter.current === requestId ? [...current, assistantMessage] : current,
+    )
     setStatus('done')
 
     return
@@ -433,9 +528,9 @@ export function DiscoverTab({
   }
 
   const hasThread =
-    Boolean(submittedPrompt) ||
+    activeMessages.length > 0 ||
     status === 'loading' ||
-    (status === 'done' && (resultMode === 'hardcoded' || resultMode === 'agent'))
+    (status === 'done' && resultMode === 'agent')
 
   const syncTextareaHeight = useCallback(() => {
     const el = textareaRef.current
@@ -900,7 +995,23 @@ export function DiscoverTab({
           />
         ) : hasThread ? (
           <div className="discover-layla-scroll-inner">
-            {submittedPrompt && <div className="chat-bubble user">{submittedPrompt}</div>}
+            {activeMessages.map((message) => {
+              const event = message.eventId ? eventById.get(message.eventId) ?? null : null
+
+              return (
+                <div
+                  key={message.id}
+                  className={`discover-chat-message discover-chat-message--${message.role}`}
+                >
+                  <div className={`chat-bubble ${message.role === 'user' ? 'user' : 'bot'}`}>
+                    {message.content}
+                  </div>
+                  {message.role === 'assistant' && event ? (
+                    <CompactEventCard event={event} onOpenEvent={onOpenEvent} />
+                  ) : null}
+                </div>
+              )
+            })}
 
             {status === 'loading' && (
               <div className="chat-bubble bot loading-bubble" aria-label="Agent is typing">
@@ -910,83 +1021,6 @@ export function DiscoverTab({
                   <span />
                 </div>
               </div>
-            )}
-
-            {status === 'done' && resultMode === 'hardcoded' && hardcodedJazzEvent && (
-              <>
-                <div className="chat-bubble bot">
-                  Tiong Bahru is swinging tonight. I found two spots with high credibility and
-                  matching vibe.
-                </div>
-                <article className="event-card compact">
-                  <img
-                    src={hardcodedJazzEvent.image}
-                    alt={hardcodedJazzEvent.title}
-                    loading="lazy"
-                    decoding="async"
-                    onError={(e) => handleEventImageError(hardcodedJazzEvent, e)}
-                  />
-                  <div className="event-meta">
-                    <span className="chip">Jazz</span>
-                  </div>
-                  <div className="event-body">
-                    <h3>{hardcodedJazzEvent.title}</h3>
-                    <p>
-                      {hardcodedJazzEvent.venue}, {hardcodedJazzEvent.district} ·{' '}
-                      {hardcodedJazzEvent.displayDateTimeLabel ?? hardcodedJazzEvent.time}
-                    </p>
-                    <div className="tags">
-                      {hardcodedJazzEvent.vibeTags.map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                    <button
-                      className="cta-full"
-                      type="button"
-                      onClick={() => onOpenEvent(hardcodedJazzEvent.id)}
-                    >
-                      I'm Going
-                    </button>
-                  </div>
-                </article>
-              </>
-            )}
-
-            {status === 'done' && resultMode === 'agent' && agentReply && (
-              <div className="chat-bubble bot">{agentReply}</div>
-            )}
-
-            {status === 'done' && resultMode === 'agent' && agentEvent && (
-              <article className="event-card compact">
-                <img
-                  src={agentEvent.image}
-                  alt={agentEvent.title}
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => handleEventImageError(agentEvent, e)}
-                />
-                <div className="event-meta">
-                  <span className="chip">{agentEvent.genre}</span>
-                </div>
-                <div className="event-body">
-                  <h3>{agentEvent.title}</h3>
-                  <p>
-                    {agentEvent.venue}, {agentEvent.district} · {agentEvent.displayDateTimeLabel ?? agentEvent.time}
-                  </p>
-                  <div className="tags">
-                    {agentEvent.vibeTags.map((tag) => (
-                      <span key={tag}>{tag}</span>
-                    ))}
-                  </div>
-                  <button
-                    className="cta-full"
-                    type="button"
-                    onClick={() => onOpenEvent(agentEvent.id)}
-                  >
-                    I'm Going
-                  </button>
-                </div>
-              </article>
             )}
           </div>
         ) : (

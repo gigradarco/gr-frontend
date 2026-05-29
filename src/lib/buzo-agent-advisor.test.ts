@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   computeMatchPercent,
   recommendBuzoAgentFromAnswers,
-  recommendBuzoAgentFromPrompt,
   scoreBuzoAgentsFromAnswers,
 } from '../config/buzoAgentAdvisor'
 

@@ -24,9 +24,15 @@ type EventSummary = {
   vibeTags: string[]
 }
 
+type ChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 type ExploreRequestBody = {
   prompt?: string
   agentId?: string
+  messages?: ChatMessage[]
   events?: EventSummary[]
 }
 
@@ -86,12 +92,64 @@ function buildSystemPrompt(agentId: BuzoAgentId): string {
   return [
     agentPersonas[agentId],
     'You help users decide what to do tonight in Singapore nightlife.',
-    'Use only the provided event list. Recommend exactly one best-match event when possible.',
-    'If nothing fits, say so briefly and still stay in character.',
+    'Use only the provided event list when recommending events.',
+    'If the latest user turn is a greeting, small talk, an agent-name callout, or too vague to plan from, greet them in character, ask one concise question, and set suggestedEventId to null.',
+    'Do not recommend an event until the user gives at least one intent signal such as genre, area, budget, crew, energy, date, or timing.',
+    'For follow-ups, use the chat history to resolve references like cheaper, closer, quieter, later, or something else.',
+    'When the user is ready for a pick, recommend exactly one best-match event when possible.',
+    'If nothing fits, say so briefly and keep suggestedEventId null.',
     'Respond as strict JSON only (no markdown):',
     '{"reply":"string","suggestedEventId":"string|null"}',
     'Keep reply concise, 1-2 sentences, and user-friendly.',
   ].join(' ')
+}
+
+function buildEventContext(events: EventSummary[]): string {
+  return JSON.stringify({
+    market: 'Singapore',
+    currentServerTime: new Date().toISOString(),
+    eventCandidates: events,
+  })
+}
+
+function buildChatMessages(prompt: string, events: EventSummary[], messages: ChatMessage[]) {
+  const usableMessages = messages
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim(),
+    }))
+    .filter((message) => message.content.length > 0)
+
+  return [
+    {
+      role: 'user' as const,
+      content: buildEventContext(events),
+    },
+    ...(usableMessages.length > 0
+      ? usableMessages
+      : [
+          {
+            role: 'user' as const,
+            content: prompt,
+          },
+        ]),
+  ]
+}
+
+function sanitizeChatMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((message): message is ChatMessage => {
+      if (!message || typeof message !== 'object') return false
+      const entry = message as Partial<ChatMessage>
+      return (
+        (entry.role === 'user' || entry.role === 'assistant') &&
+        typeof entry.content === 'string' &&
+        entry.content.trim().length > 0
+      )
+    })
+    .slice(-12)
 }
 
 export default async function handler(req: any, res: any) {
@@ -106,7 +164,7 @@ export default async function handler(req: any, res: any) {
     return
   }
 
-  const { prompt, agentId: rawAgentId, events } = parseRequestBody(req.body)
+  const { prompt, agentId: rawAgentId, messages, events } = parseRequestBody(req.body)
   if (typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'Missing prompt' })
     return
@@ -129,6 +187,7 @@ export default async function handler(req: any, res: any) {
 
   const model = process.env.OPENAI_MODEL || 'gpt-5.4-nano'
   const systemPrompt = buildSystemPrompt(agentId)
+  const chatMessages = sanitizeChatMessages(messages)
 
   try {
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -146,10 +205,7 @@ export default async function handler(req: any, res: any) {
             role: 'system',
             content: systemPrompt,
           },
-          {
-            role: 'user',
-            content: JSON.stringify({ prompt, events: compactEvents }),
-          },
+          ...buildChatMessages(prompt, compactEvents, chatMessages),
         ],
       }),
     })

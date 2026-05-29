@@ -14127,6 +14127,21 @@ button.taste-tag:focus-visible {
   box-sizing: border-box;
 }
 
+.discover-chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.discover-chat-message--user {
+  align-items: flex-end;
+}
+
+.discover-chat-message--assistant {
+  align-items: flex-start;
+}
+
 /* Empty state: shrink so composer sits in the middle of the screen */
 .discover-layla-scroll--empty {
   flex: 1 1 auto;

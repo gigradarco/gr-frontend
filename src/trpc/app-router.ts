@@ -41,12 +41,25 @@ export const appRouter = t.router({
       .input(
         z.object({
           prompt: z.string(),
+          agentId: z.enum(['echo', 'shade', 'blaze', 'noir']),
+          messages: z.array(
+            z.object({
+              role: z.enum(['user', 'assistant']),
+              content: z.string(),
+            }),
+          ).optional(),
           events: z.array(z.unknown()),
         }),
       )
       .mutation(() => ({
         reply: '',
         suggestedEventId: null as string | null,
+      })),
+    matchAgent: t.procedure
+      .input(z.object({ prompt: z.string() }))
+      .mutation(() => ({
+        agentId: 'echo' as 'echo' | 'shade' | 'blaze' | 'noir',
+        reason: '',
       })),
   }),
   events: t.router({
