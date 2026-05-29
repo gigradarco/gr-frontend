@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, MessageSquareText, Send, Sparkles, Zap } from 'lucide-react'
 import type { CSSProperties } from 'react'
+import { BuzoAgentCharacter } from './BuzoAgentCharacter'
 import {
   buzoAdvisorQuestions,
   getAdvisorRecommendationCopy,
@@ -347,9 +348,9 @@ export function BuzoAgentAdvisor({ onBack, onSelect, hideHeader = false }: BuzoA
             className="buzo-agent-advisor-result-card"
             style={{ '--agent-accent': recommendedAgent.accent } as CSSProperties}
           >
-            <span className="buzo-agent-advisor-result-glyph" aria-hidden>
-              {recommendedAgent.glyph}
-            </span>
+            <div className="buzo-agent-advisor-result-glyph" aria-hidden>
+              <BuzoAgentCharacter agentId={recommendedAgent.id} size={44} />
+            </div>
             <div className="buzo-agent-advisor-result-copy">
               <div className="buzo-agent-advisor-result-top">
                 <span className="buzo-agent-advisor-result-name">{recommendedAgent.name}</span>

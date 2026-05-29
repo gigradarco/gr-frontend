@@ -1,4 +1,5 @@
 import { apiBase } from './api-base'
+import { fetchWithTimeout } from './fetch-timeout'
 import { isEventWithinWeatherHorizon } from './weather-event-horizon'
 
 export type EventWeatherSummaryAvailable = {
@@ -54,7 +55,7 @@ export async function fetchEventWeatherSummary(
   }
 
   try {
-    const res = await fetch(`${apiBase()}/api/weather/event-summary/event?${params.toString()}`, {
+    const res = await fetchWithTimeout(`${apiBase()}/api/weather/event-summary/event?${params.toString()}`, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
       signal,
@@ -143,7 +144,8 @@ export async function fetchCityWeatherSummary(
   if (options.forceRefresh) params.set('refresh', '1')
 
   try {
-    const res = await fetch(`${apiBase()}/api/weather/event-summary/city?${params.toString()}`, {
+    const res = await fetchWithTimeout(`${apiBase()}/api/weather/event-summary/city?${params.toString()}`, {
+      cache: options.forceRefresh ? 'no-store' : undefined,
       credentials: 'include',
       headers: { Accept: 'application/json' },
       signal: options.signal,

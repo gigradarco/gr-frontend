@@ -39,6 +39,18 @@ type ExploreRequestBody = {
 type ExploreModelResult = {
   reply: string
   suggestedEventId: string | null
+  suggestedReplies?: string[]
+}
+
+function normalizeSuggestedReplies(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const replies = value
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .slice(0, 4)
+
+  return replies.length > 0 ? replies : undefined
 }
 
 function parseRequestBody(rawBody: unknown): ExploreRequestBody {
@@ -75,6 +87,7 @@ function parseModelJson(content: string): ExploreModelResult | null {
     return {
       reply: parsed.reply.trim(),
       suggestedEventId: typeof parsed.suggestedEventId === 'string' ? parsed.suggestedEventId : null,
+      suggestedReplies: normalizeSuggestedReplies(parsed.suggestedReplies),
     }
   } catch {
     return null
@@ -98,8 +111,10 @@ function buildSystemPrompt(agentId: BuzoAgentId): string {
     'For follow-ups, use the chat history to resolve references like cheaper, closer, quieter, later, or something else.',
     'When the user is ready for a pick, recommend exactly one best-match event when possible.',
     'If nothing fits, say so briefly and keep suggestedEventId null.',
+    'When your reply asks the user to choose, clarify, or narrow the night, include 2-4 short suggestedReplies the user can tap next.',
+    'When your reply is a final recommendation, suggestedReplies can be an empty array.',
     'Respond as strict JSON only (no markdown):',
-    '{"reply":"string","suggestedEventId":"string|null"}',
+    '{"reply":"string","suggestedEventId":"string|null","suggestedReplies":["string"]}',
     'Keep reply concise, 1-2 sentences, and user-friendly.',
   ].join(' ')
 }

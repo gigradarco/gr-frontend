@@ -54,6 +54,7 @@ export const appRouter = t.router({
       .mutation(() => ({
         reply: '',
         suggestedEventId: null as string | null,
+        suggestedReplies: [] as string[],
       })),
     matchAgent: t.procedure
       .input(z.object({ prompt: z.string() }))

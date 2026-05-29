@@ -3,6 +3,7 @@ import { Check, Sparkles } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { buzoAgents, type BuzoAgent, type BuzoAgentId } from '../../config/buzoAgents'
 import { BuzoAgentAdvisor } from './BuzoAgentAdvisor'
+import { BuzoAgentCharacter } from './BuzoAgentCharacter'
 
 type BuzoAgentPickerProps = {
   onSelect: (agentId: BuzoAgentId) => void
@@ -30,13 +31,14 @@ function AgentGridCard({
       onClick={() => onSelect(agent.id)}
       aria-pressed={isSelected}
     >
-      <span className="buzo-agent-card-glyph" aria-hidden>
-        {agent.glyph}
-      </span>
-      <span className="buzo-agent-card-name">{agent.name}</span>
-      <span className="buzo-agent-card-title">{agent.title}</span>
-      <span className="buzo-agent-card-tagline">{agent.tagline}</span>
-      <span className="buzo-agent-card-description">{agent.description}</span>
+      <div className="buzo-agent-card-avatar" aria-hidden>
+        <BuzoAgentCharacter agentId={agent.id} size={72} />
+      </div>
+      <div className="buzo-agent-card-info">
+        <span className="buzo-agent-card-name">{agent.name}</span>
+        <span className="buzo-agent-card-title">{agent.title}</span>
+        <span className="buzo-agent-card-tagline">{agent.tagline}</span>
+      </div>
     </button>
   )
 }
@@ -58,9 +60,9 @@ function AgentListRow({
       onClick={() => onSelect(agent.id)}
       aria-pressed={isSelected}
     >
-      <span className="buzo-agent-row-glyph" aria-hidden>
-        {agent.glyph}
-      </span>
+      <div className="buzo-agent-row-avatar" aria-hidden>
+        <BuzoAgentCharacter agentId={agent.id} size={62} />
+      </div>
       <span className="buzo-agent-row-copy">
         <span className="buzo-agent-row-top">
           <span className="buzo-agent-row-name">{agent.name}</span>

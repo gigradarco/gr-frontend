@@ -4,6 +4,7 @@ import type { EventItem } from '../../types'
 export type DiscoverAgentResult = {
   reply: string
   suggestedEventId: string | null
+  suggestedReplies?: string[]
 }
 
 export type DiscoverChatMessage = {
@@ -17,6 +18,17 @@ export function normalizePrompt(prompt: string) {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .replace(/\s*\?/g, ' ?')
+}
+
+function normalizeSuggestedReplies(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const replies = value
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .slice(0, 4)
+
+  return replies.length > 0 ? replies : undefined
 }
 
 export async function fetchOpenAIDiscoverResult(
@@ -60,6 +72,7 @@ export async function fetchOpenAIDiscoverResult(
     return {
       reply: payload.reply.trim(),
       suggestedEventId: typeof payload.suggestedEventId === 'string' ? payload.suggestedEventId : null,
+      suggestedReplies: normalizeSuggestedReplies(payload.suggestedReplies),
     }
   } catch {
     return null

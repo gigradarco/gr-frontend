@@ -57,6 +57,7 @@ export default defineConfig({
     proxy: {
       '/trpc': toBackend,
       '/api/admin': toBackend,
+      '/api/weather': toBackend,
       '/api/discover': toBackend,
       '/api/image-proxy': toBackend,
       '/api/source-preview': toBackend,

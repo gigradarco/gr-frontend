@@ -14142,6 +14142,55 @@ button.taste-tag:focus-visible {
   align-items: flex-start;
 }
 
+.discover-agent-suggestions {
+  display: flex;
+  gap: 8px;
+  width: min(100%, 92%);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding: 0 4px 4px 0;
+  scrollbar-width: none;
+}
+
+.discover-agent-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.discover-agent-suggestion {
+  flex: 0 0 auto;
+  max-width: min(280px, 76vw);
+  min-height: 38px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--primary) 42%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 12%, rgba(8, 6, 12, 0.72));
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.discover-agent-suggestion:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--primary) 68%, rgba(255, 255, 255, 0.2));
+  background: color-mix(in oklab, var(--primary) 18%, rgba(8, 6, 12, 0.82));
+}
+
+.discover-agent-suggestion:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.theme-light .discover-agent-suggestion {
+  border-color: color-mix(in oklab, var(--primary) 34%, rgba(28, 20, 36, 0.16));
+  background: color-mix(in oklab, var(--primary) 10%, rgba(255, 255, 255, 0.82));
+  color: #1c1424;
+}
+
 /* Empty state: shrink so composer sits in the middle of the screen */
 .discover-layla-scroll--empty {
   flex: 1 1 auto;
@@ -18552,7 +18601,7 @@ vite-error-overlay::part(window) {
 .buzo-agent-picker {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   padding: 8px 4px 20px;
   min-height: 100%;
 }
@@ -18560,31 +18609,32 @@ vite-error-overlay::part(window) {
 .buzo-agent-picker-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding: 0 6px;
 }
 
 .buzo-agent-picker-eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--primary) 72%, var(--muted));
+  color: color-mix(in oklab, var(--primary) 78%, var(--muted));
 }
 
 .buzo-agent-picker-title {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--text);
+  line-height: 1.15;
 }
 
 .buzo-agent-picker-sub {
   margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.45;
+  font-size: 0.86rem;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -18597,32 +18647,47 @@ vite-error-overlay::part(window) {
 .buzo-agent-card {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: stretch;
+  gap: 0;
   width: 100%;
-  padding: 14px 12px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 28%, var(--stroke));
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--card)),
-      var(--card)
-    );
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 32%, var(--stroke));
+  background: var(--card);
   color: var(--text);
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
+.buzo-agent-card-avatar {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 14px;
+  background: radial-gradient(
+    ellipse at 50% 80%,
+    color-mix(in oklab, var(--agent-accent, var(--primary)) 24%, var(--card)),
+    var(--card) 72%
+  );
+}
+
+.buzo-agent-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px 14px;
+  border-top: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--stroke));
+}
+
 .buzo-agent-card:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 48%, var(--stroke));
-  box-shadow: 0 10px 28px color-mix(in oklab, var(--agent-accent, var(--primary)) 18%, transparent);
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 52%, var(--stroke));
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--agent-accent, var(--primary)) 22%, transparent);
 }
 
 .buzo-agent-card:active {
@@ -18630,10 +18695,18 @@ vite-error-overlay::part(window) {
 }
 
 .buzo-agent-card--selected {
-  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 62%, var(--stroke));
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 70%, var(--stroke));
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--agent-accent, var(--primary)) 28%, transparent),
-    0 10px 28px color-mix(in oklab, var(--agent-accent, var(--primary)) 22%, transparent);
+    0 0 0 1px color-mix(in oklab, var(--agent-accent, var(--primary)) 32%, transparent),
+    0 12px 32px color-mix(in oklab, var(--agent-accent, var(--primary)) 26%, transparent);
+}
+
+.buzo-agent-card--selected .buzo-agent-card-avatar {
+  background: radial-gradient(
+    ellipse at 50% 80%,
+    color-mix(in oklab, var(--agent-accent, var(--primary)) 34%, var(--card)),
+    var(--card) 72%
+  );
 }
 
 .buzo-agent-picker--change {
@@ -18651,48 +18724,52 @@ vite-error-overlay::part(window) {
 .buzo-agent-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--stroke);
-  background: color-mix(in oklab, var(--card) 72%, transparent);
+  padding: 10px 12px 10px 10px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in oklab, var(--agent-accent, var(--primary)) 22%, var(--stroke));
+  background: color-mix(in oklab, var(--card) 80%, transparent);
   color: var(--text);
   text-align: left;
   cursor: pointer;
   transition:
     border-color 0.15s ease,
     background 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .buzo-agent-row:hover {
-  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 36%, var(--stroke));
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 44%, var(--stroke));
   background: var(--card);
+  transform: translateX(2px);
+}
+
+.buzo-agent-row:active {
+  transform: translateX(0);
 }
 
 .buzo-agent-row--selected {
-  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 52%, var(--stroke));
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in oklab, var(--agent-accent, var(--primary)) 12%, var(--card)),
-      var(--card)
-    );
-  box-shadow: 0 8px 24px color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, transparent);
+  border-color: color-mix(in oklab, var(--agent-accent, var(--primary)) 60%, var(--stroke));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--card)),
+    var(--card) 60%
+  );
+  box-shadow: 0 8px 28px color-mix(in oklab, var(--agent-accent, var(--primary)) 16%, transparent);
 }
 
-.buzo-agent-row-glyph {
+.buzo-agent-row-avatar {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+  width: 66px;
+  height: 66px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 16%, var(--bg));
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--bg));
-  font-size: 1.2rem;
-  line-height: 1;
 }
 
 .buzo-agent-row-copy {
@@ -18711,9 +18788,10 @@ vite-error-overlay::part(window) {
 }
 
 .buzo-agent-row-name {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .buzo-agent-row-current {
@@ -18729,54 +18807,52 @@ vite-error-overlay::part(window) {
 }
 
 .buzo-agent-row-title {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 72%, var(--muted));
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 80%, var(--text));
 }
 
 .buzo-agent-row-tagline {
-  font-size: 0.76rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.4;
   color: var(--muted);
+  margin-top: 1px;
 }
 
 .buzo-agent-row-check {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 18%, transparent);
-  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 88%, var(--text));
-}
-
-.buzo-agent-card-glyph {
-  font-size: 1.35rem;
-  line-height: 1;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 20%, transparent);
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 92%, var(--text));
 }
 
 .buzo-agent-card-name {
   font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .buzo-agent-card-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 78%, var(--text));
+  color: color-mix(in oklab, var(--agent-accent, var(--primary)) 82%, var(--text));
 }
 
 .buzo-agent-card-tagline {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 500;
   line-height: 1.35;
-  color: var(--text);
+  color: var(--muted);
+  margin-top: 2px;
 }
 
 .buzo-agent-card-description {
@@ -18872,8 +18948,12 @@ vite-error-overlay::part(window) {
 
 .discover-agent-badge-glyph {
   flex-shrink: 0;
-  font-size: 0.95rem;
-  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
 }
 
 .discover-agent-badge-copy {
@@ -18911,6 +18991,189 @@ vite-error-overlay::part(window) {
 @media (max-width: 360px) {
   .buzo-agent-picker-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Buzo bat character animations ───────────────────────────────────────── */
+
+/* Shared float — each bat hovers at its own rhythm */
+@keyframes bat-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+
+/* Blaze gets a snappier bounce */
+@keyframes bat-float-blaze {
+  0%, 100% { transform: translateY(0px); }
+  40%       { transform: translateY(-5px); }
+  60%       { transform: translateY(-3px); }
+}
+
+/* ── Echo — sound waves pulse in/out from inner to outer ── */
+@keyframes bat-echo-wave-pulse {
+  0%, 20%, 100% { opacity: 0;    }
+  50%, 75%      { opacity: 0.65; }
+}
+
+/* Echo ear cups subtly scale on the beat */
+@keyframes bat-echo-cup-beat {
+  0%, 100% { transform: scaleX(1) scaleY(1); }
+  50%       { transform: scaleX(1.12) scaleY(1.08); }
+}
+
+/* ── Shade — stars twinkle ── */
+@keyframes bat-shade-star-twinkle {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.3); }
+}
+
+@keyframes bat-shade-dot-twinkle {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.95; }
+}
+
+/* ── Blaze — lightning flickers, flames dance, sparks pulse ── */
+@keyframes bat-blaze-bolt-flicker {
+  0%, 14%, 18%, 48%, 52%, 56%, 100% { opacity: 1;    }
+  16%, 50%, 54%                     { opacity: 0.1;  }
+}
+
+@keyframes bat-blaze-flame-dance {
+  0%, 100% { transform: scaleY(1)    rotate(-1deg); opacity: 0.85; }
+  33%       { transform: scaleY(1.25) rotate(3deg);  opacity: 1;    }
+  66%       { transform: scaleY(0.88) rotate(-3deg); opacity: 0.7;  }
+}
+
+@keyframes bat-blaze-glow-pulse {
+  0%, 100% { fill-opacity: 0.08; }
+  50%       { fill-opacity: 0.18; }
+}
+
+@keyframes bat-blaze-spark-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1);   }
+  50%       { opacity: 1;   transform: scale(1.6); }
+}
+
+/* ── Noir — moon drifts, dots twinkle ── */
+@keyframes bat-noir-moon-drift {
+  0%, 100% { transform: translate(0px, 0px) rotate(0deg);     }
+  50%       { transform: translate(-1px, -3px) rotate(5deg);  }
+}
+
+@keyframes bat-noir-dot-blink {
+  0%, 100% { opacity: 0.38; }
+  50%       { opacity: 0.85; }
+}
+
+/* ── Applying animations ─────────────────────────────────── */
+
+/* Float — per-bat timing so they don't bob in sync */
+.bat-echo-float  { animation: bat-float        2.8s ease-in-out infinite; }
+.bat-shade-float { animation: bat-float        3.4s ease-in-out infinite; animation-delay: -1.1s; }
+.bat-blaze-float { animation: bat-float-blaze  2.2s ease-in-out infinite; animation-delay: -0.5s; }
+.bat-noir-float  { animation: bat-float        3.9s ease-in-out infinite; animation-delay: -2.2s; }
+
+/* Echo animations */
+.bat-echo-wave-1 {
+  animation: bat-echo-wave-pulse 2.2s ease-in-out infinite;
+}
+.bat-echo-wave-2 {
+  animation: bat-echo-wave-pulse 2.2s ease-in-out infinite;
+  animation-delay: -0.55s; /* outer wave trails slightly behind inner */
+}
+.bat-echo-cup {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-echo-cup-beat 1.1s ease-in-out infinite;
+}
+.bat-echo-cup-r {
+  animation-delay: -0.05s; /* imperceptibly offset for stereo feel */
+}
+
+/* Shade animations */
+.bat-shade-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-shade-star-twinkle 2.4s ease-in-out infinite;
+}
+.bat-shade-dot-1 { animation: bat-shade-dot-twinkle 2.8s ease-in-out infinite; }
+.bat-shade-dot-2 { animation: bat-shade-dot-twinkle 2.1s ease-in-out infinite; animation-delay: -0.7s; }
+.bat-shade-dot-3 { animation: bat-shade-dot-twinkle 3.1s ease-in-out infinite; animation-delay: -1.4s; }
+
+/* Shade diamond gem — slow glamorous pulse */
+.bat-shade-gem {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-shade-star-twinkle 3.2s ease-in-out infinite;
+  animation-delay: -1.6s;
+}
+
+/* Blaze animations */
+.bat-blaze-glow {
+  animation: bat-blaze-glow-pulse 1.6s ease-in-out infinite;
+}
+.bat-blaze-bolt-l {
+  animation: bat-blaze-bolt-flicker 1.8s linear infinite;
+}
+.bat-blaze-bolt-r {
+  animation: bat-blaze-bolt-flicker 1.8s linear infinite;
+  animation-delay: -0.45s; /* bolts flicker out of phase */
+}
+.bat-blaze-flame-l {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bat-blaze-flame-dance 0.9s ease-in-out infinite;
+}
+.bat-blaze-flame-r {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bat-blaze-flame-dance 0.9s ease-in-out infinite;
+  animation-delay: -0.3s;
+}
+.bat-blaze-spark-1 {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-blaze-spark-pulse 1.4s ease-in-out infinite;
+}
+.bat-blaze-spark-2 {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-blaze-spark-pulse 1.4s ease-in-out infinite;
+  animation-delay: -0.35s;
+}
+.bat-blaze-spark-3 {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-blaze-spark-pulse 1.2s ease-in-out infinite;
+  animation-delay: -0.6s;
+}
+.bat-blaze-spark-4 {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-blaze-spark-pulse 1.2s ease-in-out infinite;
+  animation-delay: -0.9s;
+}
+
+/* Noir animations */
+.bat-noir-moon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-noir-moon-drift 4.5s ease-in-out infinite;
+}
+.bat-noir-dot-1 { animation: bat-noir-dot-blink 3.2s ease-in-out infinite; }
+.bat-noir-dot-2 { animation: bat-noir-dot-blink 2.6s ease-in-out infinite; animation-delay: -1.1s; }
+.bat-noir-dot-3 { animation: bat-noir-dot-blink 3.8s ease-in-out infinite; animation-delay: -2.4s; }
+
+/* ── Respect reduced-motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  .bat-echo-float, .bat-shade-float, .bat-blaze-float, .bat-noir-float,
+  .bat-echo-wave-1, .bat-echo-wave-2, .bat-echo-cup,
+  .bat-shade-star, .bat-shade-dot-1, .bat-shade-dot-2, .bat-shade-dot-3, .bat-shade-gem,
+  .bat-blaze-glow, .bat-blaze-bolt-l, .bat-blaze-bolt-r,
+  .bat-blaze-flame-l, .bat-blaze-flame-r,
+  .bat-blaze-spark-1, .bat-blaze-spark-2, .bat-blaze-spark-3, .bat-blaze-spark-4,
+  .bat-noir-moon, .bat-noir-dot-1, .bat-noir-dot-2, .bat-noir-dot-3 {
+    animation: none;
   }
 }
 
@@ -19106,13 +19369,13 @@ vite-error-overlay::part(window) {
 
 .buzo-agent-advisor-result-glyph {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 14%, var(--bg));
-  font-size: 1.25rem;
+  border-radius: 14px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--agent-accent, var(--primary)) 16%, var(--bg));
 }
 
 .buzo-agent-advisor-result-copy {

@@ -27,6 +27,7 @@ import { SingaporeWeatherMapPanel } from '../../components/weather/SingaporeWeat
 import { PlanWeatherAlerts } from './PlanWeatherAlerts'
 
 const MIN_REFRESH_SPIN_MS = 650
+const AUTO_REFRESH_RETRY_MS = 30_000
 
 type PlanWeatherScreenProps = {
   onBack: () => void
@@ -170,8 +171,25 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
   const mapWeatherRef = useRef<SingaporeWeatherMapData | null>(null)
   const requestIdRef = useRef(0)
   const mapRequestIdRef = useRef(0)
+  const refreshInFlightRef = useRef(0)
   summaryRef.current = summary
   mapWeatherRef.current = mapWeather
+
+  const beginRefreshUi = useCallback(() => {
+    refreshInFlightRef.current += 1
+    setRefreshing(true)
+  }, [])
+
+  const endRefreshUi = useCallback(async (startedAt: number) => {
+    const elapsed = Date.now() - startedAt
+    if (elapsed < MIN_REFRESH_SPIN_MS) {
+      await wait(MIN_REFRESH_SPIN_MS - elapsed)
+    }
+    refreshInFlightRef.current = Math.max(0, refreshInFlightRef.current - 1)
+    if (refreshInFlightRef.current === 0) {
+      setRefreshing(false)
+    }
+  }, [])
 
   const loadMapWeather = useCallback(async (forceRefresh = false, signal?: AbortSignal) => {
     const requestId = ++mapRequestIdRef.current
@@ -197,9 +215,11 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
     const requestId = ++requestIdRef.current
     const isSubsequentLoad = forceRefresh || summaryRef.current !== null
     const startedAt = Date.now()
+    let didTrackRefreshUi = false
 
     if (isSubsequentLoad) {
-      setRefreshing(true)
+      didTrackRefreshUi = true
+      beginRefreshUi()
     } else {
       setLoading(true)
     }
@@ -212,60 +232,64 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
       if (signal?.aborted || requestId !== requestIdRef.current) return
       setSummary({ available: false, message: 'No data available' })
     } finally {
-      if (signal?.aborted || requestId !== requestIdRef.current) return
+      if (signal?.aborted) return
 
-      if (isSubsequentLoad) {
-        const elapsed = Date.now() - startedAt
-        if (elapsed < MIN_REFRESH_SPIN_MS) {
-          await wait(MIN_REFRESH_SPIN_MS - elapsed)
-        }
-        if (requestId !== requestIdRef.current) return
-        setRefreshing(false)
+      if (didTrackRefreshUi) {
+        await endRefreshUi(startedAt)
         return
       }
 
+      if (requestId !== requestIdRef.current) return
       setLoading(false)
     }
-  }, [])
+  }, [beginRefreshUi, endRefreshUi])
 
   const handleAutoRefreshChange = useCallback((enabled: boolean) => {
     setAutoRefresh(enabled)
     writeWeatherAutoRefreshPreference(enabled)
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    void loadWeather(false, controller.signal)
-    void loadMapWeather(false, controller.signal)
-    return () => controller.abort()
+  const refreshWeatherData = useCallback(async (forceRefresh = false, signal?: AbortSignal) => {
+    await Promise.all([
+      loadWeather(forceRefresh, signal),
+      loadMapWeather(forceRefresh, signal),
+    ])
   }, [loadMapWeather, loadWeather])
 
   useEffect(() => {
+    const controller = new AbortController()
+    void refreshWeatherData(false, controller.signal)
+    return () => controller.abort()
+  }, [refreshWeatherData])
+
+  useEffect(() => {
     if (!autoRefresh) return
-    const timers: number[] = []
 
-    if (summary?.available && summary.cacheExpiresAt) {
-      const expiresAt = new Date(summary.cacheExpiresAt).getTime()
-      if (!Number.isNaN(expiresAt)) {
-        timers.push(window.setTimeout(() => {
-          void loadWeather(false)
-        }, Math.max(0, expiresAt - Date.now())))
-      }
-    }
+    const cacheExpiresAt =
+      summary?.available && summary.cacheExpiresAt
+        ? summary.cacheExpiresAt
+        : mapWeather?.cacheExpiresAt
+    if (!cacheExpiresAt) return
 
-    if (mapWeather?.cacheExpiresAt) {
-      const expiresAt = new Date(mapWeather.cacheExpiresAt).getTime()
-      if (!Number.isNaN(expiresAt)) {
-        timers.push(window.setTimeout(() => {
-          void loadMapWeather(false)
-        }, Math.max(0, expiresAt - Date.now())))
-      }
-    }
+    const expiresAt = new Date(cacheExpiresAt).getTime()
+    if (Number.isNaN(expiresAt)) return
 
-    return () => {
-      for (const timer of timers) window.clearTimeout(timer)
-    }
-  }, [autoRefresh, loadMapWeather, loadWeather, mapWeather?.cacheExpiresAt, summary])
+    const expired = expiresAt <= Date.now()
+    const delayMs = expired ? AUTO_REFRESH_RETRY_MS : Math.max(0, expiresAt - Date.now())
+
+    const timer = window.setTimeout(() => {
+      void refreshWeatherData(expired)
+    }, delayMs)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    autoRefresh,
+    mapWeather?.cacheExpiresAt,
+    mapWeather?.cachedAt,
+    refreshWeatherData,
+    summary?.available ? summary.cacheExpiresAt : undefined,
+    summary?.available ? summary.cachedAt : undefined,
+  ])
 
   const nowcastIconKind = useMemo(
     () => (summary?.available ? forecastMarkerKind(summary.condition) : 'cloudy'),
@@ -302,10 +326,9 @@ export function PlanWeatherScreen({ onBack }: PlanWeatherScreenProps) {
         <PlanWeatherCacheControls
           summary={summary}
           onForceRefresh={() => {
-            void loadWeather(true)
-            void loadMapWeather(true)
+            void refreshWeatherData(true)
           }}
-          isRefreshing={refreshing || mapLoading}
+          isRefreshing={refreshing}
           autoRefresh={autoRefresh}
           onAutoRefreshChange={handleAutoRefreshChange}
         />

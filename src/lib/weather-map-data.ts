@@ -1,5 +1,6 @@
 import { apiBase } from './api-base'
 import { ensureAccessTokenFresh } from './auth-api'
+import { fetchWithTimeout } from './fetch-timeout'
 import { getAccessToken } from './session'
 
 const SINGAPORE_CACHE_KEY = 'buzo:weather-map:country:sg:v6'
@@ -188,7 +189,8 @@ async function fetchBackendWeather(forceRefresh: boolean, signal?: AbortSignal):
   const params = new URLSearchParams({ country: 'SG' })
   if (forceRefresh) params.set('refresh', '1')
 
-  const res = await fetch(`${apiBase()}/api/admin/weather-map?${params.toString()}`, {
+  const res = await fetchWithTimeout(`${apiBase()}/api/admin/weather-map?${params.toString()}`, {
+    cache: forceRefresh ? 'no-store' : undefined,
     credentials: 'include',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -211,7 +213,8 @@ async function fetchPublicWeatherMap(
   const params = new URLSearchParams({ cityId: cityId.trim() || 'singapore' })
   if (forceRefresh) params.set('refresh', '1')
 
-  const res = await fetch(`${apiBase()}/api/weather/event-summary/map?${params.toString()}`, {
+  const res = await fetchWithTimeout(`${apiBase()}/api/weather/event-summary/map?${params.toString()}`, {
+    cache: forceRefresh ? 'no-store' : undefined,
     credentials: 'include',
     headers: { Accept: 'application/json' },
     signal,

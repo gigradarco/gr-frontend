@@ -43,6 +43,7 @@ import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
 import type { EventItem } from '../../types'
 import { BuzoAgentPicker } from './BuzoAgentPicker'
 import { BuzoAgentRemoveConfirmDialog } from './BuzoAgentRemoveConfirmDialog'
+import { BuzoAgentCharacter } from './BuzoAgentCharacter'
 
 type DiscoverTabProps = {
   onOpenEvent: (eventId: string) => void
@@ -56,6 +57,7 @@ type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
   eventId?: string | null
+  suggestions?: string[]
 }
 
 type Conversation = {
@@ -141,6 +143,34 @@ function CompactEventCard({
         </button>
       </div>
     </article>
+  )
+}
+
+function SuggestedReplyChips({
+  suggestions,
+  disabled,
+  onSelect,
+}: {
+  suggestions: string[]
+  disabled: boolean
+  onSelect: (suggestion: string) => void
+}) {
+  if (suggestions.length === 0) return null
+
+  return (
+    <div className="discover-agent-suggestions" aria-label="Suggested replies">
+      {suggestions.map((suggestion) => (
+        <button
+          key={suggestion}
+          type="button"
+          className="discover-agent-suggestion"
+          disabled={disabled}
+          onClick={() => onSelect(suggestion)}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -498,6 +528,7 @@ export function DiscoverTab({
       role: 'assistant',
       content: finalReply,
       eventId: finalEventId,
+      suggestions: resolvedAgentResult.suggestedReplies?.slice(0, 4) ?? [],
     }
 
     if (needsMinAgentLoading) {
@@ -769,9 +800,9 @@ export function DiscoverTab({
                 aria-label={`Your bat: ${selectedAgent.name}, ${selectedAgent.title}. Tap to change bat.`}
                 onClick={openAgentPicker}
               >
-                <span className="discover-agent-badge-glyph" aria-hidden>
-                  {selectedAgent.glyph}
-                </span>
+                <div className="discover-agent-badge-glyph" aria-hidden>
+                  <BuzoAgentCharacter agentId={selectedAgent.id} size={28} />
+                </div>
                 <span className="discover-agent-badge-copy">
                   <span className="discover-agent-badge-name">{selectedAgent.name}</span>
                   <span className="discover-agent-badge-title">{selectedAgent.title}</span>
@@ -997,6 +1028,7 @@ export function DiscoverTab({
           <div className="discover-layla-scroll-inner">
             {activeMessages.map((message) => {
               const event = message.eventId ? eventById.get(message.eventId) ?? null : null
+              const suggestions = message.role === 'assistant' ? message.suggestions ?? [] : []
 
               return (
                 <div
@@ -1006,6 +1038,15 @@ export function DiscoverTab({
                   <div className={`chat-bubble ${message.role === 'user' ? 'user' : 'bot'}`}>
                     {message.content}
                   </div>
+                  {message.role === 'assistant' ? (
+                    <SuggestedReplyChips
+                      suggestions={suggestions}
+                      disabled={status === 'loading'}
+                      onSelect={(suggestion) => {
+                        void submitPrompt(suggestion)
+                      }}
+                    />
+                  ) : null}
                   {message.role === 'assistant' && event ? (
                     <CompactEventCard event={event} onOpenEvent={onOpenEvent} />
                   ) : null}
