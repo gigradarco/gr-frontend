@@ -51,17 +51,71 @@ gr-openclaw  ->  gr-backend internal reference-data API
 
 ## Frontend Features
 
-This frontend currently covers the main Buzo app experience plus internal admin workflows:
+This frontend covers the main Buzo mobile-web app, grouped by the five product surfaces below.
 
-- Mobile-first app shell with tab navigation, light/dark themes, and deep-linkable screens.
-- Event discovery feed backed by live Turso data through `gr-backend`.
-- Event filtering, pagination/load-more behavior, image fallback/proxy handling, and event detail views.
-- Map-based event discovery with clustered pins and city/location-aware defaults.
-- Ask Buzo agent chat for authenticated users, using backend tRPC first with a legacy serverless fallback path.
-- Event intent flows: save/favorite events and mark events as planned/going.
-- Plan surfaces for upcoming/past events and weather-aware event planning.
-- Profile, onboarding, taste preferences, avatar upload/crop, reputation/badges, subscription, feedback, and account settings.
-- Admin workspace for event inspection, admin user access, user analytics, weather map diagnostics, and design theme review.
+### discover
+
+1. Mobile-first Discover tab entry point with shared app shell navigation, light/dark theme support, overlays, sheets, transitions, loading states, empty states, and error states.
+2. Live event discovery feed backed by Turso event data through `gr-backend`.
+3. Demo/auto fallback controls for local development, with production fallback disabled by default.
+4. Event card feed with carousel/card navigation, load-more pagination, and frontend render caps.
+5. Event filters for date, category, city/location, and supported feed dimensions.
+6. Event image resolution, image probing, fallback imagery, and image proxy handling.
+7. Event detail views, source preview hooks, share sheet, save/favorite actions, and planned/going intent actions.
+8. Favorites tab and favorite detail cache for saved-event browsing.
+9. Buzo agent advisor/picker surfaces used from Discover for recommendation personality and prompt routing.
+10. Map-based discovery for events with valid venue coordinates.
+11. MapLibre GL + `react-map-gl` Discover map with theme-aware vector basemaps.
+12. `supercluster`-backed marker grouping with compact count bubbles at low/default zoom.
+13. Dense-area marker decluttering so CBD-style clusters remain readable without merging everything into one blob.
+14. Zoom behavior parity: zoomed-out markers collapse into grouped counts; zoomed-in markers spill into full event pills.
+15. City-aware default center/zoom from `discover-map-defaults`.
+16. Custom map controls for zoom in, zoom out, and reset.
+17. Pin/card selection sync: selecting a card or pin focuses the map and event carousel.
+18. Secondary Leaflet map usage remains for non-Discover map previews and weather/admin map surfaces.
+
+### ask-buzo
+
+1. Authenticated Ask Buzo chat entry point.
+2. Backend tRPC-first recommendation/chat path with legacy serverless proxy fallback support.
+3. Agent preference helpers for selecting and persisting the Buzo recommendation personality.
+4. Event recommendation responses that can point users back into Discover events.
+5. Typed tRPC client setup, timeout handling, and session-aware frontend API helpers.
+
+### plan
+
+1. Plan tab hub for upcoming and past event planning.
+2. Scheduled events screen, plan event detail, plan review, and cancellation confirmation flows.
+3. Plan explore surfaces for finding and reviewing events from planning context.
+4. Weather-aware planning screens, weather alerts, event weather summaries, and date horizon logic.
+5. Weather formatting, weather icon/glyph utilities, advisory logic, and map-layer helpers.
+6. Event plan cache and frontend helpers around plan detail state.
+7. Going/planned feedback patterns, including celebration UI.
+
+### profile
+
+1. Welcome and welcome-back screens for signed-out and returning users.
+2. Supabase-backed auth/session hydration through frontend-safe API helpers.
+3. Sign-in sheet and account handoff flows.
+4. Signup onboarding flow for city, taste, and preference collection.
+5. Location city picker and onboarding geo-preview map.
+6. Last-used account, onboarding completion, and auth sync helpers.
+7. Profile home screen and profile subsections.
+8. Taste identity and preference management.
+9. Avatar upload, resize/crop, cache, and storage config.
+10. Reputation, badges, buzz points, and account-level progress surfaces.
+11. Subscription/pricing surface, feedback entry points, profile settings, and account controls.
+
+### admin
+
+1. Admin route guard and admin home workspace.
+2. Event list/admin event inspection surfaces.
+3. Admin user access management.
+4. User analytics dashboard.
+5. Admin weather map diagnostics.
+6. Design theme review pages for visual system checks.
+7. Shared config for routes, tab navigation, pricing, profile settings, plan surfaces, favorites, discover filters, and event lists.
+8. Unit tests for event normalization, Discover filters, weather logic, image resolution/proxy behavior, plan/favorite caches, agent matching, and map clustering.
 
 ## Frontend Technology
 
