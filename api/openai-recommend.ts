@@ -39,6 +39,7 @@ type ExploreRequestBody = {
 type ExploreModelResult = {
   reply: string
   suggestedEventId: string | null
+  suggestedEventIds?: string[]
   suggestedReplies?: string[]
 }
 
@@ -51,6 +52,16 @@ function normalizeSuggestedReplies(value: unknown): string[] | undefined {
     .slice(0, 4)
 
   return replies.length > 0 ? replies : undefined
+}
+
+function normalizeSuggestedEventIds(value: unknown, primaryEventId: string | null): string[] | undefined {
+  const ids = Array.isArray(value)
+    ? value
+        .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+        .map((entry) => entry.trim())
+    : []
+  const ranked = Array.from(new Set(ids.length > 0 ? ids : primaryEventId ? [primaryEventId] : [])).slice(0, 5)
+  return ranked.length > 0 ? ranked : undefined
 }
 
 function parseRequestBody(rawBody: unknown): ExploreRequestBody {
@@ -84,9 +95,16 @@ function parseModelJson(content: string): ExploreModelResult | null {
       return null
     }
 
+    const parsedSuggestedEventId =
+      typeof parsed.suggestedEventId === 'string' && parsed.suggestedEventId.trim()
+        ? parsed.suggestedEventId.trim()
+        : null
+    const suggestedEventIds = normalizeSuggestedEventIds(parsed.suggestedEventIds, parsedSuggestedEventId)
+
     return {
       reply: parsed.reply.trim(),
-      suggestedEventId: typeof parsed.suggestedEventId === 'string' ? parsed.suggestedEventId : null,
+      suggestedEventId: suggestedEventIds?.[0] ?? parsedSuggestedEventId,
+      suggestedEventIds,
       suggestedReplies: normalizeSuggestedReplies(parsed.suggestedReplies),
     }
   } catch {
@@ -109,12 +127,14 @@ function buildSystemPrompt(agentId: BuzoAgentId): string {
     'If the latest user turn is a greeting, small talk, an agent-name callout, or too vague to plan from, greet them in character, ask one concise question, and set suggestedEventId to null.',
     'Do not recommend an event until the user gives at least one intent signal such as genre, area, budget, crew, energy, date, or timing.',
     'For follow-ups, use the chat history to resolve references like cheaper, closer, quieter, later, or something else.',
-    'When the user is ready for a pick, recommend exactly one best-match event when possible.',
+    'When the user is ready for picks, rank 3-5 best-fit events when possible using suggestedEventIds ordered best to worst.',
+    'Set suggestedEventId to the first suggestedEventIds item for compatibility.',
+    'Only use event IDs from eventCandidates. If fewer than 3 events fit, include only the fitting IDs.',
     'If nothing fits, say so briefly and keep suggestedEventId null.',
     'When your reply asks the user to choose, clarify, or narrow the night, include 2-4 short suggestedReplies the user can tap next.',
     'When your reply is a final recommendation, suggestedReplies can be an empty array.',
     'Respond as strict JSON only (no markdown):',
-    '{"reply":"string","suggestedEventId":"string|null","suggestedReplies":["string"]}',
+    '{"reply":"string","suggestedEventId":"string|null","suggestedEventIds":["string"],"suggestedReplies":["string"]}',
     'Keep reply concise, 1-2 sentences, and user-friendly.',
   ].join(' ')
 }

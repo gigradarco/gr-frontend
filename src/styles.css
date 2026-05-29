@@ -14142,6 +14142,59 @@ button.taste-tag:focus-visible {
   align-items: flex-start;
 }
 
+.discover-agent-event-rail {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding: 0 16px 4px 0;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  container-type: inline-size;
+}
+
+.discover-agent-event-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.discover-agent-ranked-card {
+  position: relative;
+  width: calc(100cqi - 24px);
+  max-width: 420px;
+  min-height: 164px;
+}
+
+.discover-agent-rank-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  max-width: 96px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: color-mix(in oklab, var(--card-accent, var(--primary)) 22%, rgba(8, 8, 10, 0.82));
+  border: 1px solid color-mix(in oklab, var(--card-accent, var(--primary)) 58%, rgba(255, 255, 255, 0.12));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+}
+
+.theme-light .discover-agent-rank-badge {
+  background: color-mix(in oklab, var(--card-accent, var(--primary)) 16%, rgba(255, 255, 255, 0.9));
+  border-color: color-mix(in oklab, var(--card-accent, var(--primary)) 46%, rgba(20, 24, 35, 0.14));
+  color: var(--text);
+}
+
 .discover-agent-suggestions {
   display: flex;
   gap: 8px;
@@ -18991,6 +19044,29 @@ vite-error-overlay::part(window) {
 @media (max-width: 360px) {
   .buzo-agent-picker-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .discover-secondary-header-actions {
+    gap: 6px;
+  }
+
+  .discover-agent-mode-hint {
+    display: none;
+  }
+
+  .discover-agent-badge {
+    max-width: 184px;
+  }
+
+  .discover-agent-badge-main {
+    gap: 6px;
+    padding: 0 6px 0 8px;
+  }
+
+  .discover-new-chat-button {
+    padding: 0 12px;
   }
 }
 

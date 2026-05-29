@@ -4,6 +4,7 @@ import type { EventItem } from '../../types'
 export type DiscoverAgentResult = {
   reply: string
   suggestedEventId: string | null
+  suggestedEventIds?: string[]
   suggestedReplies?: string[]
 }
 
@@ -29,6 +30,16 @@ function normalizeSuggestedReplies(value: unknown): string[] | undefined {
     .slice(0, 4)
 
   return replies.length > 0 ? replies : undefined
+}
+
+function normalizeSuggestedEventIds(value: unknown, primaryEventId: string | null): string[] | undefined {
+  const ids = Array.isArray(value)
+    ? value
+        .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+        .map((entry) => entry.trim())
+    : []
+  const ranked = Array.from(new Set(ids.length > 0 ? ids : primaryEventId ? [primaryEventId] : [])).slice(0, 5)
+  return ranked.length > 0 ? ranked : undefined
 }
 
 export async function fetchOpenAIDiscoverResult(
@@ -69,9 +80,16 @@ export async function fetchOpenAIDiscoverResult(
       return null
     }
 
+    const parsedSuggestedEventId =
+      typeof payload.suggestedEventId === 'string' && payload.suggestedEventId.trim()
+        ? payload.suggestedEventId.trim()
+        : null
+    const suggestedEventIds = normalizeSuggestedEventIds(payload.suggestedEventIds, parsedSuggestedEventId)
+
     return {
       reply: payload.reply.trim(),
-      suggestedEventId: typeof payload.suggestedEventId === 'string' ? payload.suggestedEventId : null,
+      suggestedEventId: suggestedEventIds?.[0] ?? parsedSuggestedEventId,
+      suggestedEventIds,
       suggestedReplies: normalizeSuggestedReplies(payload.suggestedReplies),
     }
   } catch {

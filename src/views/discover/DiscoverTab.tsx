@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useId,
@@ -7,16 +8,21 @@ import {
   useRef,
   useState,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
+  Heart,
+  Info,
   Maximize2,
   Minimize2,
   MoreHorizontal,
   Pencil,
   Send,
+  Share2,
   History,
   Trash2,
   X,
@@ -40,10 +46,12 @@ import { api } from '../../lib/trpc'
 import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
+import { EventShareSheet } from '../../components/EventShareSheet'
 import type { EventItem } from '../../types'
 import { BuzoAgentPicker } from './BuzoAgentPicker'
 import { BuzoAgentRemoveConfirmDialog } from './BuzoAgentRemoveConfirmDialog'
 import { BuzoAgentCharacter } from './BuzoAgentCharacter'
+import { compactDateTimeLabel, getAccent } from './map/map-pin-html'
 
 type DiscoverTabProps = {
   onOpenEvent: (eventId: string) => void
@@ -57,6 +65,7 @@ type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
   eventId?: string | null
+  eventIds?: string[]
   suggestions?: string[]
 }
 
@@ -75,6 +84,7 @@ type Conversation = {
 }
 
 const MAX_MODEL_MESSAGES = 12
+const MAX_AGENT_EVENT_CARDS = 5
 
 function makeMessageId(prefix: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -105,44 +115,165 @@ function firstUserPrompt(messages: ChatMessage[], fallback: string) {
   return messages.find((message) => message.role === 'user')?.content.trim() || fallback
 }
 
-function CompactEventCard({
+function toFavoriteEvent(event: EventItem) {
+  return {
+    id: event.id,
+    title: event.title,
+    venueLine: [event.venue, event.district].map((part) => part.trim()).filter(Boolean).join(', '),
+    timeLabel: event.displayDateTimeLabel ?? event.time,
+    image: event.image,
+    variant: 'upcoming' as const,
+  }
+}
+
+function resolveRankedEventIds(result: DiscoverAgentResult, eventById: Map<string, EventItem>) {
+  const rawIds =
+    result.suggestedEventIds && result.suggestedEventIds.length > 0
+      ? result.suggestedEventIds
+      : result.suggestedEventId
+        ? [result.suggestedEventId]
+        : []
+
+  return Array.from(new Set(rawIds))
+    .filter((eventId) => eventById.has(eventId))
+    .slice(0, MAX_AGENT_EVENT_CARDS)
+}
+
+function AgentRankedEventCard({
   event,
+  rank,
   onOpenEvent,
+  isSaved,
+  onSave,
+  onOpenSource,
+  onShare,
 }: {
   event: EventItem
+  rank: number
   onOpenEvent: (eventId: string) => void
+  isSaved: boolean
+  onSave: (event: EventItem) => void
+  onOpenSource: (event: EventItem) => void
+  onShare: (event: EventItem) => void
 }) {
+  const accent = getAccent(event)
+  const sourceUrl = (event.sourceUrl ?? '').trim()
+
   return (
-    <article className="event-card compact">
+    <div
+      className="mv-card discover-agent-ranked-card"
+      style={{ '--card-accent': accent } as CSSProperties}
+      onClick={() => onOpenEvent(event.id)}
+    >
+      <span className="discover-agent-rank-badge">{rank === 0 ? 'Best pick' : `#${rank + 1}`}</span>
       <img
         src={event.image}
         alt={event.title}
+        className="mv-card-img"
         loading="lazy"
-        decoding="async"
         onError={(e) => handleEventImageError(event, e)}
       />
-      <div className="event-meta">
-        <span className="chip">{event.genre}</span>
-      </div>
-      <div className="event-body">
-        <h3>{event.title}</h3>
-        <p>
-          {event.venue}, {event.district} · {event.displayDateTimeLabel ?? event.time}
-        </p>
-        <div className="tags">
-          {event.vibeTags.map((tag) => (
-            <span key={tag}>{tag}</span>
-          ))}
+      <div className="mv-card-body">
+        <div className="mv-card-meta-row">
+          <span className="mv-card-genre">{event.genre.toUpperCase()}</span>
+          <span className="mv-card-time">{compactDateTimeLabel(event)}</span>
         </div>
-        <button
-          className="cta-full"
-          type="button"
-          onClick={() => onOpenEvent(event.id)}
-        >
-          I'm Going
-        </button>
+        <p className="mv-card-title">{event.title}</p>
+        <p className="mv-card-sub">{event.district}</p>
+        <p className="mv-card-price">{event.ticketPrice}</p>
+        <div className="mv-card-actions">
+          <button
+            type="button"
+            className="mv-card-details-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenEvent(event.id)
+            }}
+          >
+            <Info size={13} strokeWidth={2} aria-hidden />
+            <span>View event info</span>
+          </button>
+          <div className="mv-card-icon-row">
+            <button
+              type="button"
+              className="mv-card-icon-grid-btn"
+              aria-label="Save event"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSave(event)
+              }}
+            >
+              <Heart
+                size={13}
+                strokeWidth={isSaved ? 2.5 : 2}
+                fill={isSaved ? accent : 'none'}
+                color={isSaved ? accent : undefined}
+                aria-hidden
+              />
+            </button>
+            <button
+              type="button"
+              className="mv-card-icon-grid-btn"
+              aria-label="View event source"
+              title="View event source"
+              disabled={!sourceUrl}
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenSource(event)
+              }}
+            >
+              <ExternalLink size={13} strokeWidth={2} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="mv-card-icon-grid-btn"
+              aria-label="Share event"
+              onClick={(e) => {
+                e.stopPropagation()
+                onShare(event)
+              }}
+            >
+              <Share2 size={13} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+        </div>
       </div>
-    </article>
+    </div>
+  )
+}
+
+function RankedEventRail({
+  events,
+  onOpenEvent,
+  isEventFavorited,
+  onSave,
+  onOpenSource,
+  onShare,
+}: {
+  events: EventItem[]
+  onOpenEvent: (eventId: string) => void
+  isEventFavorited: (eventId: string) => boolean
+  onSave: (event: EventItem) => void
+  onOpenSource: (event: EventItem) => void
+  onShare: (event: EventItem) => void
+}) {
+  if (events.length === 0) return null
+
+  return (
+    <div className="discover-agent-event-rail" aria-label="Ranked event suggestions">
+      {events.map((event, index) => (
+        <AgentRankedEventCard
+          key={event.id}
+          event={event}
+          rank={index}
+          onOpenEvent={onOpenEvent}
+          isSaved={isEventFavorited(event.id)}
+          onSave={onSave}
+          onOpenSource={onOpenSource}
+          onShare={onShare}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -203,6 +334,7 @@ export function DiscoverTab({
   const editingInputRef = useRef<HTMLInputElement | null>(null)
   const [pendingDeleteConvId, setPendingDeleteConvId] = useState<string | null>(null)
   const [discoverMoreOpen, setDiscoverMoreOpen] = useState(false)
+  const [shareEventTarget, setShareEventTarget] = useState<EventItem | null>(null)
   /** Thread-mode composer: user can expand for more visible typing area */
   const [composerExpanded, setComposerExpanded] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState<BuzoAgentId | null>(() =>
@@ -232,6 +364,10 @@ export function DiscoverTab({
   )
 
   const { isDiscoverExpanded, toggleDiscoverExpanded } = useAppState()
+  const isAuthenticated = useAppState((s) => s.isAuthenticated)
+  const openSignIn = useAppState((s) => s.openSignIn)
+  const toggleFavoriteEvent = useAppState((s) => s.toggleFavoriteEvent)
+  const isEventFavorited = useAppState((s) => s.isEventFavorited)
 
   // Sync active view back to the current conversation
   useEffect(() => {
@@ -323,7 +459,22 @@ export function DiscoverTab({
     setCurrentConversationId(null)
     setIsDrawerOpen(false)
     setDiscoverMoreOpen(false)
+    setShareEventTarget(null)
     setComposerExpanded(false)
+  }
+
+  const handleSaveRankedEvent = (event: EventItem) => {
+    if (!isAuthenticated) {
+      openSignIn('Sign in to save this event.')
+      return
+    }
+    toggleFavoriteEvent(toFavoriteEvent(event))
+  }
+
+  const handleOpenRankedEventSource = (event: EventItem) => {
+    const sourceUrl = (event.sourceUrl ?? '').trim()
+    if (!sourceUrl) return
+    window.open(sourceUrl, '_blank', 'noopener,noreferrer')
   }
 
   const handleSelectConversation = (conv: Conversation) => {
@@ -519,15 +670,14 @@ export function DiscoverTab({
 
     const finalReply = resolvedAgentResult.reply
 
-    const hasMatchingEvent =
-      resolvedAgentResult.suggestedEventId !== null &&
-      events.some((item) => item.id === resolvedAgentResult.suggestedEventId)
-    const finalEventId = hasMatchingEvent ? resolvedAgentResult.suggestedEventId : null
+    const finalEventIds = resolveRankedEventIds(resolvedAgentResult, eventById)
+    const finalEventId = finalEventIds[0] ?? null
     const assistantMessage: ChatMessage = {
       id: makeMessageId('assistant'),
       role: 'assistant',
       content: finalReply,
       eventId: finalEventId,
+      eventIds: finalEventIds,
       suggestions: resolvedAgentResult.suggestedReplies?.slice(0, 4) ?? [],
     }
 
@@ -1027,7 +1177,12 @@ export function DiscoverTab({
         ) : hasThread ? (
           <div className="discover-layla-scroll-inner">
             {activeMessages.map((message) => {
-              const event = message.eventId ? eventById.get(message.eventId) ?? null : null
+              const rankedEvents =
+                message.role === 'assistant'
+                  ? (message.eventIds ?? (message.eventId ? [message.eventId] : []))
+                      .map((eventId) => eventById.get(eventId))
+                      .filter((event): event is EventItem => event != null)
+                  : []
               const suggestions = message.role === 'assistant' ? message.suggestions ?? [] : []
 
               return (
@@ -1047,8 +1202,15 @@ export function DiscoverTab({
                       }}
                     />
                   ) : null}
-                  {message.role === 'assistant' && event ? (
-                    <CompactEventCard event={event} onOpenEvent={onOpenEvent} />
+                  {message.role === 'assistant' ? (
+                    <RankedEventRail
+                      events={rankedEvents}
+                      onOpenEvent={onOpenEvent}
+                      isEventFavorited={isEventFavorited}
+                      onSave={handleSaveRankedEvent}
+                      onOpenSource={handleOpenRankedEventSource}
+                      onShare={setShareEventTarget}
+                    />
                   ) : null}
                 </div>
               )
@@ -1190,6 +1352,21 @@ export function DiscoverTab({
         </div>
       </div>
       ) : null}
+
+      {shareEventTarget
+        ? createPortal(
+            <EventShareSheet
+              eventId={shareEventTarget.id}
+              title={shareEventTarget.title}
+              venue={`${shareEventTarget.venue}, ${shareEventTarget.district}`}
+              when={shareEventTarget.displayDateTimeLabel ?? shareEventTarget.time}
+              url={shareEventTarget.sourceUrl}
+              fallbackPath={`/discover/${shareEventTarget.id}`}
+              onClose={() => setShareEventTarget(null)}
+            />,
+            (document.querySelector('main.phone-shell') ?? document.getElementById('root')) as HTMLElement,
+          )
+        : null}
     </motion.div>
   )
 }
