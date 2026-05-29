@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Lock, LogOut, Settings, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { getBuzoAgent, type BuzoAgentId } from '../../config/buzoAgents'
 import { BUZO_PRO_UPSELL_CTA } from '../../config/pricing'
 import { buzzSummary, getBuzzTierState } from '../../data/demoData'
 import {
@@ -14,11 +15,13 @@ import {
   persistAvatarToLocalCache,
   warmAvatarCacheIfEmpty,
 } from '../../lib/avatar-image-cache.ts'
+import { readSelectedBuzoAgentId } from '../../lib/buzo-agent-preference'
 import { postProfileTastePreferences, postSignOut } from '../../lib/auth-api'
 import { navigateShellToTab } from '../../lib/tabRoutes'
 import { useAdminAccess } from '../../lib/useAdminAccess'
 import { api } from '../../lib/trpc'
 import { useAppState } from '../../store/appStore'
+import { BuzoAgentCharacter } from '../discover/BuzoAgentCharacter'
 
 export const PROFILE_EXPERIENCE_RING_FALLBACK = 0.75
 
@@ -143,6 +146,8 @@ export function ProfileTab() {
   const remoteAvatarUrl = userProfile.avatarUrl
   const cachedAvatarSrc = getCachedAvatarDataUrl(remoteAvatarUrl)
   const avatarDisplaySrc = cachedAvatarSrc ?? remoteAvatarUrl
+  const [companionAgentId, setCompanionAgentId] = useState<BuzoAgentId>(() => readSelectedBuzoAgentId() ?? 'shade')
+  const companionAgent = getBuzoAgent(companionAgentId)
   const [tooltipBadgeId, setTooltipBadgeId] = useState<string | null>(null)
   const reputationQuery = api.profile.reputation.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -200,6 +205,19 @@ export function ProfileTab() {
       cancelled = true
     }
   }, [isAuthenticated, remoteAvatarUrl])
+
+  useEffect(() => {
+    const refreshCompanion = () => {
+      setCompanionAgentId(readSelectedBuzoAgentId() ?? 'shade')
+    }
+
+    window.addEventListener('storage', refreshCompanion)
+    window.addEventListener('focus', refreshCompanion)
+    return () => {
+      window.removeEventListener('storage', refreshCompanion)
+      window.removeEventListener('focus', refreshCompanion)
+    }
+  }, [])
 
   const showProfileSkeleton =
     !authSessionHydrated ||
@@ -308,6 +326,20 @@ export function ProfileTab() {
           <span className="profile-rank-badge" style={{ display: 'none' }} aria-hidden>
             Lv.{buzzTier.level} {buzzTier.label}
           </span>
+          <button
+            type="button"
+            className="profile-companion-circle"
+            style={{ '--companion-accent': companionAgent.accent } as CSSProperties}
+            aria-label={`Ask ${companionAgent.name}, your Buzo companion`}
+            title={`${companionAgent.name} — ${companionAgent.title}`}
+            onClick={() => navigateShellToTab('ask')}
+          >
+            <BuzoAgentCharacter
+              agentId={companionAgent.id}
+              size={44}
+              className="profile-companion-character"
+            />
+          </button>
         </div>
         <h2
           className="profile-display-name"
