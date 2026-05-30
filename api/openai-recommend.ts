@@ -119,6 +119,22 @@ function resolveAgentId(raw: string | undefined): BuzoAgentId {
   return 'echo'
 }
 
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore'
+
+function formatSingaporeNow(now = new Date()): string {
+  return now.toLocaleString('en-SG', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short',
+  })
+}
+
 function buildSystemPrompt(agentId: BuzoAgentId): string {
   return [
     agentPersonas[agentId],
@@ -131,8 +147,12 @@ function buildSystemPrompt(agentId: BuzoAgentId): string {
     'Set suggestedEventId to the first suggestedEventIds item for compatibility.',
     'Only use event IDs from eventCandidates. If fewer than 3 events fit, include only the fitting IDs.',
     'If nothing fits, say so briefly and keep suggestedEventId null.',
+    'Use suggestedReplies only when the user is actively planning or discovering nightlife and your reply invites a specific next step (genre, area, budget, timing, energy, etc.).',
+    'For factual or informational turns unrelated to nightlife planning (e.g. today\'s date, who you are, general knowledge), answer directly and set suggestedReplies to an empty array.',
+    'Do not add nightlife follow-up chips after pure factual answers, simple confirmations, or off-topic questions.',
     'When your reply asks the user to choose, clarify, or narrow the night, include 2-4 short suggestedReplies the user can tap next.',
-    'When your reply is a final recommendation, suggestedReplies can be an empty array.',
+    'When your reply is a final recommendation or does not need a follow-up choice, set suggestedReplies to an empty array.',
+    'When the user asks for the current date or time, use currentSingaporeTime from the provided context exactly. It is already in Asia/Singapore; do not convert from currentServerTimeUtc.',
     'Respond as strict JSON only (no markdown):',
     '{"reply":"string","suggestedEventId":"string|null","suggestedEventIds":["string"],"suggestedReplies":["string"]}',
     'Keep reply concise, 1-2 sentences, and user-friendly.',
@@ -140,9 +160,12 @@ function buildSystemPrompt(agentId: BuzoAgentId): string {
 }
 
 function buildEventContext(events: EventSummary[]): string {
+  const now = new Date()
   return JSON.stringify({
     market: 'Singapore',
-    currentServerTime: new Date().toISOString(),
+    timeZone: SINGAPORE_TIME_ZONE,
+    currentServerTimeUtc: now.toISOString(),
+    currentSingaporeTime: formatSingaporeNow(now),
     eventCandidates: events,
   })
 }
