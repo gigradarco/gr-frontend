@@ -4,9 +4,9 @@ Buzo frontend for GigRadar.
 
 This repo is the Vercel-hosted React/Vite client. It should stay thin: render the mobile-web experience, call `gr-backend`, and avoid owning business secrets or database authority.
 
-For product strategy, pitch narrative, data model, and architecture docs, use `../gr-north-star`. This README is mainly for operating and changing the frontend safely.
+For product strategy and pitch narrative, use `../gr-north-star`. For architecture and data model docs, use `../gr-architecture/docs`. This README is mainly for operating and changing the frontend safely.
 
-Last scanned against the local workspace on 2026-05-29.
+Last scanned against the local workspace on 2026-05-30.
 
 ## Table of Contents
 
@@ -39,7 +39,8 @@ gr-openclaw  ->  gr-backend internal reference-data API
 | `gr-frontend` | Browser UI, routing, client state, maps, admin screens, public frontend config. |
 | `gr-backend` | API boundary, auth/session, tRPC, REST routes, secrets, Supabase, Turso, Stripe, OpenAI, weather cache. |
 | `gr-openclaw` | Event crawling, normalization, validation, and Turso upserts. |
-| `gr-north-star` | Product/market/architecture/business source of context. |
+| `gr-architecture` | Architecture, data model, environments, rollout, cost, and event-image pipeline docs. |
+| `gr-north-star` | Product, market, fundraising, and business source of context. |
 
 ## What Matters Here
 

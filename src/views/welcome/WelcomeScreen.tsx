@@ -131,7 +131,7 @@ export function WelcomeScreen({ onEnterApp, onStashPrefill }: WelcomeScreenProps
             className="welcome-text-btn"
             onClick={() => openSignIn()}
           >
-            Log in
+            Sign In
           </button>
           <button
             className="icon-btn"
@@ -143,6 +143,10 @@ export function WelcomeScreen({ onEnterApp, onStashPrefill }: WelcomeScreenProps
           </button>
         </div>
       </header>
+
+      <p className="welcome-signup-banner" role="status">
+        Sign In is free. No credit card is required.
+      </p>
 
       <motion.div
         className="welcome-scroll"

@@ -13131,6 +13131,25 @@ button.taste-tag:focus-visible {
   gap: 6px;
 }
 
+.welcome-signup-banner {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--primary) 12%, var(--bg));
+  color: color-mix(in oklab, var(--primary) 72%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.theme-light .welcome-signup-banner {
+  background: color-mix(in oklab, var(--primary) 8%, var(--bg));
+  color: color-mix(in oklab, var(--primary) 55%, var(--muted));
+}
+
 .welcome-text-btn {
   display: inline-flex;
   align-items: center;
