@@ -323,10 +323,7 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
 
       {/* Tag badge */}
       <div className="ecf-tags">
-        <span
-          className="ecf-tag"
-          style={{ border: `1px solid ${accent}66`, color: accent }}
-        >
+        <span className="ecf-tag">
           {tag}
         </span>
       </div>
