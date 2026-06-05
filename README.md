@@ -64,6 +64,12 @@ These repositories are the planned public evaluation package:
 | Hosted API health | `https://gr-backend-dev.gigradar.workers.dev/health` |
 | Waitlist | `https://gr-waitlist.vercel.app/` |
 
+## Demo Video
+
+[![Buzo Demo Video](https://drive.google.com/thumbnail?id=1PAZzhOB6IyXcqNs7jMN2BNOo9ivHgO3Z&sz=w1280)](https://drive.google.com/file/d/1PAZzhOB6IyXcqNs7jMN2BNOo9ivHgO3Z/view)
+
+**[Watch the Buzo demo video](https://drive.google.com/file/d/1PAZzhOB6IyXcqNs7jMN2BNOo9ivHgO3Z/view)** — a walkthrough of Discover, Ask Buzo, Plan, and Profile. The step-by-step script below matches what the video shows.
+
 ## Demo Journey
 
 A concise demo should show the product loop end to end:
