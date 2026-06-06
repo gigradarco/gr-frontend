@@ -4,6 +4,7 @@ import type { EventItem } from '../types'
 import { apiBase } from './api-base'
 import { proxiedEventImageUrl } from './image-proxy'
 import { resolveListImage } from './resolve-event-image'
+import { splashImageForEventRow } from './splash-images'
 import type { DiscoverEventFilters } from './discover-filters'
 import { DISCOVER_EVENTS_SOURCE_CONFIG, DISCOVER_FEED_CONFIG } from '../config/discoverFeed'
 
@@ -153,6 +154,49 @@ export function trimEventWindow(events: EventItem[]): EventItem[] {
   return events.slice(-softLimit)
 }
 
+function repeatedImageFallbackForEvent(event: EventItem, repeatIndex: number): string {
+  const fallback = splashImageForEventRow(
+    {
+      event_id: `${event.id}:repeat-${repeatIndex}`,
+      title: event.title,
+      category: event.genre,
+      location: event.district,
+      venue: event.venue,
+      taste_and_recommendations: event.vibeTags.join(', '),
+    },
+    event,
+  )
+  return proxiedEventImageUrl(fallback, { quality: 80, width: 1200 })
+}
+
+export function diversifyRepeatedEventImages(events: EventItem[]): EventItem[] {
+  const seenImageCounts = new Map<string, number>()
+  const usedImages = new Set<string>()
+
+  return events.map((event) => {
+    const image = event.image.trim()
+    const seenCount = image ? (seenImageCounts.get(image) ?? 0) : 0
+    if (image) seenImageCounts.set(image, seenCount + 1)
+
+    if (image && seenCount === 0 && !usedImages.has(image)) {
+      usedImages.add(image)
+      return event
+    }
+
+    for (let attempt = seenCount + 1; attempt <= seenCount + 8; attempt += 1) {
+      const fallback = repeatedImageFallbackForEvent(event, attempt)
+      if (!usedImages.has(fallback)) {
+        usedImages.add(fallback)
+        return { ...event, image: fallback }
+      }
+    }
+
+    const fallback = repeatedImageFallbackForEvent(event, seenCount + 9)
+    usedImages.add(fallback)
+    return { ...event, image: fallback }
+  })
+}
+
 export async function fetchDiscoverEventById(eventId: string, signal?: AbortSignal): Promise<EventItem> {
   const res = await fetch(discoverEventDetailUrl(eventId), {
     credentials: 'include',
@@ -281,10 +325,10 @@ export function useDiscoverEvents(cityId: string, filters: DiscoverEventFilters)
         const page = (await res.json()) as DiscoverEventsPage
         const mapped = page.items.map((item) => mapDiscoverEventListItemToEventItem(item))
         setEvents((current) => {
-          if (mode === 'reset') return mapped
+          if (mode === 'reset') return diversifyRepeatedEventImages(mapped)
           const byId = new Map(current.map((event) => [event.id, event]))
           for (const event of mapped) byId.set(event.id, event)
-          return trimEventWindow([...byId.values()])
+          return trimEventWindow(diversifyRepeatedEventImages([...byId.values()]))
         })
         setCursor(page.nextCursor)
         setHasMore(Boolean(page.nextCursor))

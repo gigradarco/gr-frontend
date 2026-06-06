@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { EventItem } from '../types'
 import {
+  diversifyRepeatedEventImages,
   mapDiscoverEventListItemToEventItem,
   normalizeExternalEventSourceUrl,
   openDiscoverEventSource,
@@ -77,7 +78,26 @@ describe('mapDiscoverEventListItemToEventItem', () => {
 
     expect(event.sourceUrl).toBeNull()
     expect(event.image).toContain('/api/image-proxy?')
-    expect(decodeURIComponent(event.image)).toContain('https://images.unsplash.com/')
+    expect(decodeURIComponent(event.image)).toMatch(/images\.unsplash\.com|picsum\.photos/)
+  })
+})
+
+describe('diversifyRepeatedEventImages', () => {
+  it('keeps the first real image and replaces later duplicate images with event-specific fallbacks', () => {
+    const duplicateImage = '/api/image-proxy?url=https%3A%2F%2Fcdn.example.com%2Frepeated.jpg&w=1200&q=80'
+    const events = [
+      { ...eventItem('event-1'), image: duplicateImage, title: 'First show' },
+      { ...eventItem('event-2'), image: duplicateImage, title: 'Second show' },
+      { ...eventItem('event-3'), image: duplicateImage, title: 'Third show' },
+    ]
+
+    const diversified = diversifyRepeatedEventImages(events)
+
+    expect(diversified[0]?.image).toBe(duplicateImage)
+    expect(diversified[1]?.image).not.toBe(duplicateImage)
+    expect(diversified[2]?.image).not.toBe(duplicateImage)
+    expect(new Set(diversified.map((event) => event.image)).size).toBe(3)
+    expect(decodeURIComponent(diversified[1]?.image ?? '')).toMatch(/images\.unsplash\.com|picsum\.photos/)
   })
 })
 
