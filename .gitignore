@@ -29,3 +29,4 @@ coverage
 .vscode/*
 !.vscode/extensions.json
 .idea
+.vercel

@@ -10,6 +10,13 @@ export type EventWeatherSummaryAvailable = {
   temperatureC: number | null
   humidityPct: number | null
   validText: string
+  twentyFourHourCondition: string | null
+  twentyFourHourValidText: string | null
+  twentyFourHourAdviceLabel: string | null
+  twentyFourHourTempLowC: number | null
+  twentyFourHourTempHighC: number | null
+  twentyFourHourHumidityLowPct: number | null
+  twentyFourHourHumidityHighPct: number | null
 }
 
 export type EventWeatherSummaryUnavailable = {

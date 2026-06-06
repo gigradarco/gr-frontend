@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Clock,
   Cloud,
+  CloudSun,
   ExternalLink,
   Heart,
   MapPin,
@@ -13,6 +14,7 @@ import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { fallbackImageForEvent, handleEventImageError } from '../../lib/event-image-fallback'
 import { formatEventPriceLabel } from '../../lib/event-price-label'
 import { fetchEventWeatherSummary, type EventWeatherSummary } from '../../lib/event-weather-summary'
+import { formatForecastTemperatureRange } from '../../lib/weather-forecast-format'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import { getPlanScheduledEventPath } from '../../lib/tabRoutes'
 import type { EventItem } from '../../types'
@@ -273,21 +275,57 @@ export function PlanEventDetail({
                 <span className="plan-info-pill-text">{data.venueLine}</span>
               </div>
               <div
-                className={`plan-info-pill plan-info-pill--weather${weatherSummary?.available ? ' is-available' : ''}`}
+                className={`plan-info-pill plan-info-pill--weather plan-info-pill--weather-two-hour${weatherSummary?.available ? ' is-available' : ''}`}
                 title={
                   weatherSummary?.available
-                    ? `${weatherSummary.areaName} · valid ${weatherSummary.validText}`
+                    ? `${weatherSummary.areaName} · 2-hour forecast valid ${weatherSummary.validText}`
                     : undefined
                 }
               >
                 <Cloud size={13} strokeWidth={2.2} aria-hidden />
                 <span className="plan-info-pill-text">
+                  <span className="plan-info-pill-label">2-hour forecast</span>
                   {weatherLoading ? (
                     'Loading weather…'
                   ) : weatherSummary?.available ? (
                     <>
                       {weatherSummary.condition}
                       <span className="plan-info-pill-advice"> · Recommendation: {weatherSummary.adviceLabel}</span>
+                    </>
+                  ) : (
+                    'No data available'
+                  )}
+                </span>
+              </div>
+              <div
+                className={`plan-info-pill plan-info-pill--weather plan-info-pill--weather-twenty-four${weatherSummary?.available && weatherSummary.twentyFourHourCondition ? ' is-available' : ''}`}
+                title={
+                  weatherSummary?.available && weatherSummary.twentyFourHourValidText
+                    ? `24-hour forecast valid ${weatherSummary.twentyFourHourValidText}`
+                    : undefined
+                }
+              >
+                <CloudSun size={13} strokeWidth={2.2} aria-hidden />
+                <span className="plan-info-pill-text">
+                  <span className="plan-info-pill-label">24-hour forecast</span>
+                  {weatherLoading ? (
+                    'Loading weather…'
+                  ) : weatherSummary?.available && weatherSummary.twentyFourHourCondition ? (
+                    <>
+                      {weatherSummary.twentyFourHourCondition}
+                      <span className="plan-info-pill-advice">
+                        {' '}
+                        · {formatForecastTemperatureRange(
+                          weatherSummary.twentyFourHourTempLowC,
+                          weatherSummary.twentyFourHourTempHighC,
+                        )}
+                      </span>
+                      {weatherSummary.twentyFourHourAdviceLabel ? (
+                        <span className="plan-info-pill-advice">
+                          {' '}
+                          · Recommendation: {weatherSummary.twentyFourHourAdviceLabel}
+                        </span>
+                      ) : null}
                     </>
                   ) : (
                     'No data available'

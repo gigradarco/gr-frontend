@@ -5,6 +5,7 @@ describe('isEventWithinWeatherHorizon', () => {
   const now = new Date('2026-05-27T12:00:00')
 
   it('accepts events within the next 4 calendar days', () => {
+    expect(isEventWithinWeatherHorizon('2026-05-27T00:00:00+08:00', now)).toBe(true)
     expect(isEventWithinWeatherHorizon('2026-05-27T22:00:00', now)).toBe(true)
     expect(isEventWithinWeatherHorizon('2026-05-31T22:00:00', now)).toBe(true)
   })
@@ -14,8 +15,8 @@ describe('isEventWithinWeatherHorizon', () => {
     expect(isEventWithinWeatherHorizon('2026-06-15T00:00:00', now)).toBe(false)
   })
 
-  it('rejects past events and missing dates', () => {
-    expect(isEventWithinWeatherHorizon('2026-05-27T10:00:00', now)).toBe(false)
+  it('rejects previous-day events and missing dates', () => {
+    expect(isEventWithinWeatherHorizon('2026-05-26T23:59:00+08:00', now)).toBe(false)
     expect(isEventWithinWeatherHorizon(null, now)).toBe(false)
     expect(isEventWithinWeatherHorizon('not-a-date', now)).toBe(false)
   })

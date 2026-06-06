@@ -7099,6 +7099,218 @@ button.taste-tag:focus-visible {
   text-align: right;
 }
 
+.edit-profile-bio-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--bg) 74%, var(--card));
+}
+
+.edit-profile-bio-tab {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid color-mix(in oklab, var(--stroke) 60%, transparent);
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--bg) 64%, transparent);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.edit-profile-bio-tab[data-active='true'] {
+  color: #fff;
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 10px 22px color-mix(in oklab, var(--primary) 26%, transparent);
+}
+
+.edit-profile-bio-tab[data-active='false']:hover {
+  color: var(--text);
+  background: color-mix(in oklab, var(--stroke) 42%, transparent);
+}
+
+.edit-profile-bio-panel {
+  min-width: 0;
+}
+
+.edit-profile-bio-builder {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.edit-profile-bio-builder-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.edit-profile-bio-builder-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--primary) 24%, var(--stroke));
+}
+
+.edit-profile-bio-builder-copy {
+  min-width: 0;
+}
+
+.edit-profile-bio-builder-copy h4 {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.edit-profile-bio-builder-copy p {
+  margin: 3px 0 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.edit-profile-bio-builder-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px 10px 30px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--primary) 24%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 7%, transparent);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.edit-profile-bio-builder-steps li {
+  padding-left: 2px;
+}
+
+.edit-profile-bio-builder-steps li::marker {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.edit-profile-helper-label {
+  display: block;
+  margin: 12px 0 6px 2px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.edit-profile-helper-textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in oklab, var(--bg) 62%, var(--card));
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.42;
+  padding: 10px 11px;
+  resize: vertical;
+  min-height: 76px;
+}
+
+.edit-profile-helper-textarea--prompt {
+  min-height: 132px;
+  font-size: 0.76rem;
+  color: color-mix(in oklab, var(--text) 88%, var(--muted));
+}
+
+.edit-profile-helper-textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.edit-profile-helper-textarea:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--stroke));
+}
+
+.edit-profile-bio-copy-prompt,
+.edit-profile-use-ai-draft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--primary) 44%, var(--stroke));
+  background: color-mix(in oklab, var(--primary) 12%, var(--card));
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    filter 0.15s,
+    opacity 0.15s;
+}
+
+.edit-profile-bio-copy-prompt {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
+}
+
+.edit-profile-bio-copy-prompt:hover,
+.edit-profile-use-ai-draft:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.edit-profile-field-divider--bio-builder {
+  margin: 14px 0 0;
+}
+
+.edit-profile-bio-builder-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.edit-profile-ai-draft-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.edit-profile-use-ai-draft {
+  min-height: 38px;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+
+.edit-profile-use-ai-draft:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .edit-profile-footer {
   flex-shrink: 0;
   padding: 16px 0 calc(16px + env(safe-area-inset-bottom, 0));
@@ -8769,6 +8981,16 @@ button.taste-tag:focus-visible {
   color: var(--primary-soft);
 }
 
+.plan-info-pill-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .plan-info-pill-text {
   min-width: 0;
   line-height: 1.35;
@@ -10000,16 +10222,10 @@ button.taste-tag:focus-visible {
   gap: 12px;
 }
 
-@media (min-width: 720px) {
-  .plan-weather-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .plan-weather-outlook,
-  .plan-weather-alerts,
-  .plan-weather-grid > .admin-weather-map-card {
-    grid-column: 1 / -1;
-  }
+.plan-weather-outlook,
+.plan-weather-alerts,
+.plan-weather-grid > .admin-weather-map-card {
+  grid-column: 1 / -1;
 }
 
 .plan-weather-card-head {
@@ -10233,12 +10449,6 @@ button.taste-tag:focus-visible {
   opacity: 0.9;
 }
 
-@media (min-width: 560px) {
-  .plan-weather-card {
-    grid-column: span 1;
-  }
-}
-
 .plan-weather-card-kicker {
   position: relative;
   z-index: 1;
@@ -10357,18 +10567,19 @@ button.taste-tag:focus-visible {
 
 .plan-weather-outlook-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 10px;
 }
 
 @media (min-width: 720px) {
   .plan-weather-outlook-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   }
 }
 
 .plan-weather-outlook-day {
   display: grid;
+  grid-template-rows: auto auto 1fr auto;
   gap: 8px;
   min-width: 0;
   padding: 12px;
@@ -10405,18 +10616,22 @@ button.taste-tag:focus-visible {
   font-weight: 800;
   line-height: 1.35;
   color: var(--primary-soft);
+  overflow-wrap: anywhere;
 }
 
 .plan-weather-outlook-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   margin: 0;
 }
 
 .plan-weather-outlook-meta div {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
 .plan-weather-outlook-meta dt {
@@ -10432,6 +10647,9 @@ button.taste-tag:focus-visible {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--text);
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .plan-weather-alerts {

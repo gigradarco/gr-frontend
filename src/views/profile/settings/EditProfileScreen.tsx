@@ -8,7 +8,7 @@ import {
   type FormEvent,
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, Camera } from 'lucide-react'
+import { ArrowLeft, Camera, Clipboard, Sparkles } from 'lucide-react'
 import { UploadToast, type UploadToastState } from '../../../components/UploadToast'
 import {
   getCachedAvatarDataUrl,
@@ -25,6 +25,46 @@ function normalizeProfileUsername(s: string): string {
   return s.trim().replace(/^@+/, '').toLowerCase()
 }
 
+function compactBioText(s: string): string {
+  return s.replace(/\s+/g, ' ').trim().slice(0, 280)
+}
+
+function buildBioPrompt(input: {
+  displayName: string
+  username: string
+  currentBio: string
+  response: string
+  notes: string
+}): string {
+  const displayName = input.displayName.trim() || 'this Buzo user'
+  const username = normalizeProfileUsername(input.username)
+  const currentBio = input.currentBio.trim()
+  const response = input.response.trim()
+  const notes = input.notes.trim()
+
+  return [
+    'Write a concise Buzo profile bio for an events and nightlife discovery app.',
+    'Constraints:',
+    '- Max 280 characters.',
+    '- 1 sentence, or 2 short fragments.',
+    '- Make it specific, social, and taste-led.',
+    '- Mention genres, scenes, venues, or event energy if useful.',
+    '- No hashtags, emojis, quotation marks, or generic hype.',
+    '- Return only the final bio text.',
+    '',
+    `Display name: ${displayName}`,
+    username ? `Username: @${username}` : null,
+    currentBio ? `Current bio: ${currentBio}` : null,
+    response ? `My response: ${response}` : null,
+    notes ? `My notes: ${notes}` : null,
+    !response && !notes
+      ? 'If my response and notes are empty, ask me what genres, clubs, venues, event vibe, and people I want to meet before writing.'
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
 export function EditProfileScreen() {
   const closeEditProfile = useAppState((s) => s.closeEditProfile)
   const setUserProfile = useAppState((s) => s.setUserProfile)
@@ -36,6 +76,7 @@ export function EditProfileScreen() {
   )
   const fileInputRef = useRef<HTMLInputElement>(null)
   const closeTimerRef = useRef<number | null>(null)
+  const bioPromptCopyTimerRef = useRef<number | null>(null)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [pendingCropFile, setPendingCropFile] = useState<File | null>(null)
@@ -64,6 +105,25 @@ export function EditProfileScreen() {
     normalizeProfileUsername(useAppState.getState().userProfile.username),
   )
   const [bio, setBio] = useState(() => useAppState.getState().userProfile.bio)
+  const [activeBioTab, setActiveBioTab] = useState<'bio' | 'builder'>(() =>
+    useAppState.getState().userProfile.bio.trim().length > 0 ? 'bio' : 'builder',
+  )
+  const [bioBuilderResponse, setBioBuilderResponse] = useState('')
+  const [bioBuilderNotes, setBioBuilderNotes] = useState('')
+  const [bioAiDraft, setBioAiDraft] = useState('')
+  const [bioPromptCopied, setBioPromptCopied] = useState(false)
+
+  const bioPrompt = useMemo(
+    () =>
+      buildBioPrompt({
+        displayName,
+        username,
+        currentBio: bio,
+        response: bioBuilderResponse,
+        notes: bioBuilderNotes,
+      }),
+    [bio, bioBuilderNotes, bioBuilderResponse, displayName, username],
+  )
 
   useEffect(() => {
     const n = normalizeProfileUsername(username)
@@ -74,6 +134,9 @@ export function EditProfileScreen() {
     () => () => {
       if (closeTimerRef.current !== null) {
         window.clearTimeout(closeTimerRef.current)
+      }
+      if (bioPromptCopyTimerRef.current !== null) {
+        window.clearTimeout(bioPromptCopyTimerRef.current)
       }
     },
     [],
@@ -152,6 +215,38 @@ export function EditProfileScreen() {
     }
   }
 
+  const copyBioPrompt = async () => {
+    if (!navigator.clipboard?.writeText) {
+      pushUploadToast('Copy is not available in this browser.', 'error')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(bioPrompt)
+      setBioPromptCopied(true)
+      pushUploadToast('Bio prompt copied.', 'success')
+      if (bioPromptCopyTimerRef.current !== null) {
+        window.clearTimeout(bioPromptCopyTimerRef.current)
+      }
+      bioPromptCopyTimerRef.current = window.setTimeout(() => {
+        setBioPromptCopied(false)
+      }, 1800)
+    } catch (err) {
+      pushUploadToast(err instanceof Error ? err.message : 'Could not copy prompt.', 'error')
+    }
+  }
+
+  const applyBioAiDraft = () => {
+    const nextBio = compactBioText(bioAiDraft)
+    if (!nextBio) {
+      pushUploadToast('Paste a GPT or Gemini bio first.', 'error')
+      return
+    }
+    setBio(nextBio)
+    setBioAiDraft(nextBio)
+    setActiveBioTab('bio')
+    pushUploadToast('Bio draft applied.', 'success')
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const n = normalizeProfileUsername(username)
@@ -196,6 +291,115 @@ export function EditProfileScreen() {
       pushUploadToast(err instanceof Error ? err.message : 'Could not save profile.', 'error')
     }
   }
+
+  const bioField = (
+    <div className="edit-profile-bio-field">
+      <label className="edit-profile-label" htmlFor="edit-profile-bio">
+        Bio <span className="edit-profile-optional">(optional)</span>
+      </label>
+      <textarea
+        id="edit-profile-bio"
+        className="edit-profile-textarea"
+        value={bio}
+        onChange={(e) => setBio(e.target.value)}
+        placeholder="Clubs, genres, what you’re into…"
+        rows={4}
+        maxLength={280}
+      />
+      <p className="edit-profile-char-count" aria-live="polite">
+        {bio.length}/280
+      </p>
+    </div>
+  )
+
+  const bioBuilder = (
+    <div className="edit-profile-bio-builder" aria-labelledby="edit-profile-bio-builder-title">
+      <div className="edit-profile-bio-builder-head">
+        <span className="edit-profile-bio-builder-icon" aria-hidden>
+          <Sparkles size={16} />
+        </span>
+        <div className="edit-profile-bio-builder-copy">
+          <h4 id="edit-profile-bio-builder-title">Bio builder</h4>
+          <p>Use GPT or Gemini to draft your profile, then review it in Buzo.</p>
+        </div>
+      </div>
+
+      <ol className="edit-profile-bio-builder-steps" aria-label="Bio builder steps">
+        <li>Copy the prompt template into GPT or Gemini.</li>
+        <li>Answer the AI questions, then paste that answer into My response.</li>
+        <li>Add any extra taste, venue, or vibe notes under My notes.</li>
+        <li>Paste the final AI bio into AI response, then tap Use draft.</li>
+      </ol>
+
+      <label className="edit-profile-helper-label" htmlFor="edit-profile-bio-prompt">
+        Prompt template
+      </label>
+      <textarea
+        id="edit-profile-bio-prompt"
+        className="edit-profile-helper-textarea edit-profile-helper-textarea--prompt"
+        value={bioPrompt}
+        readOnly
+        rows={6}
+      />
+      <button
+        type="button"
+        className="edit-profile-bio-copy-prompt"
+        onClick={() => void copyBioPrompt()}
+      >
+        <Clipboard size={16} aria-hidden />
+        <span>{bioPromptCopied ? 'Prompt copied' : 'Copy prompt'}</span>
+      </button>
+
+      <label className="edit-profile-helper-label" htmlFor="edit-profile-bio-response">
+        My response
+      </label>
+      <textarea
+        id="edit-profile-bio-response"
+        className="edit-profile-helper-textarea"
+        value={bioBuilderResponse}
+        onChange={(e) => setBioBuilderResponse(e.target.value)}
+        placeholder="What you told GPT or Gemini about your taste, scene, and vibe..."
+        rows={3}
+      />
+
+      <label className="edit-profile-helper-label" htmlFor="edit-profile-bio-notes">
+        My notes
+      </label>
+      <textarea
+        id="edit-profile-bio-notes"
+        className="edit-profile-helper-textarea"
+        value={bioBuilderNotes}
+        onChange={(e) => setBioBuilderNotes(e.target.value)}
+        placeholder="Genres, clubs, venues, event vibe, who you want to meet..."
+        rows={3}
+      />
+
+      <div className="edit-profile-field-divider edit-profile-field-divider--bio-builder" aria-hidden />
+
+      <label className="edit-profile-helper-label" htmlFor="edit-profile-bio-ai-draft">
+        AI response
+      </label>
+      <textarea
+        id="edit-profile-bio-ai-draft"
+        className="edit-profile-helper-textarea"
+        value={bioAiDraft}
+        onChange={(e) => setBioAiDraft(e.target.value)}
+        placeholder="Paste the GPT or Gemini bio response here..."
+        rows={3}
+      />
+      <div className="edit-profile-bio-builder-actions">
+        <span className="edit-profile-ai-draft-count">{compactBioText(bioAiDraft).length}/280</span>
+        <button
+          type="button"
+          className="edit-profile-use-ai-draft"
+          onClick={applyBioAiDraft}
+          disabled={compactBioText(bioAiDraft).length === 0}
+        >
+          Use draft
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <motion.div
@@ -330,21 +534,52 @@ export function EditProfileScreen() {
         <div className="edit-profile-group">
           <h3 className="edit-profile-group-title">About</h3>
           <div className="edit-profile-group-card edit-profile-fields">
-            <label className="edit-profile-label" htmlFor="edit-profile-bio">
-              Bio <span className="edit-profile-optional">(optional)</span>
-            </label>
-            <textarea
-              id="edit-profile-bio"
-              className="edit-profile-textarea"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Clubs, genres, what you’re into…"
-              rows={4}
-              maxLength={280}
-            />
-            <p className="edit-profile-char-count" aria-live="polite">
-              {bio.length}/280
-            </p>
+            <div className="edit-profile-bio-tabs" role="tablist" aria-label="Bio editor mode">
+              <button
+                type="button"
+                className={`edit-profile-bio-tab${activeBioTab === 'builder' ? ' is-active' : ''}`}
+                data-active={activeBioTab === 'builder'}
+                role="tab"
+                aria-selected={activeBioTab === 'builder'}
+                aria-controls="edit-profile-builder-panel"
+                id="edit-profile-builder-tab"
+                onClick={() => setActiveBioTab('builder')}
+              >
+                Builder
+              </button>
+              <button
+                type="button"
+                className={`edit-profile-bio-tab${activeBioTab === 'bio' ? ' is-active' : ''}`}
+                data-active={activeBioTab === 'bio'}
+                role="tab"
+                aria-selected={activeBioTab === 'bio'}
+                aria-controls="edit-profile-bio-panel"
+                id="edit-profile-bio-tab"
+                onClick={() => setActiveBioTab('bio')}
+              >
+                Bio
+              </button>
+            </div>
+
+            {activeBioTab === 'bio' ? (
+              <div
+                id="edit-profile-bio-panel"
+                className="edit-profile-bio-panel"
+                role="tabpanel"
+                aria-labelledby="edit-profile-bio-tab"
+              >
+                {bioField}
+              </div>
+            ) : (
+              <div
+                id="edit-profile-builder-panel"
+                className="edit-profile-bio-panel"
+                role="tabpanel"
+                aria-labelledby="edit-profile-builder-tab"
+              >
+                {bioBuilder}
+              </div>
+            )}
           </div>
         </div>
 

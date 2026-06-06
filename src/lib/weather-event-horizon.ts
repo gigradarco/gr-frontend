@@ -1,10 +1,17 @@
+import { PLAN_CONFIG } from '../config/plan'
+
 /** NEA cached payloads cover near-term windows; do not show event weather beyond this horizon. */
 export const EVENT_WEATHER_MAX_DAYS = 4
 
-function startOfLocalDay(date: Date): Date {
-  const day = new Date(date)
-  day.setHours(0, 0, 0, 0)
-  return day
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function localDateKey(date: Date, timeZone = PLAN_CONFIG.timeZone): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
 export function isEventWithinWeatherHorizon(
@@ -15,12 +22,11 @@ export function isEventWithinWeatherHorizon(
 
   const eventAt = new Date(eventDateTime)
   if (Number.isNaN(eventAt.getTime())) return false
-  if (eventAt.getTime() < now.getTime()) return false
 
-  const eventDay = startOfLocalDay(eventAt)
-  const today = startOfLocalDay(now)
-  const lastDay = new Date(today)
-  lastDay.setDate(lastDay.getDate() + EVENT_WEATHER_MAX_DAYS)
+  const eventDay = localDateKey(eventAt)
+  const today = localDateKey(now)
+  if (eventDay < today) return false
 
-  return eventDay.getTime() <= lastDay.getTime()
+  const lastDay = localDateKey(new Date(now.getTime() + EVENT_WEATHER_MAX_DAYS * DAY_MS))
+  return eventDay <= lastDay
 }
