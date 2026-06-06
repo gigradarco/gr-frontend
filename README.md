@@ -6,7 +6,7 @@ Buzo is an AI nightlife concierge for Singapore-first event discovery. It helps 
 
 This repository is the public app entry point: a mobile-web React/Vite client for Discover, Ask Buzo, Plan, Favorites, Profile, and admin/debug surfaces. It is designed to be evaluated together with the backend and architecture repositories listed below.
 
-Repository URL note: the Epic Connector project-wall submission points to [`gigradarco/gr-frontend`](https://github.com/gigradarco/gr-frontend). The project was migrated from [`gigradarapp/gr-frontend`](https://github.com/gigradarapp/gr-frontend), and both public URLs currently resolve for evaluation.
+Repository URL note: the Epic Connector project-wall submission points to [`gigradarco/gr-frontend`](https://github.com/gigradarco/gr-frontend). The project was migrated from [`gigradarapp/gr-frontend`](https://github.com/gigradarapp/gr-frontend), and both public URLs currently resolve for evaluation. Both repositories contain the same Buzo application code, so either URL is valid for reviewing the product implementation.
 
 The product is intentionally not a generic listings directory. Buzo combines crawled event supply, user taste, planning state, location, source verification, and an AI recommendation layer so the user gets a short list of credible options instead of another long search results page.
 
@@ -51,7 +51,7 @@ These repositories are the planned public evaluation package:
 
 | Repository | Role |
 | --- | --- |
-| [`gr-frontend`](https://github.com/gigradarco/gr-frontend) / [`original`](https://github.com/gigradarapp/gr-frontend) | React/Vite mobile-web app and main product surface. The `gigradarco` URL is the project-wall URL; the `gigradarapp` URL is the original migrated repo. |
+| [`gr-frontend`](https://github.com/gigradarco/gr-frontend) / [`original`](https://github.com/gigradarapp/gr-frontend) | React/Vite mobile-web app and main product surface. The `gigradarco` URL is the project-wall URL; the `gigradarapp` URL is the original migrated repo. Both contain the same Buzo application code, so either repo can be used to review the implementation. |
 | [`gr-backend`](https://github.com/gigradarapp/gr-backend) | Cloudflare Workers API: Hono, tRPC, Supabase Auth, Turso events, Stripe, OpenAI, weather, image proxy. |
 | [`gr-architecture`](https://github.com/gigradarapp/gr-architecture) | System architecture, data model, environments, rollout notes, and technical contracts. |
 | [`gr-waitlist`](https://github.com/gigradarapp/gr-waitlist) | Public waitlist and acquisition page showing early go-to-market motion. |
