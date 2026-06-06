@@ -5,6 +5,38 @@ function unsplash(photoId: string): string {
   return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1200&q=80`
 }
 
+function picsum(photoId: number): string {
+  return `https://picsum.photos/id/${photoId}/1200/800`
+}
+
+function numericRange(start: number, end: number): number[] {
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
+const BROAD_SPLASH_IMAGE_IDS = [
+  ...numericRange(10, 85),
+  ...numericRange(87, 96),
+  ...numericRange(98, 104),
+  ...numericRange(106, 137),
+  ...numericRange(139, 147),
+  149,
+  ...numericRange(151, 204),
+  206,
+  ...numericRange(208, 223),
+  225,
+  ...numericRange(227, 244),
+  ...numericRange(247, 261),
+  ...numericRange(263, 284),
+  ...numericRange(287, 297),
+  ...numericRange(299, 302),
+  ...numericRange(304, 331),
+  ...numericRange(334, 345),
+  ...numericRange(347, 358),
+  ...numericRange(360, 390),
+] as const
+
+const BROAD_SPLASH_IMAGES = BROAD_SPLASH_IMAGE_IDS.map(picsum)
+
 const SPLASH_IMAGE_BUCKETS = {
   liveMusic: [
     unsplash('photo-1445985543470-41fba5c3144a'),
@@ -231,13 +263,27 @@ type SplashBucket = keyof typeof SPLASH_IMAGE_BUCKETS
 type SplashImageEventContext = Pick<EventItem, 'title' | 'genre'> &
   Partial<Pick<EventItem, 'district' | 'exploreCategoryId' | 'host' | 'hostPrompt' | 'venue' | 'vibeTags'>>
 
-function firstText(...values: unknown[]): string {
-  for (const value of values) {
-    if (value == null) continue
-    const text = String(value).trim()
-    if (text.length > 0) return text
-  }
-  return ''
+const RELATED_SPLASH_BUCKETS: Record<SplashBucket, readonly SplashBucket[]> = {
+  liveMusic: ['clubNight', 'popUpFestival', 'generic'],
+  clubNight: ['liveMusic', 'popUpFestival', 'generic'],
+  artsCulture: ['fashionDesign', 'outdoorCommunity', 'generic'],
+  foodDrink: ['popUpFestival', 'outdoorCommunity', 'generic'],
+  popUpFestival: ['liveMusic', 'clubNight', 'foodDrink', 'outdoorCommunity', 'generic'],
+  workshopNetworking: ['artsCulture', 'outdoorCommunity', 'generic'],
+  wellnessSport: ['outdoorCommunity', 'generic'],
+  fashionDesign: ['artsCulture', 'popUpFestival', 'generic'],
+  outdoorCommunity: ['popUpFestival', 'foodDrink', 'generic'],
+  generic: [
+    'liveMusic',
+    'clubNight',
+    'artsCulture',
+    'foodDrink',
+    'popUpFestival',
+    'workshopNetworking',
+    'wellnessSport',
+    'fashionDesign',
+    'outdoorCommunity',
+  ],
 }
 
 function stableIndex(seed: string, size: number): number {
@@ -249,7 +295,37 @@ function stableIndex(seed: string, size: number): number {
 }
 
 export function isSplashImageUrl(url: string): boolean {
-  return url.includes('images.unsplash.com/')
+  return url.includes('images.unsplash.com/') || url.includes('picsum.photos/id/')
+}
+
+function uniqueImages(images: readonly string[]): string[] {
+  return [...new Set(images)]
+}
+
+function candidateImagesForBucket(bucket: SplashBucket): string[] {
+  const relatedImages = RELATED_SPLASH_BUCKETS[bucket].flatMap((relatedBucket) => SPLASH_IMAGE_BUCKETS[relatedBucket])
+  return uniqueImages([...SPLASH_IMAGE_BUCKETS[bucket], ...relatedImages, ...BROAD_SPLASH_IMAGES])
+}
+
+function seedFromEvent(row: Record<string, unknown>, item?: Pick<EventItem, 'id' | 'title' | 'genre'>): string {
+  return [
+    row.event_id,
+    item?.id,
+    row.title,
+    item?.title,
+    row.category,
+    item?.genre,
+    row.source_url,
+    row.location,
+    row.venue,
+    row.host,
+    row.event_datetime,
+    row.start_time,
+    row.display_datetime,
+  ]
+    .map((value) => (value == null ? '' : String(value).trim()))
+    .filter(Boolean)
+    .join('|')
 }
 
 function textFromEvent(row: Record<string, unknown>, item?: SplashImageEventContext): string {
@@ -319,7 +395,7 @@ export function splashImageForEventRow(
   item?: Pick<EventItem, 'id' | 'title' | 'genre'>,
 ): string {
   const bucket = splashBucketForEvent(row, item)
-  const images = SPLASH_IMAGE_BUCKETS[bucket]
-  const seed = firstText(row.event_id, item?.id, row.title, item?.title, row.category, row.source_url, row.location)
+  const images = candidateImagesForBucket(bucket)
+  const seed = seedFromEvent(row, item)
   return images[stableIndex(`${bucket}:${seed || 'event'}`, images.length)]
 }
