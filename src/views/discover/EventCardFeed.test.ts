@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { EventItem } from '../../types'
 import { DEFAULT_DISCOVER_FILTERS } from '../../lib/discover-filters'
-import { eventMatchesFilters } from './EventCardFeed'
+import { eventMatchesFilters, getEventDateTag } from './EventCardFeed'
 
-function makeEvent(eventDateTime: string): EventItem {
+function makeEvent(eventDateTime: string, displayDateTimeLabel = 'Date TBA'): EventItem {
   return {
     id: 'evt-1',
     title: 'Test Event',
     venue: 'Test Venue',
     district: 'Test District',
-    time: 'Date TBA',
-    displayDateTimeLabel: 'Date TBA',
+    time: displayDateTimeLabel,
+    displayDateTimeLabel,
     eventDateTime,
     genre: 'live-music',
     exploreCategoryId: 'live-music',
@@ -40,5 +40,33 @@ describe('EventCardFeed date filters', () => {
 
     expect(eventMatchesFilters(eventTonight, filters)).toBe(true)
     expect(eventMatchesFilters(eventYesterday, filters)).toBe(false)
+  })
+})
+
+describe('getEventDateTag', () => {
+  const now = new Date('2026-06-02T00:00:00+08:00')
+
+  it('uses urgency labels from full display labels', () => {
+    const event = makeEvent('2026-06-02T00:00:00+08:00', 'Tue 02 Jun · Tonight 00:00')
+
+    expect(getEventDateTag(event, now)).toBe('TONIGHT')
+  })
+
+  it('labels upcoming events within seven days as this week', () => {
+    const event = makeEvent('2026-06-06T20:00:00+08:00', 'Sat 06 Jun · 20:00')
+
+    expect(getEventDateTag(event, now)).toBe('THIS WEEK')
+  })
+
+  it('labels later same-month events as this month', () => {
+    const event = makeEvent('2026-06-23T20:00:00+08:00', 'Tue 23 Jun · 20:00')
+
+    expect(getEventDateTag(event, now)).toBe('THIS MONTH')
+  })
+
+  it('uses month and year for longer-range events', () => {
+    const event = makeEvent('2026-09-15T20:00:00+08:00', 'Tue 15 Sep · 20:00')
+
+    expect(getEventDateTag(event, now)).toBe('SEPT 2026')
   })
 })

@@ -14,6 +14,7 @@ import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { openDiscoverEventSource } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 import { DiscoverMapCanvas } from './map/DiscoverMapCanvas'
 import { eventLatLng, type EventMapPoint } from './map/map-geo'
@@ -437,7 +438,6 @@ export function MapView({
                   const isSel = selectedId === event.id
                   const isSaved = isEventFavorited(event.id)
                   const accent = getAccent(event)
-                  const sourceUrl = (event.sourceUrl ?? '').trim()
                   return (
                     <div
                       key={event.id}
@@ -499,11 +499,9 @@ export function MapView({
                               className="mv-card-icon-grid-btn"
                               aria-label="View event source"
                               title="View event source"
-                              disabled={!sourceUrl}
                               onClick={(e) => {
                                 e.stopPropagation()
-                                if (!sourceUrl) return
-                                window.open(sourceUrl, '_blank', 'noopener,noreferrer')
+                                void openDiscoverEventSource(event.id, event.sourceUrl, () => onMoreDetails(event.id))
                               }}
                             >
                               <ExternalLink size={13} strokeWidth={2} aria-hidden />

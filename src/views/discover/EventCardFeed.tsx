@@ -246,12 +246,33 @@ function getBg(genre: string) {
   return CATEGORY_BG[catId] ?? DEFAULT_BG
 }
 
-function getTag(event: EventItem): string {
-  const label = event.displayDateTimeLabel ?? event.time
-  if (/^date tba/i.test(label)) return 'DATE TBA'
-  if (/^tonight/i.test(label)) return 'TONIGHT'
-  if (/^tmr/i.test(label)) return 'TOMORROW'
-  return label.toUpperCase()
+function formatMonthYear(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: DISCOVER_TIME_ZONE,
+    month: 'short',
+    year: 'numeric',
+  }).format(date).toUpperCase()
+}
+
+export function getEventDateTag(event: EventItem, now = new Date()): string {
+  const label = (event.displayDateTimeLabel ?? event.time).trim()
+  if (!label || /^date tba/i.test(label)) return 'DATE TBA'
+  if (/(^|·\s*)tonight\b/i.test(label)) return 'TONIGHT'
+  if (/(^|·\s*)(tmr|tomorrow)\b/i.test(label)) return 'TOMORROW'
+
+  const date = eventDate(event)
+  if (!date) return label.toUpperCase()
+
+  const nowParts = zonedDateParts(now)
+  const eventParts = zonedDateParts(date)
+  const diffDays = dayNumber(eventParts) - dayNumber(nowParts)
+
+  if (diffDays === 0) return 'TODAY'
+  if (diffDays === 1) return 'TOMORROW'
+  if (diffDays > 1 && diffDays < 7) return 'THIS WEEK'
+  if (diffDays >= 7 && diffDays < 14) return 'NEXT WEEK'
+  if (eventParts.year === nowParts.year && eventParts.month === nowParts.month) return 'THIS MONTH'
+  return formatMonthYear(date)
 }
 
 function eventDateTimeLabel(event: EventItem): string {
@@ -293,7 +314,7 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
   const [loaded, setLoaded] = useState(false)
   const accent = getAccent(event.genre)
   const bgColor = getBg(event.genre)
-  const tag = getTag(event)
+  const tag = getEventDateTag(event)
   const titleClassName = `ecf-title${titleDensityClass(event.title)}`
 
   return (

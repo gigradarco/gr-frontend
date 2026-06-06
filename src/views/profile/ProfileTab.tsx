@@ -146,8 +146,8 @@ export function ProfileTab() {
   const remoteAvatarUrl = userProfile.avatarUrl
   const cachedAvatarSrc = getCachedAvatarDataUrl(remoteAvatarUrl)
   const avatarDisplaySrc = cachedAvatarSrc ?? remoteAvatarUrl
-  const [companionAgentId, setCompanionAgentId] = useState<BuzoAgentId>(() => readSelectedBuzoAgentId() ?? 'shade')
-  const companionAgent = getBuzoAgent(companionAgentId)
+  const [companionAgentId, setCompanionAgentId] = useState<BuzoAgentId | null>(() => readSelectedBuzoAgentId())
+  const companionAgent = companionAgentId ? getBuzoAgent(companionAgentId) : null
   const [tooltipBadgeId, setTooltipBadgeId] = useState<string | null>(null)
   const reputationQuery = api.profile.reputation.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -208,7 +208,7 @@ export function ProfileTab() {
 
   useEffect(() => {
     const refreshCompanion = () => {
-      setCompanionAgentId(readSelectedBuzoAgentId() ?? 'shade')
+      setCompanionAgentId(readSelectedBuzoAgentId())
     }
 
     window.addEventListener('storage', refreshCompanion)
@@ -326,20 +326,22 @@ export function ProfileTab() {
           <span className="profile-rank-badge" style={{ display: 'none' }} aria-hidden>
             Lv.{buzzTier.level} {buzzTier.label}
           </span>
-          <button
-            type="button"
-            className="profile-companion-circle"
-            style={{ '--companion-accent': companionAgent.accent } as CSSProperties}
-            aria-label={`Ask ${companionAgent.name}, your Buzo companion`}
-            title={`${companionAgent.name} — ${companionAgent.title}`}
-            onClick={() => navigateShellToTab('ask')}
-          >
-            <BuzoAgentCharacter
-              agentId={companionAgent.id}
-              size={44}
-              className="profile-companion-character"
-            />
-          </button>
+          {companionAgent ? (
+            <button
+              type="button"
+              className="profile-companion-circle"
+              style={{ '--companion-accent': companionAgent.accent } as CSSProperties}
+              aria-label={`Ask ${companionAgent.name}, your Buzo companion`}
+              title={`${companionAgent.name} - ${companionAgent.title}`}
+              onClick={() => navigateShellToTab('ask')}
+            >
+              <BuzoAgentCharacter
+                agentId={companionAgent.id}
+                size={44}
+                className="profile-companion-character"
+              />
+            </button>
+          ) : null}
         </div>
         <h2
           className="profile-display-name"

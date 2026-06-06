@@ -2,8 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useSt
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
+  ASK_BUZO_PATHS,
   discoverEventIdFromPath,
   getDiscoverEventPath,
+  isKnownAskBuzoPath,
   isKnownPlanPath,
   navigateShellToTab,
   normalizeShellPath,
@@ -266,6 +268,17 @@ function MainApp() {
     const normalizedPath = normalizeShellPath(pathname)
     if (pathname === '/' || pathname === '') {
       navigate('/discover', { replace: true })
+      return
+    }
+    if (normalizedPath === ASK_BUZO_PATHS.root) {
+      navigate(ASK_BUZO_PATHS.chat, { replace: true })
+      return
+    }
+    if (
+      normalizedPath.startsWith(`${ASK_BUZO_PATHS.root}/`) &&
+      !isKnownAskBuzoPath(pathname)
+    ) {
+      navigate(ASK_BUZO_PATHS.chat, { replace: true })
       return
     }
     if (

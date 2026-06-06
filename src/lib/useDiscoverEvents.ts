@@ -166,43 +166,73 @@ export async function fetchDiscoverEventById(eventId: string, signal?: AbortSign
   return mapDiscoverEventListItemToEventItem(item)
 }
 
+export function normalizeExternalEventSourceUrl(value?: string | null): string | null {
+  const raw = value?.trim()
+  if (!raw) return null
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (/^\/\//.test(raw)) return `https:${raw}`
+  if (/^[^\s./]+\.[^\s]+/.test(raw)) return `https://${raw}`
+  return null
+}
+
+function openExternalEventSourceWindow(target: string) {
+  window.open(target, '_blank', 'noopener,noreferrer')
+}
+
+function openPendingEventSourceWindow(): Window | null {
+  const pending = window.open('', '_blank')
+  if (!pending) return null
+
+  pending.opener = null
+  try {
+    pending.document.write(
+      '<!doctype html><title>Opening event source</title><body style="margin:0;background:#0b0b0b;color:#f5f5f5;font:16px system-ui,sans-serif;display:grid;min-height:100vh;place-items:center;">Opening event source...</body>',
+    )
+    pending.document.close()
+  } catch {
+    // The blank tab can still be navigated even if the loading message fails.
+  }
+
+  return pending
+}
+
+function closePendingEventSourceWindow(pending: Window | null) {
+  if (!pending || pending.closed) return
+  pending.close()
+}
+
+function navigatePendingEventSourceWindow(pending: Window | null, target: string): boolean {
+  if (!pending || pending.closed) return false
+  pending.location.replace(target)
+  return true
+}
+
 export async function openDiscoverEventSource(
   eventId: string,
   sourceUrl?: string | null,
   onFallback?: () => void,
 ) {
-  const toExternalHttpUrl = (value?: string | null): string | null => {
-    const raw = value?.trim()
-    if (!raw) return null
-    if (/^https?:\/\//i.test(raw)) return raw
-    if (/^\/\//.test(raw)) return `https:${raw}`
-    if (/^[^\s./]+\.[^\s]+/.test(raw)) return `https://${raw}`
-    return null
-  }
-
-  const openTarget = (target: string): boolean => {
-    const safeTarget = toExternalHttpUrl(target)
-    if (!safeTarget) return false
-
-    const opened = window.open(safeTarget, '_blank', 'noopener,noreferrer')
-    return Boolean(opened)
-  }
-
-  const directUrl = toExternalHttpUrl(sourceUrl)
-  if (directUrl && openTarget(directUrl)) {
+  const directUrl = normalizeExternalEventSourceUrl(sourceUrl)
+  if (directUrl) {
+    openExternalEventSourceWindow(directUrl)
     return
   }
 
+  const pendingWindow = openPendingEventSourceWindow()
   try {
     const detail = await fetchDiscoverEventById(eventId)
-    const resolvedUrl = toExternalHttpUrl(detail.sourceUrl)
-    if (resolvedUrl && openTarget(resolvedUrl)) {
+    const resolvedUrl = normalizeExternalEventSourceUrl(detail.sourceUrl)
+    if (resolvedUrl) {
+      if (!navigatePendingEventSourceWindow(pendingWindow, resolvedUrl)) {
+        openExternalEventSourceWindow(resolvedUrl)
+      }
       return
     }
   } catch {
     // Fall back below.
   }
 
+  closePendingEventSourceWindow(pendingWindow)
   onFallback?.()
 }
 

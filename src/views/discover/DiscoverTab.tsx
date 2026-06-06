@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Check,
@@ -48,11 +49,13 @@ import { ensureAccessTokenFresh } from '../../lib/auth-api'
 import { handleEventImageError } from '../../lib/event-image-fallback'
 import { DISCOVER_COMPOSER_CONFIG } from '../../config/discoverUi'
 import { EventShareSheet } from '../../components/EventShareSheet'
+import { openDiscoverEventSource } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 import { BuzoAgentPicker } from './BuzoAgentPicker'
 import { BuzoAgentRemoveConfirmDialog } from './BuzoAgentRemoveConfirmDialog'
 import { BuzoAgentCharacter } from './BuzoAgentCharacter'
 import { compactDateTimeLabel, getAccent } from './map/map-pin-html'
+import { ASK_BUZO_PATHS, askBuzoShellViewFromPath } from '../../lib/tabRoutes'
 
 type DiscoverTabProps = {
   onOpenEvent: (eventId: string) => void
@@ -158,7 +161,6 @@ function AgentRankedEventCard({
   onShare: (event: EventItem) => void
 }) {
   const accent = getAccent(event)
-  const sourceUrl = (event.sourceUrl ?? '').trim()
 
   return (
     <div
@@ -217,7 +219,6 @@ function AgentRankedEventCard({
               className="mv-card-icon-grid-btn"
               aria-label="View event source"
               title="View event source"
-              disabled={!sourceUrl}
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenSource(event)
@@ -341,13 +342,21 @@ export function DiscoverTab({
   const [selectedAgentId, setSelectedAgentId] = useState<BuzoAgentId | null>(() =>
     readSelectedBuzoAgentId(),
   )
-  const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false)
-  const [isAgentAdvisorOpen, setIsAgentAdvisorOpen] = useState(false)
   const [showRemoveAgentConfirm, setShowRemoveAgentConfirm] = useState(false)
   const selectedAgent = useMemo(
     () => (selectedAgentId ? getBuzoAgent(selectedAgentId) : null),
     [selectedAgentId],
   )
+  const navigate = useNavigate()
+  const location = useLocation()
+  const askBuzoView = askBuzoShellViewFromPath(location.pathname)
+  const isAgentAdvisorOpen = askBuzoView === 'batsMatch'
+  const needsAgentSelection = selectedAgentId === null
+  const showAgentPicker =
+    askBuzoView === 'bats' || askBuzoView === 'batsSwitch' || askBuzoView === 'batsMatch'
+  const isChangingAgent =
+    (askBuzoView === 'batsSwitch' || askBuzoView === 'batsMatch') && selectedAgentId !== null
+  const agentPickerVariant = isChangingAgent ? 'change' : 'initial'
 
   const tryAskingLabelId = useId()
   const requestCounter = useRef(0)
@@ -405,21 +414,19 @@ export function DiscoverTab({
     const changed = selectedAgentId !== null && selectedAgentId !== agentId
     writeSelectedBuzoAgentId(agentId)
     setSelectedAgentId(agentId)
-    setIsAgentPickerOpen(false)
     if (changed) {
       handleNewChat()
     }
+    navigate(ASK_BUZO_PATHS.chat)
   }
 
   const openAgentPicker = () => {
     setDiscoverMoreOpen(false)
-    setIsAgentAdvisorOpen(false)
-    setIsAgentPickerOpen(true)
+    navigate(ASK_BUZO_PATHS.batsSwitch)
   }
 
   const closeAgentPicker = () => {
-    setIsAgentPickerOpen(false)
-    setIsAgentAdvisorOpen(false)
+    navigate(ASK_BUZO_PATHS.chat)
   }
 
   const requestRemoveAgent = () => {
@@ -435,13 +442,13 @@ export function DiscoverTab({
     clearSelectedBuzoAgentId()
     setSelectedAgentId(null)
     setShowRemoveAgentConfirm(false)
-    closeAgentPicker()
     handleNewChat()
+    navigate(ASK_BUZO_PATHS.bats)
   }
 
   const handleChangeHeaderBack = () => {
     if (isAgentAdvisorOpen) {
-      setIsAgentAdvisorOpen(false)
+      navigate(selectedAgentId ? ASK_BUZO_PATHS.batsSwitch : ASK_BUZO_PATHS.bats)
       return
     }
     closeAgentPicker()
@@ -473,9 +480,7 @@ export function DiscoverTab({
   }
 
   const handleOpenRankedEventSource = (event: EventItem) => {
-    const sourceUrl = (event.sourceUrl ?? '').trim()
-    if (!sourceUrl) return
-    window.open(sourceUrl, '_blank', 'noopener,noreferrer')
+    void openDiscoverEventSource(event.id, event.sourceUrl, () => onOpenEvent(event.id))
   }
 
   const handleSelectConversation = (conv: Conversation) => {
@@ -570,6 +575,16 @@ export function DiscoverTab({
     onConsumePrefill()
     void submitPrompt(prefillPrompt, { resetThread: true })
   }, [prefillPrompt, onConsumePrefill])
+
+  useEffect(() => {
+    if (selectedAgentId === null && askBuzoView === 'chat') {
+      navigate(ASK_BUZO_PATHS.bats, { replace: true })
+      return
+    }
+    if (selectedAgentId === null && askBuzoView === 'batsSwitch') {
+      navigate(ASK_BUZO_PATHS.bats, { replace: true })
+    }
+  }, [askBuzoView, navigate, selectedAgentId])
 
   const submitPrompt = async (rawPrompt: string, options?: { resetThread?: boolean }) => {
     const nextPrompt = rawPrompt.trim()
@@ -838,10 +853,6 @@ export function DiscoverTab({
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [discoverMoreOpen])
-
-  const needsAgentSelection = selectedAgentId === null
-  const isChangingAgent = isAgentPickerOpen && selectedAgentId !== null
-  const showAgentPicker = needsAgentSelection || isChangingAgent
 
   useEffect(() => {
     if (!isChangingAgent) return
@@ -1170,11 +1181,17 @@ export function DiscoverTab({
       >
         {showAgentPicker ? (
           <BuzoAgentPicker
-            variant={needsAgentSelection ? 'initial' : 'change'}
+            variant={agentPickerVariant}
             selectedAgentId={selectedAgentId}
             onSelect={handleSelectAgent}
             advisorOpen={isAgentAdvisorOpen}
-            onAdvisorOpenChange={setIsAgentAdvisorOpen}
+            onAdvisorOpenChange={(open) => {
+              navigate(open
+                ? ASK_BUZO_PATHS.batsMatch
+                : selectedAgentId
+                  ? ASK_BUZO_PATHS.batsSwitch
+                  : ASK_BUZO_PATHS.bats)
+            }}
           />
         ) : hasThread ? (
           <div className="discover-layla-scroll-inner">
