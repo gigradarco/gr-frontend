@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { fireGoingCelebration } from '../../components/GoingCelebrationBurst'
 import { fallbackImageForEvent, handleEventImageError } from '../../lib/event-image-fallback'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import { fetchEventWeatherSummary, type EventWeatherSummary } from '../../lib/event-weather-summary'
 import { fetchDiscoverEventById } from '../../lib/useDiscoverEvents'
 import { getPlanScheduledEventPath } from '../../lib/tabRoutes'
@@ -82,7 +83,7 @@ function heroEventItem(data: PlanPageEvent): EventItem {
 }
 
 function compactTicketPriceLabel(ticketPrice: string): string {
-  const text = ticketPrice.trim()
+  const text = formatEventPriceLabel(ticketPrice)
   if (!text) return text
 
   const currency = text.match(/\b(SGD|USD|MYR)\b/i)?.[1].toUpperCase()
@@ -300,7 +301,7 @@ export function PlanEventDetail({
               {data.ticketPrice ? (
                 <div className="plan-info-pill plan-info-pill--price">
                   <Ticket size={13} strokeWidth={2.2} aria-hidden />
-                  <span className="plan-info-pill-text" title={data.ticketPrice}>
+                  <span className="plan-info-pill-text" title={formatEventPriceLabel(data.ticketPrice)}>
                     {compactTicketPriceLabel(data.ticketPrice)}
                   </span>
                 </div>

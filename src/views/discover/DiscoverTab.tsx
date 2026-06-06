@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { useAppState } from '../../store/appStore'
 import { discoverSuggestedPrompts } from '../../data/demoData'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import {
   type DiscoverAgentResult,
   fetchOpenAIDiscoverResult,
@@ -183,7 +184,7 @@ function AgentRankedEventCard({
         </div>
         <p className="mv-card-title">{event.title}</p>
         <p className="mv-card-sub">{event.district}</p>
-        <p className="mv-card-price">{event.ticketPrice}</p>
+        <p className="mv-card-price">{formatEventPriceLabel(event.ticketPrice)}</p>
         <div className="mv-card-actions">
           <button
             type="button"

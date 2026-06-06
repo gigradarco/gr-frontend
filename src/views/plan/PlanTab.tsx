@@ -7,6 +7,7 @@ import {
 } from '../../data/demoData'
 import { PLAN_CONFIG } from '../../config/plan'
 import { PLAN_PATHS } from '../../config/routes'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import {
   getPlanScheduledEventPath,
   navigateShellToTab,
@@ -627,7 +628,7 @@ export function PlanTab({ events, onOpenEvent }: PlanTabProps) {
                   <p className="plan-list-card-meta">
                     <Clock size={13} aria-hidden />
                     {ev.time}
-                    {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
+                    {ev.ticketPrice ? ` · ${formatEventPriceLabel(ev.ticketPrice)}` : ''}
                   </p>
                 </div>
               </button>

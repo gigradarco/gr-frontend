@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, MapPin } from 'lucide-react'
 import { events } from '../../data/demoData'
 import { getExploreCategoryDef } from '../../data/exploreCategories'
 import { getLocationCityById } from '../../data/locationRegions'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import { useAppState } from '../../store/appStore'
 
 export type PlanExploreDetailFocus =
@@ -94,7 +95,7 @@ export function PlanExploreEventsDetail({
                   <p className="plan-list-card-meta">
                     <Clock size={13} aria-hidden />
                     {ev.time}
-                    {ev.ticketPrice ? ` · ${ev.ticketPrice}` : ''}
+                    {ev.ticketPrice ? ` · ${formatEventPriceLabel(ev.ticketPrice)}` : ''}
                   </p>
                 </div>
               </button>

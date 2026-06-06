@@ -14,6 +14,7 @@ import { useAppState } from '../../store/appStore'
 import { LOCATION_REGIONS } from '../../data/locationRegions'
 import { getDiscoverMapCityCenter, getDiscoverMapCityDefaultZoom } from '../../lib/discover-map-defaults'
 import { handleEventImageError } from '../../lib/event-image-fallback'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import { openDiscoverEventSource } from '../../lib/useDiscoverEvents'
 import type { EventItem } from '../../types'
 import { DiscoverMapCanvas } from './map/DiscoverMapCanvas'
@@ -459,7 +460,7 @@ export function MapView({
                         </div>
                         <p className="mv-card-title">{event.title}</p>
                         <p className="mv-card-sub">{event.district}</p>
-                        <p className="mv-card-price">{event.ticketPrice}</p>
+                        <p className="mv-card-price">{formatEventPriceLabel(event.ticketPrice)}</p>
                         <div className="mv-card-actions">
                           <button
                             type="button"

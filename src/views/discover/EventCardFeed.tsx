@@ -10,6 +10,7 @@ import { useEventPlans } from '../../lib/useEventPlans'
 import { EventShareSheet } from '../../components/EventShareSheet'
 import { DISCOVER_FEED_CONFIG } from '../../config/discoverFeed'
 import { DISCOVER_FILTER_SECTIONS } from '../../config/discoverUi'
+import { formatEventPriceLabel } from '../../lib/event-price-label'
 import {
   AREA_FILTER,
   DATE_FILTER,
@@ -393,11 +394,11 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
         <div
           className="ecf-meta-row"
           role="group"
-          aria-label={`${event.district}, ${timeLabel}, ${event.ticketPrice}`}
+          aria-label={`${event.district}, ${timeLabel}, ${formatEventPriceLabel(event.ticketPrice)}`}
         >
           {[
             { label: 'WHERE', value: event.district, className: 'ecf-meta-col ecf-meta-col--where' },
-            { label: 'PRICE', value: event.ticketPrice, className: 'ecf-meta-col ecf-meta-col--price' },
+            { label: 'PRICE', value: formatEventPriceLabel(event.ticketPrice), className: 'ecf-meta-col ecf-meta-col--price' },
           ].map((m) => (
             <div key={m.label} className={m.className}>
               <span className="ecf-meta-label">{m.label}</span>
