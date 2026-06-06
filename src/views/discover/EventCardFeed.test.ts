@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { EventItem } from '../../types'
 import { DEFAULT_DISCOVER_FILTERS } from '../../lib/discover-filters'
-import { eventMatchesFilters, getEventDateTag } from './EventCardFeed'
+import { eventMatchesFilters, getEventDateTag, getEventTopTimeLabel } from './EventCardFeed'
 
 function makeEvent(eventDateTime: string, displayDateTimeLabel = 'Date TBA'): EventItem {
   return {
@@ -68,5 +68,19 @@ describe('getEventDateTag', () => {
     const event = makeEvent('2026-09-15T20:00:00+08:00', 'Tue 15 Sep · 20:00')
 
     expect(getEventDateTag(event, now)).toBe('SEPT 2026')
+  })
+})
+
+describe('getEventTopTimeLabel', () => {
+  it('removes urgency words already shown by the top date tag', () => {
+    const event = makeEvent('2026-06-06T00:00:00+08:00', 'Sat 06 Jun · Tonight 00:00')
+
+    expect(getEventTopTimeLabel(event)).toBe('Sat 06 Jun · 00:00')
+  })
+
+  it('keeps compact time-only labels unchanged', () => {
+    const event = makeEvent('2026-06-06T22:30:00+08:00', '22:30')
+
+    expect(getEventTopTimeLabel(event)).toBe('22:30')
   })
 })

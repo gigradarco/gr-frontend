@@ -16045,7 +16045,9 @@ button.taste-tag:focus-visible {
   top: var(--ecf-badge-top);
   left: 18px;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  max-width: calc(100% - 36px);
 }
 
 .ecf-tag {
@@ -16058,6 +16060,13 @@ button.taste-tag:focus-visible {
   color: #ffffff;
   border: 1px solid rgba(255, 90, 31, 0.62);
   background: rgba(255, 90, 31, 0.34);
+}
+
+.ecf-tag--time {
+  max-width: min(260px, calc(100vw - 170px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ecf-going-badge {
@@ -16240,22 +16249,27 @@ button.taste-tag:focus-visible {
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Meta: three columns, labels top-aligned, values bottom-aligned across cols */
+/* Meta: where gets two-thirds, price gets one-third. Time lives in the top chips. */
 .ecf-meta-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(92px, 1fr);
   align-items: stretch;
-  gap: 0;
+  column-gap: 14px;
   margin-bottom: 14px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ecf-meta-col {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.ecf-meta-col--where,
+.ecf-meta-col--price {
+  grid-column: span 1;
 }
 
 .ecf-meta-label {

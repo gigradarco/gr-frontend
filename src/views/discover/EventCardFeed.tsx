@@ -279,6 +279,16 @@ function eventDateTimeLabel(event: EventItem): string {
   return event.displayDateTimeLabel ?? event.time
 }
 
+export function getEventTopTimeLabel(event: EventItem): string {
+  const label = eventDateTimeLabel(event).trim()
+  const compact = label
+    .replace(/(^|·\s*)(today|tonight|tmr|tomorrow)\b\s*/i, '$1')
+    .replace(/\s*·\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  return compact || label
+}
+
 function toFavoriteEvent(event: EventItem) {
   return {
     id: event.id,
@@ -315,6 +325,7 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
   const accent = getAccent(event.genre)
   const bgColor = getBg(event.genre)
   const tag = getEventDateTag(event)
+  const timeLabel = getEventTopTimeLabel(event)
   const titleClassName = `ecf-title${titleDensityClass(event.title)}`
 
   return (
@@ -346,6 +357,9 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
       <div className="ecf-tags">
         <span className="ecf-tag">
           {tag}
+        </span>
+        <span className="ecf-tag ecf-tag--time">
+          {timeLabel}
         </span>
       </div>
 
@@ -379,14 +393,13 @@ function EventCard({ event, isGoing, isSaved, onSave, onOpenSource, onShare, onM
         <div
           className="ecf-meta-row"
           role="group"
-          aria-label={`${event.district}, ${eventDateTimeLabel(event)}, ${event.ticketPrice}`}
+          aria-label={`${event.district}, ${timeLabel}, ${event.ticketPrice}`}
         >
           {[
-            { label: 'WHERE', value: event.district },
-            { label: 'WHEN',  value: eventDateTimeLabel(event) },
-            { label: 'PRICE', value: event.ticketPrice },
+            { label: 'WHERE', value: event.district, className: 'ecf-meta-col ecf-meta-col--where' },
+            { label: 'PRICE', value: event.ticketPrice, className: 'ecf-meta-col ecf-meta-col--price' },
           ].map((m) => (
-            <div key={m.label} className="ecf-meta-col">
+            <div key={m.label} className={m.className}>
               <span className="ecf-meta-label">{m.label}</span>
               <strong className="ecf-meta-value">{m.value}</strong>
             </div>
